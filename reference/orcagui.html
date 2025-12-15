@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Orca Control Panel</title>
+    <!--link rel="stylesheet" href="./style.css"-->
+    <!--link rel="icon" href="./favicon.ico" type="image/x-icon"-->
+  </head>
+  <body>
+    <main>
+        <h4>ORCA CONTROL PANEL</h4>
+		
+	<div>
+	Full Press Magnitude
+	  <form oninput="final.value = Xmax.value">
+		<input
+		type="range"
+		id="Xm"
+		name="Xmax"
+		min="86"
+		max="116"
+		value="99"
+		step="1" 
+		oninput="update()"/>
+		<label for="Xmax">X-Axis Magnitude: </label>
+		<output name="final" for="Xmax">99</output>
+		</form>
+	</div>
+		
+	<div>
+	  <form oninput="final.value = Upmax.value">
+		<input
+		type="range"
+		id="Um"
+		name="Upmax"
+		min="86"
+		max="116"
+		value="99"
+		step="1" 
+		oninput="update()"/>
+		<label for="Upmax">Up Magnitude: </label>
+		<output name="final" for="Upmax">99</output>
+		</form>
+	</div>
+	
+	<div>
+	  <form oninput="final.value = Downmax.value">
+		<input
+		type="range"
+		id="Dm"
+		name="Downmax"
+		min="86"
+		max="116"
+		value="99"
+		step="1" 
+		oninput="update()"/>
+		<label for="Downmax">Down Magnitude: </label>
+		<output name="final" for="Downmax">99</output>
+		</form>
+	</div>
+	</p> </p>
+	<div>
+		Light Press Magnitude
+		<form oninput="final.value = Xnotch.value">
+		<input
+		type="range"
+		id="Xn"
+		name="Xnotch"
+		min="25"
+		max="50"
+		value="33"
+		step="1" 
+		oninput="update()"/>
+		<label for="Xnotch">X-Axis Notch Value</label>
+		<output name="final" for="Xnotch">33</output>
+		</form>
+	</div>
+	
+	<div>
+		<form oninput="final.value = Upnotch.value">
+		<input
+		type="range"
+		id="Un"
+		name="Upnotch"
+		min="25"
+		max="50"
+		value="33"
+		step="1" 
+		oninput="update()"/>
+		<label for="Xnotch">Up Notch Value</label>
+		<output name="final" for="Upnotch">33</output>
+		</form>
+	</div>
+	
+	<div>
+		<form oninput="final.value = Downnotch.value">
+		<input
+		type="range"
+		id="Dn"
+		name="Downnotch"
+		min="25"
+		max="50"
+		value="33"
+		step="1" 
+		oninput="update()"/>
+		<label for="Downnotch">Down Notch Value</label>
+		<output name="final" for="Downnotch">33</output>
+		</form>
+	</div>
+	</p></p>
+	<div>
+		Analog Trigger Action
+		<form oninput="final.value = Trigger.value">
+		<input
+		type="range"
+		id="Tr"
+		name="Trigger"
+		min="49"
+		max="80"
+		value="49"
+		step="1"
+		oninput="update()"
+		/>
+		<label for="Trigger">Analog Trigger Light Press</label>
+		<output name="final" for="Trigger">49</output>
+		<br>
+		<input 
+		type="checkbox" 
+		id="litetrig" 
+		name="lightshieldTrigger" 
+		value="boobs"
+		onclick="disableSlider()"
+		/>
+		<label for="disableTrigger">Analog Trigger Lightshield Mode</label>
+		<br>
+		<input 
+		type="checkbox" 
+		id="distrig" 
+		name="disableTrigger" 
+		value="boobs"
+		onclick="disableSlider()"
+		/>
+		
+		<script>
+			function disableSlider() {
+				var box1 = document.getElementById("distrig");
+				var box2 = document.getElementById("litetrig");
+				if (box1.checked == true){
+				document.getElementById("Tr").setAttribute("disabled", true);
+				} 
+				else if (box2.checked == true){
+				document.getElementById("Tr").setAttribute("disabled", true);
+				}
+				else { 
+				document.getElementById("Tr").removeAttribute("disabled", true);
+				}
+			}
+		</script>
+		<label for="disableTrigger">Disable Analog Trigger</label>
+		</form>	
+
+	</div>
+	</p>
+	    <script>
+      //Initialize sliders with current start values
+      let sliderxmax = document.getElementById("Xm");
+      let sliderumax = document.getElementById("Um");
+	  let sliderdmax = document.getElementById("Dm");
+	  let sliderxnot = document.getElementById("Xn");
+	  let sliderunot = document.getElementById("Un");
+	  let sliderdnot = document.getElementById("Dn");	  
+      let xmg = sliderxmax.value;
+      let umg = sliderumax.value;
+      let dmg = sliderdmax.value;
+      let xnt = sliderxnot.value;
+      let unt = sliderunot.value;	  
+      let dnt = sliderdnot.value;
+      console.log(xmg, umg, dmg, xnt, unt, dnt);
+
+      function update() {
+        xmg = parseFloat(sliderxmax.value);
+        umg = parseFloat(sliderumax.value);
+        dmg = parseFloat(sliderdmax.value);
+        xnt = parseFloat(sliderxnot.value);
+        unt = parseFloat(sliderunot.value);
+        dnt = parseFloat(sliderdnot.value);		
+        const result = f(xmg, umg, dmg, xnt, unt, dnt);
+		
+		//Walk Speed Check
+	    var speed;
+	    if (xnt > 33) {
+		speed = "WalkMid";
+		} else {
+		speed = "WalkSlow";
+		}
+		document.getElementById("wlk").innerText = speed;
+		
+		//Notch Logic
+			//Max Wd Notch
+		var maxwd  = 80/Math.sqrt(xmg ** 2 + dnt ** 2); 				// Clamp Calculation
+		var maxwdx = parseFloat(Math.trunc(xmg*maxwd)/80).toFixed(4);	//X Coordinate
+		var maxwdy = parseFloat(Math.trunc(dnt*maxwd)/80).toFixed(4);	//Y Coordinate
+		const maxwdc = `(${maxwdx}x , -${maxwdy}y)`;					//Output	
+			//Min WD Notch
+		var minwd  = 80/Math.sqrt(dmg ** 2 + xnt ** 2); 
+		var minwdx = parseFloat(Math.trunc(xnt*minwd)/80).toFixed(4);
+		var minwdy = parseFloat(Math.trunc(dmg*minwd)/80).toFixed(4);
+		const minwdc = `(${minwdx}x , -${minwdy}y)`;
+			//Over Slight Up 
+		var sliup  = 80/Math.sqrt(xmg ** 2 + unt ** 2); 				
+		var sliupx = parseFloat(Math.trunc(xmg*sliup)/80).toFixed(4); 	
+		var sliupy = parseFloat(Math.trunc(unt*sliup)/80).toFixed(4); 	
+		const sliupc = `(${sliupx}x , ${sliupy}y)` ;
+			//Up Slight Over
+		var sliov  = 80/Math.sqrt(umg ** 2 + xnt ** 2);  // Clamp
+		var sliovx = parseFloat(Math.trunc(xnt*sliov)/80).toFixed(4);
+		var sliovy = parseFloat(Math.trunc(umg*sliov)/80).toFixed(4);	
+		const sliovc = `(${sliovx}x , ${sliovy}y)`;
+			//South Diagonal
+		var soudi  = 80/Math.sqrt(xmg ** 2 + dmg ** 2);//South Diag
+		var soudix = parseFloat(Math.trunc(xmg*soudi)/80).toFixed(4);
+		var soudiy = parseFloat(Math.trunc(dmg*soudi)/80).toFixed(4);
+		const soudic = `(${soudix}x , -${soudiy}y)`;			
+			//North Diagonal
+		var nordi  = 80/Math.sqrt(xmg ** 2 + umg ** 2); //North Diag
+		var nordix = parseFloat(Math.trunc(xmg*nordi)/80).toFixed(4);
+		var nordiy = parseFloat(Math.trunc(umg*nordi)/80).toFixed(4);
+		const nordic = `(${nordix}x , ${nordiy}y)`;		
+			//Write It!
+		document.getElementById("maxwdvalue").innerText = maxwdc;		
+		document.getElementById("minwdvalue").innerText = minwdc;
+		document.getElementById("slightupvalue").innerText = sliupc;
+		document.getElementById("slightovervalue").innerText = sliovc;
+		document.getElementById("southdiag").innerText = soudic;
+		document.getElementById("northdiag").innerText = nordic;
+		
+		//South Diagonal Behavior Pls No Roast For Else Ifs Plssssss
+			var south;
+			if (soudiy <= 0.6000)  {
+			south = "Pivot Down-Angled FTilt, Cannot Shield Drop"
+			} else if (soudiy >= 0.6125 && soudiy <= 0.6500)  {
+			south = "Pivot Down-Angled FTilt, UCF 0.84+ Shield Drop";
+			} else if (soudiy >= 0.6625 && soudiy <= 0.6875) {
+			south = "Vanilla Shield Drop";
+			} else if (soudiy >= 0.7000 && soudiy <= 0.7125){
+			south = "Optimal Trajectory DI, Jab Cancel, UCF Shield Drop";
+			} else if (soudiy >= 0.7250 && soudiy <= 0.7500){
+			south = "Jab Cancel, UCF Shield Drop";
+			}
+			else {
+			south = "UCF Shield Drop"
+			}
+			document.getElementById("southbehavior").innerText = south;
+
+    
+		
+		//			   Hey! Get the fuck outta here! 
+		//	When you peer into the abyss you KNOW we look back.
+		
+		console.log(
+        ` ${speed} ${xmg} (Value of Xmax:) + ${umg} (Value of Umax) + ${dmg} (Value of Dmax) + ${xnt} (Value of Xnotch) + ${unt} (Value of Upnotch) + ${dnt} (Value of Downnotch) = ${result}`
+        );
+		console.log(
+        `${maxwdc} ${minwdc} ${sliupc} ${sliovc} ${soudic} ${nordic}`
+        );
+		}
+	  
+      function f(xmg, umg, dmg, xnt, unt, dnt) {
+      return xmg + umg + dmg + xnt + unt + dnt;
+      }
+	  
+	  /*
+	  Stick that mothafuggin remap code here
+	 <div id="buttonPanelContainer">
+		    const buttonPanelContainer = document.getElementById('buttonPanelContainer');
+			const buttonLabels = [ 'A0', 'A1', 'A2', 'A3', 'A4', 'B0', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12', 'POW', 'WIS', 'COU'];
+
+		buttonLabels.forEach((label, index) => {
+			const button = document.createElement('button');
+			button.textContent = label;
+			button.id = `button-${index}`; // Assign a unique ID
+			button.classList.add('panel-button'); // Add a class for styling
+			buttonPanelContainer.appendChild(button);
+		});
+		
+		const buttons = buttonPanelContainer.querySelectorAll('.panel-button');
+		buttons.forEach(button => {
+        button.addEventListener('click', (event) => {
+            console.log(`${event.target.textContent} clicked!`);
+            // Add specific functionality here
+        });
+
+
+
+
+
+		 
+		  </div>
+	  */
+	  
+    </script>
+	<button type="button">Save Settings</button>
+	</p>
+	
+		Walk Speed on X Notch: <div id="wlk"> WalkSlow
+		</div>
+		</p>
+		Max Wavedash Notch Value: <div id="maxwdvalue"> (0.9375x , -0.3125y)
+		</div>
+		</p>
+		Min Wavedash Notch Value: <div id="minwdvalue"> (0.3125x , -0.9375y)
+		</div>
+		</p>
+		Slight Up Notch Value: <div id="slightupvalue"> (0.9375x , 0.3125y)
+		</div>
+		</p>
+		Slight Over Notch Value: <div id="slightovervalue"> (0.3125x , 0.9375y)
+		</div>
+		</p>
+		North Diagonal Value: <div id="northdiag"> (0.7000x , 0.7000y)
+		</div>
+		</p>
+		South Diagonal Value: <div id="southdiag"> (0.7000x , -0.7000y)
+		</div>
+		</p>
+		South Diagonal Behavior: <div id="southbehavior"> Optimal Trajectory DI, Jab Cancel, UCF Shield Drop
+		</div></p>
+	<!--<script
+	submitForms = function(){
+    document.getElementById("Xmax").submit();
+    document.getElementById("Upmax").submit();
+	document.getElementById("Downmax").submit();
+	document.getElementById("Xnotch").submit();
+	document.getElementById("Upnotch").submit();
+	document.getElementById("Downnotch").submit();	
+}	/>
+
+	</p>
+
+ <script>
+ 		/*
+		console.log(
+        `Max WD Notch: (${maxwdx} , ${maxwdy})`);		
+		console.log(
+        `Min WD Notch: (${minwdx} , ${minwdy}) `);	
+		console.log(
+        `Over Slight Up Notch: (${sliupx} , ${sliupy}) `);
+		console.log(
+        `Up Slight Over Notch: (${sliovx} , ${sliovy}) `);
+		console.log(
+        `South Diagonal: (${soudix} , ${soudiy}) `);
+		console.log(
+        `North Diagonal: (${nordix} , ${nordiy}) `);	
+		*/ 
+		
+		
+	var xmg = Xmax.value; 
+	var umg = Upmax.value;  
+	var dmg = Downmax.value; 
+	var xno = Xnotch.value; 	
+	var uno = Upnotch.value; 
+	var dno = Downnotch.value; 
+	
+			//console.log(
+        //` ${maxwd} (Max Wd Clamp:) ${sliup} (Over Slight Up Clamp) ${minwd} (Min WD Clamp) ${soudi} (South Diag Clamp) ${nordi} (North Diag Clamp) ${sliov} (Up Slight Over)`
+        //);
+		
+	/*
+	  function mxwd(xmg, dnt) {
+	  //Max Wavedash
+	  var WdCoord = 
+	  return xmg + dnt	;
+	  }
+	  function mnwd(dmg, xnt) {
+	  //Min Wavedash
+	  return dmg + xnt;
+	  }
+	  function sd(xmg, dmg) {
+	  //South Diagonals
+	  return dmg + xnt;
+	  }
+	  function nd(xmg, umg) {
+	  //North Diagonals
+	  return dmg + xnt;
+	  }
+	  
+	  function ws(xnt) {
+	  //Walk Speed
+	  let speed;
+	  if (xnt > 33) {
+		speed = "WalkMid";
+		} else {
+		speed = "WalkSlow";
+		}
+	  return speed;
+	  console.log(
+	  `${speed}`);
+	  }
+	*/
+</script> 
+	-->
+
+    </main>
+    <!--script src="index.js"></script-->
+  </body>
+</html>
