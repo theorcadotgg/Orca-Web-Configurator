@@ -21,25 +21,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: orca-web-configurator/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install
-        working-directory: orca-web-configurator
         run: npm ci
 
       - name: Build
-        working-directory: orca-web-configurator
         run: npm run build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: orca-web-configurator/dist
+          path: dist
 
   deploy:
     needs: build
@@ -51,4 +52,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
