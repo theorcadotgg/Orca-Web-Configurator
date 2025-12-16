@@ -480,11 +480,11 @@ export default function App() {
               <div className="col">
                 <div className="form-row">
                   <span className="form-label">Device</span>
-                  <span className="text-sm">{deviceInfo?.productName || 'Orca'}</span>
+                  <span className="text-sm">Orca</span>
                 </div>
                 <div className="form-row">
-                  <span className="form-label">Firmware</span>
-                  <span className="text-sm">{deviceInfo?.firmwareVersion || '—'}</span>
+                  <span className="form-label">Schema</span>
+                  <span className="text-sm">v{deviceInfo?.settingsMajor ?? '?'}.{deviceInfo?.settingsMinor ?? '?'}</span>
                 </div>
                 <button className="danger" onClick={disconnect} disabled={busy} style={{ marginTop: 'var(--spacing-sm)' }}>
                   Disconnect
