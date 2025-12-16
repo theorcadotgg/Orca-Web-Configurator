@@ -254,6 +254,7 @@ export function ControllerVisualizer({
                 viewBox="0 175 331.2 200"
                 style={{
                     width: '100%',
+                    padding: '20px',
                     height: 'auto',
                     display: 'block',
                     background: 'var(--color-bg-tertiary)',
