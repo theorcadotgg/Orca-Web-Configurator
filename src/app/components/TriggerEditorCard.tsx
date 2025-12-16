@@ -50,15 +50,115 @@ export function TriggerEditorCard({ draft, disabled, onChange }: Props) {
   const digitalLightshield255 = to255(policy.digitalLightshield);
 
   return (
-    <div className="card">
-      <div className="row">
-        <strong>Trigger Policy</strong>
-        <span style={{ opacity: 0.8 }}>Values are stored normalized (0..1) and shown as 0..255</span>
+    <div className="card animate-slide-up">
+      <div className="card-header">
+        <div>
+          <h2 className="card-title">Trigger Policy</h2>
+          <p className="card-subtitle">Configure analog trigger thresholds (0-255)</p>
+        </div>
       </div>
 
-      <div className="grid" style={{ marginTop: 12 }}>
-        <div className="field">
-          <label>Analog range max</label>
+      {/* Visual Trigger Representation */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 'var(--spacing-xl)',
+        marginBottom: 'var(--spacing-lg)',
+        marginTop: 'var(--spacing-md)'
+      }}>
+        {/* Left Trigger */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 'var(--spacing-sm)'
+        }}>
+          <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>L Trigger</span>
+          <div style={{
+            width: 60,
+            height: 120,
+            background: 'var(--color-bg-tertiary)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* Fill level */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: `${(digitalFullPress255 / 255) * 100}%`,
+              background: 'var(--gradient-primary)',
+              opacity: 0.7,
+              transition: 'height 0.2s ease'
+            }} />
+            {/* Threshold line */}
+            <div style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: `${(digitalLightshield255 / 255) * 100}%`,
+              height: 2,
+              background: 'var(--color-accent-secondary)',
+              boxShadow: 'var(--shadow-glow-secondary)'
+            }} />
+          </div>
+        </div>
+
+        {/* Right Trigger */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 'var(--spacing-sm)'
+        }}>
+          <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>R Trigger</span>
+          <div style={{
+            width: 60,
+            height: 120,
+            background: 'var(--color-bg-tertiary)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* Fill level */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: `${(analogRangeMax255 / 255) * 100}%`,
+              background: 'var(--gradient-primary)',
+              opacity: 0.7,
+              transition: 'height 0.2s ease'
+            }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="row" style={{ justifyContent: 'center', marginBottom: 'var(--spacing-lg)', gap: 'var(--spacing-lg)' }}>
+        <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
+          <div style={{ width: 16, height: 16, background: 'var(--gradient-primary)', borderRadius: 4 }} />
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>Full Press</span>
+        </div>
+        <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
+          <div style={{ width: 16, height: 4, background: 'var(--color-accent-secondary)', boxShadow: 'var(--shadow-glow-secondary)' }} />
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>Lightshield</span>
+        </div>
+      </div>
+
+      <div className="grid" style={{ gap: 'var(--spacing-lg)' }}>
+        <div className="col" style={{ gap: 'var(--spacing-sm)' }}>
+          <label style={{ color: 'var(--color-text-secondary)' }}>
+            Analog range max
+            <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--color-accent-primary)' }}>
+              {analogRangeMax255}
+            </span>
+          </label>
           <div className="row">
             <input
               type="range"
@@ -68,6 +168,7 @@ export function TriggerEditorCard({ draft, disabled, onChange }: Props) {
               value={analogRangeMax255}
               onChange={(e) => updatePolicy({ analogRangeMax: from255(Number(e.target.value)) })}
               disabled={disabled}
+              style={{ flex: 1 }}
             />
             <input
               type="number"
@@ -77,13 +178,18 @@ export function TriggerEditorCard({ draft, disabled, onChange }: Props) {
               value={analogRangeMax255}
               onChange={(e) => updatePolicy({ analogRangeMax: from255(Number(e.target.value)) })}
               disabled={disabled}
-              style={{ width: 80 }}
+              style={{ width: 70 }}
             />
           </div>
         </div>
 
-        <div className="field">
-          <label>Digital full press</label>
+        <div className="col" style={{ gap: 'var(--spacing-sm)' }}>
+          <label style={{ color: 'var(--color-text-secondary)' }}>
+            Digital full press
+            <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--color-accent-primary)' }}>
+              {digitalFullPress255}
+            </span>
+          </label>
           <div className="row">
             <input
               type="range"
@@ -93,6 +199,7 @@ export function TriggerEditorCard({ draft, disabled, onChange }: Props) {
               value={digitalFullPress255}
               onChange={(e) => updatePolicy({ digitalFullPress: from255(Number(e.target.value)) })}
               disabled={disabled}
+              style={{ flex: 1 }}
             />
             <input
               type="number"
@@ -102,13 +209,18 @@ export function TriggerEditorCard({ draft, disabled, onChange }: Props) {
               value={digitalFullPress255}
               onChange={(e) => updatePolicy({ digitalFullPress: from255(Number(e.target.value)) })}
               disabled={disabled}
-              style={{ width: 80 }}
+              style={{ width: 70 }}
             />
           </div>
         </div>
 
-        <div className="field">
-          <label>Digital lightshield</label>
+        <div className="col" style={{ gap: 'var(--spacing-sm)' }}>
+          <label style={{ color: 'var(--color-text-secondary)' }}>
+            Digital lightshield
+            <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--color-accent-secondary)' }}>
+              {digitalLightshield255}
+            </span>
+          </label>
           <div className="row">
             <input
               type="range"
@@ -118,6 +230,7 @@ export function TriggerEditorCard({ draft, disabled, onChange }: Props) {
               value={digitalLightshield255}
               onChange={(e) => updatePolicy({ digitalLightshield: from255(Number(e.target.value)) })}
               disabled={disabled}
+              style={{ flex: 1 }}
             />
             <input
               type="number"
@@ -127,7 +240,7 @@ export function TriggerEditorCard({ draft, disabled, onChange }: Props) {
               value={digitalLightshield255}
               onChange={(e) => updatePolicy({ digitalLightshield: from255(Number(e.target.value)) })}
               disabled={disabled}
-              style={{ width: 80 }}
+              style={{ width: 70 }}
             />
           </div>
         </div>
@@ -135,4 +248,3 @@ export function TriggerEditorCard({ draft, disabled, onChange }: Props) {
     </div>
   );
 }
-

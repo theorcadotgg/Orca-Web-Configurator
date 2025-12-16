@@ -12,10 +12,8 @@ import { ConnectionCard } from './components/ConnectionCard';
 import { type Compatibility, DeviceInfoCard } from './components/DeviceInfoCard';
 import { DpadEditorCard } from './components/DpadEditorCard';
 import { MappingEditorCard } from './components/MappingEditorCard';
-import { SettingsSummaryCard } from './components/SettingsSummaryCard';
 import { TriggerEditorCard } from './components/TriggerEditorCard';
 import { ValidationCard } from './components/ValidationCard';
-import { AnalogMappingEditorCard } from './components/AnalogMappingEditorCard';
 
 type DeviceValidationState = ValidateStagedResult & { decoded: string[] };
 
@@ -78,8 +76,24 @@ export default function App() {
       const info = await nextTransport.getInfo();
       setTransport(nextTransport);
       setDeviceInfo(info);
+
+      // Auto-read settings after connecting
+      setProgress('Reading settings...');
+      const blob = await nextTransport.readBlob({
+        blobSize: info.blobSize,
+        maxChunk: info.maxChunk,
+        onProgress: (offset, total) => setProgress(`Reading ${offset}/${total}...`),
+      });
+      setBaseBlob(blob);
+      const res = tryParseSettingsBlob(blob);
+      if (!res.ok) throw new Error(res.error);
+      setParsed(res.value);
+      setDraft(res.value.draft);
+      setDirty(false);
+      setProgress('Connected and ready.');
     } catch (e) {
       setLastError(e instanceof Error ? e.message : String(e));
+      setProgress('');
     } finally {
       setBusy(false);
     }
@@ -308,8 +322,17 @@ export default function App() {
   const deviceRepaired = deviceValidation ? deviceValidation.repaired : null;
 
   return (
-    <div>
-      <h1>Orca Web Configurator (Phase 3)</h1>
+    <div className="app-container">
+      {/* App Header */}
+      <header className="app-header">
+        <h1 className="app-title">Orca Configurator</h1>
+        <div className="app-status">
+          <div className={`connection-dot ${transport ? 'connected' : 'disconnected'}`} />
+          <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+            {transport ? 'Connected' : 'Not connected'}
+          </span>
+        </div>
+      </header>
 
       <ConnectionCard
         useMock={useMock}
@@ -322,19 +345,17 @@ export default function App() {
         readLabel="Read settings from device"
       />
 
-      {lastError ? (
-        <div className="card">
-          <strong>Error</strong>
-          <div style={{ marginTop: 6 }}>{lastError}</div>
+      {lastError && (
+        <div className="message message-error animate-fade-in">
+          <strong>Error:</strong> {lastError}
         </div>
-      ) : null}
+      )}
 
-      {progress ? (
-        <div className="card">
-          <strong>Status</strong>
-          <div style={{ marginTop: 6 }}>{progress}</div>
+      {progress && (
+        <div className="message message-info animate-fade-in">
+          <strong>Status:</strong> {progress}
         </div>
-      ) : null}
+      )}
 
       <DeviceInfoCard
         deviceInfo={deviceInfo}
@@ -343,40 +364,45 @@ export default function App() {
         onToggleAllowUnsafeWrites={setAllowUnsafeWrites}
       />
 
-      <SettingsSummaryCard header={parsed?.header ?? null} />
-
-      {draft ? (
+      {draft && (
         <>
           <MappingEditorCard draft={draft} onChange={onDraftChange} disabled={busy} />
-          <AnalogMappingEditorCard draft={draft} onChange={onDraftChange} disabled={busy} />
           <DpadEditorCard draft={draft} onChange={onDraftChange} disabled={busy} />
           <TriggerEditorCard draft={draft} onChange={onDraftChange} disabled={busy} />
 
           <ValidationCard errors={localValidation.errors} warnings={localValidation.warnings} deviceErrors={deviceErrors} deviceRepaired={deviceRepaired} />
 
-          <div className="card">
-            <div className="row">
-              <strong>Actions</strong>
-              {dirty ? <span className="pill pill-warn">Unsaved changes</span> : <span className="pill pill-ok">Clean</span>}
+          {/* Actions Card */}
+          <div className="card animate-slide-up">
+            <div className="card-header">
+              <h2 className="card-title">Actions</h2>
+              {dirty ? (
+                <span className="pill pill-warn">Unsaved changes</span>
+              ) : (
+                <span className="pill pill-ok">Clean</span>
+              )}
             </div>
 
-            <div className="row" style={{ marginTop: 10 }}>
+            <div className="row" style={{ marginBottom: 'var(--spacing-md)' }}>
               <button onClick={validateOnDevice} disabled={!canWrite || busy || !dirty}>
                 Stage + validate
               </button>
-              <button onClick={saveToDevice} disabled={!canWrite || busy || !dirty || localValidation.errors.length > 0}>
+              <button onClick={saveToDevice} disabled={!canWrite || busy || !dirty || localValidation.errors.length > 0} className="primary">
                 Save to controller
               </button>
-              <label style={{ opacity: 0.9 }}>
+              <label>
                 <input
                   type="checkbox"
                   checked={rebootAfterSave}
                   onChange={(e) => setRebootAfterSave(e.target.checked)}
                   disabled={busy}
-                />{' '}
+                />
                 Reboot after save
               </label>
-              <button onClick={resetDefaultsOnDevice} disabled={!canWrite || busy}>
+            </div>
+
+            <div className="row" style={{ marginBottom: 'var(--spacing-md)' }}>
+              <button onClick={resetDefaultsOnDevice} disabled={!canWrite || busy} className="danger">
                 Reset to defaults
               </button>
               <button onClick={rebootNow} disabled={!transport || busy}>
@@ -384,7 +410,7 @@ export default function App() {
               </button>
             </div>
 
-            <div className="row" style={{ marginTop: 10 }}>
+            <div className="row">
               <button onClick={exportCurrentBlob} disabled={!baseBlob || busy}>
                 Export current blob
               </button>
@@ -407,18 +433,20 @@ export default function App() {
               />
             </div>
 
-            {compatibility === 'minor_mismatch' ? (
-              <div style={{ marginTop: 12, opacity: 0.85 }}>
-                Writes are gated because the app’s schema differs from the device. Enable “Allow writes with schema mismatch” to proceed (best-effort).
+            {compatibility === 'minor_mismatch' && (
+              <div className="message message-info" style={{ marginTop: 'var(--spacing-md)' }}>
+                Writes are gated because the app's schema differs from the device. Enable "Allow writes with schema mismatch" to proceed (best-effort).
               </div>
-            ) : compatibility === 'major_mismatch' ? (
-              <div style={{ marginTop: 12, opacity: 0.85 }}>
+            )}
+
+            {compatibility === 'major_mismatch' && (
+              <div className="message message-error" style={{ marginTop: 'var(--spacing-md)' }}>
                 Writes are disabled due to incompatible schema major version. Update firmware or the web app.
               </div>
-            ) : null}
+            )}
           </div>
         </>
-      ) : null}
+      )}
     </div>
   );
 }

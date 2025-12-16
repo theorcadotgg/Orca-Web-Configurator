@@ -22,29 +22,36 @@ export function ConnectionCard({
   readLabel,
 }: Props) {
   return (
-    <div className="card">
-      <div className="row">
-        <strong>Connection</strong>
+    <div className="card animate-slide-up">
+      <div className="card-header">
+        <div className="row" style={{ gap: 'var(--spacing-md)' }}>
+          <h2 className="card-title">Connection</h2>
+          <div className={`connection-dot ${connected ? 'connected' : 'disconnected'}`} />
+          {connected && <span className="pill pill-ok">Connected</span>}
+        </div>
       </div>
-      <div className="row" style={{ marginTop: 8 }}>
+
+      <div className="row">
         <label>
           <input
             type="checkbox"
             checked={useMock}
             onChange={(e) => onToggleMock(e.target.checked)}
             disabled={connected || busy}
-          />{' '}
-          Mock device
+          />
+          Use mock device
         </label>
+
         {!connected ? (
-          <button onClick={onConnect} disabled={busy}>
+          <button onClick={onConnect} disabled={busy} className="primary">
             Connect
           </button>
         ) : (
-          <button onClick={onDisconnect} disabled={busy}>
+          <button onClick={onDisconnect} disabled={busy} className="danger">
             Disconnect
           </button>
         )}
+
         <button onClick={onReadSettings} disabled={!connected || busy}>
           {readLabel ?? 'Read settings'}
         </button>
@@ -52,4 +59,3 @@ export function ConnectionCard({
     </div>
   );
 }
-
