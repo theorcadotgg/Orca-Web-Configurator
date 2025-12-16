@@ -41,7 +41,7 @@ export class OrcaWebUsbTransport implements OrcaTransport {
 
   static async requestAndOpen(): Promise<OrcaWebUsbTransport> {
     const device = await navigator.usb.requestDevice({
-      filters: [{ vendorId: 0x057E, productId: 0x0337 }],
+      filters: [{ vendorId: 0x2E8A, productId: 0x000A }],
     });
     await device.open();
     if (!device.configuration) {
