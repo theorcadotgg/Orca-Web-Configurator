@@ -8,7 +8,7 @@
     "moduleResolution": "Bundler",
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["src/generated/*"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,
