@@ -28,57 +28,74 @@ function readU32Le(payload: Uint8Array<ArrayBufferLike>, offset: number): number
   ) >>> 0;
 }
 
-export class OrcaWebUsbTransport implements OrcaTransport {
+export class OrcaWebSerialTransport implements OrcaTransport {
   private constructor(
-    private device: USBDevice,
-    private readonly interfaceNumber: number,
-    private readonly inEndpoint: number,
-    private readonly outEndpoint: number,
+    private readonly port: SerialPort,
+    private readonly reader: ReadableStreamDefaultReader<Uint8Array>,
+    private readonly writer: WritableStreamDefaultWriter<Uint8Array>,
   ) { }
 
   private rx: Uint8Array<ArrayBufferLike> = new Uint8Array(0) as Uint8Array<ArrayBufferLike>;
   private seq = 1;
 
-  static async requestAndOpen(): Promise<OrcaWebUsbTransport> {
-    const device = await navigator.usb.requestDevice({
-      filters: [{ vendorId: 0x2E8A, productId: 0x000A }],
+  static async requestAndOpen(): Promise<OrcaWebSerialTransport> {
+    if (!navigator.serial) {
+      throw new Error('WebSerial is not supported in this browser');
+    }
+
+    const port = await navigator.serial.requestPort({
+      filters: [{ usbVendorId: 0x2e8a, usbProductId: 0x000a }],
     });
-    await device.open();
-    if (!device.configuration) {
-      await device.selectConfiguration(1);
+
+    await port.open({ baudRate: 115200 });
+    try {
+      await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+    } catch {
+      // ignore - some platforms/drivers may not expose signals
     }
 
-    const vendorInterface = device.configuration!.interfaces
-      .flatMap((i) => i.alternates.map((a) => ({ iface: i, alt: a })))
-      .find((x) => x.alt.interfaceClass === 0xff);
-
-    if (!vendorInterface) {
-      throw new Error('No vendor interface found');
+    if (!port.readable || !port.writable) {
+      try {
+        await port.close();
+      } catch {
+        // ignore
+      }
+      throw new Error('Serial port is missing readable/writable streams');
     }
 
-    const interfaceNumber = vendorInterface.iface.interfaceNumber;
-    if (device.configuration!.interfaces.some((i) => i.interfaceNumber === interfaceNumber)) {
-      await device.claimInterface(interfaceNumber);
-    }
-
-    const inEp = vendorInterface.alt.endpoints.find((e) => e.direction === 'in');
-    const outEp = vendorInterface.alt.endpoints.find((e) => e.direction === 'out');
-    if (!inEp || !outEp) {
-      throw new Error('Missing bulk endpoints');
-    }
-
-    return new OrcaWebUsbTransport(device, interfaceNumber, inEp.endpointNumber, outEp.endpointNumber);
+    const reader = port.readable.getReader();
+    const writer = port.writable.getWriter();
+    return new OrcaWebSerialTransport(port, reader, writer);
   }
 
   async close(): Promise<void> {
     try {
-      if (this.device.opened) {
-        try {
-          await this.device.releaseInterface(this.interfaceNumber);
-        } catch {
-          // ignore
-        }
-        await this.device.close();
+      try {
+        await this.reader.cancel();
+      } catch {
+        // ignore
+      }
+      try {
+        this.reader.releaseLock();
+      } catch {
+        // ignore
+      }
+
+      try {
+        await this.writer.close();
+      } catch {
+        // ignore
+      }
+      try {
+        this.writer.releaseLock();
+      } catch {
+        // ignore
+      }
+
+      try {
+        await this.port.close();
+      } catch {
+        // ignore
       }
     } finally {
       this.rx = new Uint8Array(0) as Uint8Array<ArrayBufferLike>;
@@ -86,18 +103,15 @@ export class OrcaWebUsbTransport implements OrcaTransport {
   }
 
   private async write(buf: Uint8Array<ArrayBufferLike>): Promise<void> {
-    const res = await this.device.transferOut(this.outEndpoint, buf);
-    if (res.status !== 'ok') {
-      throw new Error(`USB write failed: ${res.status}`);
-    }
+    await this.writer.write(buf);
   }
 
-  private async readSome(maxBytes = 512): Promise<void> {
-    const res = await this.device.transferIn(this.inEndpoint, maxBytes);
-    if (res.status !== 'ok' || !res.data) {
-      throw new Error(`USB read failed: ${res.status}`);
+  private async readSome(): Promise<void> {
+    const res = await this.reader.read();
+    if (res.done || !res.value) {
+      throw new Error('Serial read failed (port closed)');
     }
-    const chunk = new Uint8Array(res.data.buffer, res.data.byteOffset, res.data.byteLength) as Uint8Array<ArrayBufferLike>;
+    const chunk = res.value as unknown as Uint8Array<ArrayBufferLike>;
     const merged = new Uint8Array(this.rx.length + chunk.length) as Uint8Array<ArrayBufferLike>;
     merged.set(this.rx, 0);
     merged.set(chunk, this.rx.length);
@@ -311,3 +325,4 @@ export class OrcaWebUsbTransport implements OrcaTransport {
     }
   }
 }
+

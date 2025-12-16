@@ -7,7 +7,7 @@ import { MockOrcaTransport } from '../mocks/mockTransport';
 import { buildSettingsBlob, tryParseSettingsBlob, type ParsedSettings, type SettingsDraft } from '../schema/settingsBlob';
 import { decodeStagedInvalidMask, validateSettingsDraft } from '../validators/settingsValidation';
 import type { DeviceInfo, OrcaTransport, ValidateStagedResult } from '../usb/OrcaTransport';
-import { OrcaWebUsbTransport } from '../usb/OrcaWebUsbTransport';
+import { OrcaWebSerialTransport } from '../usb/OrcaWebSerialTransport';
 import { ConnectionCard } from './components/ConnectionCard';
 import { type Compatibility, DeviceInfoCard } from './components/DeviceInfoCard';
 import { DpadEditorCard } from './components/DpadEditorCard';
@@ -74,7 +74,7 @@ export default function App() {
     setDeviceValidation(null);
     try {
       setBusy(true);
-      const nextTransport = useMock ? new MockOrcaTransport() : await OrcaWebUsbTransport.requestAndOpen();
+      const nextTransport = useMock ? new MockOrcaTransport() : await OrcaWebSerialTransport.requestAndOpen();
       const info = await nextTransport.getInfo();
       setTransport(nextTransport);
       setDeviceInfo(info);
