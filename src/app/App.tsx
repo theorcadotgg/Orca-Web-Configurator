@@ -14,6 +14,7 @@ import { ActionToolbar } from './components/ActionToolbar';
 import { ControllerVisualizer } from './components/ControllerVisualizer';
 import { DpadEditor } from './components/DpadEditor';
 import { TriggerEditor } from './components/TriggerEditor';
+import { StickCurveEditor } from './components/StickCurveEditor';
 import { ValidationStatus } from './components/ValidationStatus';
 import {
   DIGITAL_INPUTS,
@@ -47,6 +48,13 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
     analogMappings: draft.analogMappings.map((m) => [...m]),
     dpadLayer: { ...draft.dpadLayer, enable: { ...draft.dpadLayer.enable }, up: { ...draft.dpadLayer.up }, down: { ...draft.dpadLayer.down }, left: { ...draft.dpadLayer.left }, right: { ...draft.dpadLayer.right } },
     triggerPolicy: { ...draft.triggerPolicy },
+    stickCurveParams: {
+      ...draft.stickCurveParams,
+      range: [...draft.stickCurveParams.range],
+      notch: [...draft.stickCurveParams.notch],
+      dz_lower: [...draft.stickCurveParams.dz_lower],
+      dz_upper: [...draft.stickCurveParams.dz_upper],
+    },
   };
 }
 
@@ -501,6 +509,15 @@ export default function App() {
           <CollapsiblePanel title="DPAD Layer" badge={draft?.dpadLayer.mode !== 0 ? <span className="pill pill-brand" style={{ marginLeft: 8 }}>Active</span> : null}>
             {draft ? (
               <DpadEditor draft={draft} disabled={busy} onChange={onDraftChange} />
+            ) : (
+              <div className="text-sm text-muted">Connect to configure</div>
+            )}
+          </CollapsiblePanel>
+
+          {/* Stick Curve Panel */}
+          <CollapsiblePanel title="Stick Configuration">
+            {draft ? (
+              <StickCurveEditor draft={draft} disabled={busy} onChange={onDraftChange} />
             ) : (
               <div className="text-sm text-muted">Connect to configure</div>
             )}

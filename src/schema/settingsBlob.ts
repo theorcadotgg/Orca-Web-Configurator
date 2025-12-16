@@ -65,6 +65,16 @@ export type TriggerPolicyV1 = {
   flags: number;
 };
 
+export type StickCurveParamsV1 = {
+  size: number;
+  range: number[];      // [5] - full press magnitude per axis (normalized 0-1.2)
+  notch: number[];      // [5] - light press notch per axis (normalized 0-1)
+  dz_lower: number[];   // [5] - deadzone lower
+  dz_upper: number[];   // [5] - deadzone upper
+  notch_start_input: number;
+  notch_end_input: number;
+};
+
 export type SettingsDraft = {
   activeProfile: number;
   profileLabels: string[];
@@ -72,6 +82,7 @@ export type SettingsDraft = {
   analogMappings: number[][];
   dpadLayer: DpadLayerV1;
   triggerPolicy: TriggerPolicyV1;
+  stickCurveParams: StickCurveParamsV1;
 };
 
 export type ParsedSettings = {
@@ -174,6 +185,59 @@ function encodeTriggerPolicyV1(policy: TriggerPolicyV1): Uint8Array {
   return out;
 }
 
+const STICK_CURVE_AXIS_COUNT = 5;
+
+function parseStickCurveParamsV1(data: Uint8Array): StickCurveParamsV1 {
+  if (data.length !== OrcaSettingsTlv.StickCurveParams.length) {
+    throw new Error('Bad StickCurveParams length');
+  }
+  const size = readU32Le(data, 0);
+  const range: number[] = [];
+  const notch: number[] = [];
+  const dz_lower: number[] = [];
+  const dz_upper: number[] = [];
+
+  // Layout: uint32 size, float[5] range, float[5] notch, float[5] dz_lower, float[5] dz_upper, float notch_start_input, float notch_end_input
+  for (let i = 0; i < STICK_CURVE_AXIS_COUNT; i++) {
+    range.push(readF32Le(data, 4 + i * 4));
+  }
+  for (let i = 0; i < STICK_CURVE_AXIS_COUNT; i++) {
+    notch.push(readF32Le(data, 4 + 20 + i * 4));
+  }
+  for (let i = 0; i < STICK_CURVE_AXIS_COUNT; i++) {
+    dz_lower.push(readF32Le(data, 4 + 40 + i * 4));
+  }
+  for (let i = 0; i < STICK_CURVE_AXIS_COUNT; i++) {
+    dz_upper.push(readF32Le(data, 4 + 60 + i * 4));
+  }
+  const notch_start_input = readF32Le(data, 4 + 80);
+  const notch_end_input = readF32Le(data, 4 + 84);
+
+  return { size, range, notch, dz_lower, dz_upper, notch_start_input, notch_end_input };
+}
+
+function encodeStickCurveParamsV1(params: StickCurveParamsV1): Uint8Array {
+  const out = new Uint8Array(OrcaSettingsTlv.StickCurveParams.length);
+  writeU32Le(out, 0, params.size);
+
+  for (let i = 0; i < STICK_CURVE_AXIS_COUNT; i++) {
+    writeF32Le(out, 4 + i * 4, params.range[i] ?? 0);
+  }
+  for (let i = 0; i < STICK_CURVE_AXIS_COUNT; i++) {
+    writeF32Le(out, 4 + 20 + i * 4, params.notch[i] ?? 0);
+  }
+  for (let i = 0; i < STICK_CURVE_AXIS_COUNT; i++) {
+    writeF32Le(out, 4 + 40 + i * 4, params.dz_lower[i] ?? 0);
+  }
+  for (let i = 0; i < STICK_CURVE_AXIS_COUNT; i++) {
+    writeF32Le(out, 4 + 60 + i * 4, params.dz_upper[i] ?? 0);
+  }
+  writeF32Le(out, 4 + 80, params.notch_start_input);
+  writeF32Le(out, 4 + 84, params.notch_end_input);
+
+  return out;
+}
+
 export function tryParseSettingsBlob(blob: Uint8Array): ParseResult {
   try {
     return { ok: true, value: parseSettingsBlob(blob) };
@@ -232,6 +296,7 @@ export function parseSettingsBlob(blob: Uint8Array): ParsedSettings {
 
   const dpadLayer = parseDpadLayerV1(readTlvData(blob, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, 0));
   const triggerPolicy = parseTriggerPolicyV1(readTlvData(blob, OrcaSettingsTlv.TriggerPolicy satisfies TlvInfo, 0));
+  const stickCurveParams = parseStickCurveParamsV1(readTlvData(blob, OrcaSettingsTlv.StickCurveParams satisfies TlvInfo, 0));
 
   const draft: SettingsDraft = {
     activeProfile,
@@ -240,6 +305,7 @@ export function parseSettingsBlob(blob: Uint8Array): ParsedSettings {
     analogMappings,
     dpadLayer,
     triggerPolicy,
+    stickCurveParams,
   };
 
   return { header, draft };
@@ -277,6 +343,7 @@ export function buildSettingsBlob(baseBlob: Uint8Array, draft: SettingsDraft): U
 
   writeTlvData(out, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, 0, encodeDpadLayerV1(draft.dpadLayer));
   writeTlvData(out, OrcaSettingsTlv.TriggerPolicy satisfies TlvInfo, 0, encodeTriggerPolicyV1(draft.triggerPolicy));
+  writeTlvData(out, OrcaSettingsTlv.StickCurveParams satisfies TlvInfo, 0, encodeStickCurveParamsV1(draft.stickCurveParams));
 
   const nextCrc = crc32([out.slice(0, out.length - 4)]);
   writeU32Le(out, out.length - 4, nextCrc);
