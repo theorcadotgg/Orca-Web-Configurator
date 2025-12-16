@@ -51,14 +51,86 @@ export function MappingEditorCard({ draft, disabled, onChange }: Props) {
   function setDigitalMapping(dest: number, src: number) {
     const updated = cloneDraft(draft);
     updated.digitalMappings[activeProfile] = [...(updated.digitalMappings[activeProfile] ?? [])];
-    updated.digitalMappings[activeProfile]![dest] = src;
+    const currentMapping = updated.digitalMappings[activeProfile]!;
+
+    // Normalize: get current source for this destination (default to dest if undefined)
+    const currentSrc = currentMapping[dest] ?? dest;
+
+    console.log(`[Digital] Setting dest=${dest} to src=${src}, currentSrc=${currentSrc}`);
+    console.log(`[Digital] Current mapping:`, currentMapping.map((s, d) => `${d}→${s ?? d}`).join(', '));
+
+    // If selecting DUMMY_FIELD (disabled), just assign directly - no swap needed
+    // But for ALL other cases (including "default"), we need to check for and resolve conflicts
+    if (src === ORCA_DUMMY_FIELD) {
+      currentMapping[dest] = src;
+      console.log(`[Digital] Direct assign (disabled)`);
+    } else {
+      // Find if another destination is already using this source (the one we want)
+      // We need to swap so that no two destinations share the same source
+      const numSlots = Math.max(currentMapping.length, DIGITAL_INPUTS.length);
+      let swapped = false;
+      for (let otherDest = 0; otherDest < numSlots; otherDest++) {
+        if (otherDest === dest) continue; // Skip ourselves
+        if (isLockedDigitalDestination(otherDest)) continue; // Can't touch locked destinations
+
+        const otherSrc = currentMapping[otherDest] ?? otherDest;
+        if (otherSrc === src) {
+          // This destination is using the source we want - swap!
+          console.log(`[Digital] Found conflict at dest=${otherDest} (has src=${src}), swapping to ${currentSrc}`);
+          currentMapping[otherDest] = currentSrc;
+          swapped = true;
+          break; // Only one can have it
+        }
+      }
+      if (!swapped) {
+        console.log(`[Digital] No conflict found for src=${src}`);
+      }
+      currentMapping[dest] = src;
+    }
+
+    console.log(`[Digital] After:`, currentMapping.map((s, d) => `${d}→${s ?? d}`).join(', '));
     onChange(updated);
   }
 
   function setAnalogMapping(dest: number, src: number) {
     const updated = cloneDraft(draft);
     updated.analogMappings[activeProfile] = [...(updated.analogMappings[activeProfile] ?? [])];
-    updated.analogMappings[activeProfile]![dest] = src;
+    const currentMapping = updated.analogMappings[activeProfile]!;
+
+    // Normalize: get current source for this destination (default to dest if undefined)
+    const currentSrc = currentMapping[dest] ?? dest;
+
+    console.log(`[Analog] Setting dest=${dest} to src=${src}, currentSrc=${currentSrc}`);
+    console.log(`[Analog] Current mapping:`, currentMapping.map((s, d) => `${d}→${s ?? d}`).join(', '));
+
+    // If selecting disabled (0xFF), just assign directly - no swap needed
+    // But for ALL other cases (including "default"), we need to check for and resolve conflicts
+    if (src === ORCA_ANALOG_MAPPING_DISABLED) {
+      currentMapping[dest] = src;
+      console.log(`[Analog] Direct assign (disabled)`);
+    } else {
+      // Find if another destination is already using this source (the one we want)
+      const numSlots = Math.max(currentMapping.length, ANALOG_INPUTS.length);
+      let swapped = false;
+      for (let otherDest = 0; otherDest < numSlots; otherDest++) {
+        if (otherDest === dest) continue; // Skip ourselves
+
+        const otherSrc = currentMapping[otherDest] ?? otherDest;
+        if (otherSrc === src) {
+          // This destination is using the source we want - swap!
+          console.log(`[Analog] Found conflict at dest=${otherDest} (has src=${src}), swapping to ${currentSrc}`);
+          currentMapping[otherDest] = currentSrc;
+          swapped = true;
+          break; // Only one can have it
+        }
+      }
+      if (!swapped) {
+        console.log(`[Analog] No conflict found for src=${src}`);
+      }
+      currentMapping[dest] = src;
+    }
+
+    console.log(`[Analog] After:`, currentMapping.map((s, d) => `${d}→${s ?? d}`).join(', '));
     onChange(updated);
   }
 
@@ -66,6 +138,17 @@ export function MappingEditorCard({ draft, disabled, onChange }: Props) {
     const updated = cloneDraft(draft);
     updated.digitalMappings[activeProfile] = Array.from({ length: digitalMapping.length }, (_, i) => i);
     updated.analogMappings[activeProfile] = Array.from({ length: analogMapping.length }, (_, i) => i);
+    onChange(updated);
+  }
+
+  function clearAllBindings() {
+    const updated = cloneDraft(draft);
+    // Set all digital mappings to DUMMY_FIELD (disabled), except locked destinations
+    updated.digitalMappings[activeProfile] = digitalMapping.map((_, dest) =>
+      isLockedDigitalDestination(dest) ? dest : ORCA_DUMMY_FIELD
+    );
+    // Set all analog mappings to disabled (0xFF)
+    updated.analogMappings[activeProfile] = analogMapping.map(() => ORCA_ANALOG_MAPPING_DISABLED);
     onChange(updated);
   }
 
@@ -146,6 +229,7 @@ export function MappingEditorCard({ draft, disabled, onChange }: Props) {
         disabled={disabled}
         onDigitalMappingChange={setDigitalMapping}
         onAnalogMappingChange={setAnalogMapping}
+        onClearAllBindings={clearAllBindings}
       />
 
       {/* Advanced Table View (Collapsible) */}

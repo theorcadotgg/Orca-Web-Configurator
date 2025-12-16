@@ -93,6 +93,7 @@ interface Props {
     disabled?: boolean;
     onDigitalMappingChange: (dest: number, src: number) => void;
     onAnalogMappingChange: (dest: number, src: number) => void;
+    onClearAllBindings?: () => void;
 }
 
 export function ControllerVisualizer({
@@ -101,6 +102,7 @@ export function ControllerVisualizer({
     disabled,
     onDigitalMappingChange,
     onAnalogMappingChange,
+    onClearAllBindings,
 }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [selectedButton, setSelectedButton] = useState<ButtonConfig | null>(null);
@@ -468,16 +470,30 @@ export function ControllerVisualizer({
                 </div>
             )}
 
-            {/* Legend */}
-            <div className="row" style={{ marginTop: 'var(--spacing-md)', justifyContent: 'center', gap: 'var(--spacing-lg)' }}>
-                <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
-                    <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--color-accent-primary)', background: 'rgba(0, 212, 255, 0.15)' }} />
-                    <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Digital ({DIGITAL_BUTTONS.length})</span>
+            {/* Legend and Clear Button */}
+            <div className="row" style={{ marginTop: 'var(--spacing-md)', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="row" style={{ gap: 'var(--spacing-lg)' }}>
+                    <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
+                        <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--color-accent-primary)', background: 'rgba(0, 212, 255, 0.15)' }} />
+                        <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Digital ({DIGITAL_BUTTONS.length})</span>
+                    </div>
+                    <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
+                        <div style={{ width: 14, height: 14, borderRadius: '4px', border: '2px solid var(--color-accent-secondary)', background: 'rgba(168, 85, 247, 0.15)' }} />
+                        <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Analog ({ANALOG_BUTTONS.length})</span>
+                    </div>
                 </div>
-                <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
-                    <div style={{ width: 14, height: 14, borderRadius: '4px', border: '2px solid var(--color-accent-secondary)', background: 'rgba(168, 85, 247, 0.15)' }} />
-                    <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Analog ({ANALOG_BUTTONS.length})</span>
-                </div>
+                {onClearAllBindings && (
+                    <button
+                        onClick={onClearAllBindings}
+                        disabled={disabled}
+                        style={{
+                            fontSize: 'var(--font-size-sm)',
+                            padding: 'var(--spacing-xs) var(--spacing-sm)',
+                        }}
+                    >
+                        Clear All Bindings
+                    </button>
+                )}
             </div>
         </div>
     );
