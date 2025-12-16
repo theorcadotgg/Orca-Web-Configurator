@@ -241,6 +241,16 @@ export default function App() {
     onDraftChange(updated);
   }
 
+  function resetToDefaultBindings() {
+    if (!draft) return;
+    const updated = cloneDraft(draft);
+    // Reset each digital button to map to itself (identity mapping)
+    updated.digitalMappings[activeProfile] = digitalMapping.map((_, dest) => dest);
+    // Reset each analog input to map to itself (identity mapping)
+    updated.analogMappings[activeProfile] = analogMapping.map((_, dest) => dest);
+    onDraftChange(updated);
+  }
+
   async function validateOnDevice() {
     if (!transport || !baseBlob || !draft) return;
     setLastError('');
@@ -462,6 +472,7 @@ export default function App() {
                     onDigitalMappingChange={setDigitalMapping}
                     onAnalogMappingChange={setAnalogMapping}
                     onClearAllBindings={clearAllBindings}
+                    onResetToDefault={resetToDefaultBindings}
                   />
                 </div>
 

@@ -94,6 +94,7 @@ interface Props {
     onDigitalMappingChange: (dest: number, src: number) => void;
     onAnalogMappingChange: (dest: number, src: number) => void;
     onClearAllBindings?: () => void;
+    onResetToDefault?: () => void;
 }
 
 export function ControllerVisualizer({
@@ -103,6 +104,7 @@ export function ControllerVisualizer({
     onDigitalMappingChange,
     onAnalogMappingChange,
     onClearAllBindings,
+    onResetToDefault,
 }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [selectedButton, setSelectedButton] = useState<ButtonConfig | null>(null);
@@ -504,18 +506,32 @@ export function ControllerVisualizer({
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Analog ({ANALOG_BUTTONS.length})</span>
                     </div>
                 </div>
-                {onClearAllBindings && (
-                    <button
-                        onClick={onClearAllBindings}
-                        disabled={disabled}
-                        style={{
-                            fontSize: 'var(--font-size-sm)',
-                            padding: 'var(--spacing-xs) var(--spacing-sm)',
-                        }}
-                    >
-                        Clear All Bindings
-                    </button>
-                )}
+                <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
+                    {onResetToDefault && (
+                        <button
+                            onClick={onResetToDefault}
+                            disabled={disabled}
+                            style={{
+                                fontSize: 'var(--font-size-sm)',
+                                padding: 'var(--spacing-xs) var(--spacing-sm)',
+                            }}
+                        >
+                            Reset to Default
+                        </button>
+                    )}
+                    {onClearAllBindings && (
+                        <button
+                            onClick={onClearAllBindings}
+                            disabled={disabled}
+                            style={{
+                                fontSize: 'var(--font-size-sm)',
+                                padding: 'var(--spacing-xs) var(--spacing-sm)',
+                            }}
+                        >
+                            Clear All Bindings
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

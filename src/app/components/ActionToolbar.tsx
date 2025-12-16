@@ -63,7 +63,7 @@ export function ActionToolbar({
             {/* Secondary actions */}
             <div className="footer-group">
                 <button className="danger" onClick={onReset} disabled={!canWrite || busy}>
-                    Reset Defaults
+                    Factory Reset
                 </button>
                 <button onClick={onReboot} disabled={busy}>
                     Reboot
