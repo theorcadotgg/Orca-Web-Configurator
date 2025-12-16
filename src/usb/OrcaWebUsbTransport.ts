@@ -34,14 +34,14 @@ export class OrcaWebUsbTransport implements OrcaTransport {
     private readonly interfaceNumber: number,
     private readonly inEndpoint: number,
     private readonly outEndpoint: number,
-  ) {}
+  ) { }
 
   private rx: Uint8Array<ArrayBufferLike> = new Uint8Array(0) as Uint8Array<ArrayBufferLike>;
   private seq = 1;
 
   static async requestAndOpen(): Promise<OrcaWebUsbTransport> {
     const device = await navigator.usb.requestDevice({
-      filters: [{ vendorId: 0xcafe, productId: 0x4010 }],
+      filters: [{ vendorId: 0x057E, productId: 0x0337 }],
     });
     await device.open();
     if (!device.configuration) {
