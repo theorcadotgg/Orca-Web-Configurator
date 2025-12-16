@@ -225,12 +225,11 @@ export function ControllerVisualizer({
         const isLocked = button && isLockedDigitalDestination(button.id);
 
         return {
-            fill: modified ? 'rgba(0, 212, 255, 0.4)' : 'rgba(0, 212, 255, 0.15)',
-            stroke: 'var(--color-accent-primary)',
+            fill: modified ? 'rgba(30, 143, 201, 0.4)' : 'rgba(30, 143, 201, 0.15)',
+            stroke: isActive ? '#1E8FC9' : 'rgba(30, 143, 201, 0.6)',
             strokeWidth: isActive ? 2 : 1,
             cursor: isLocked ? 'not-allowed' : 'pointer',
             opacity: isLocked ? 0.4 : 1,
-            filter: isActive ? 'drop-shadow(0 0 8px rgba(0, 212, 255, 0.8))' : undefined,
             transition: 'all 0.15s ease',
         };
     };
@@ -240,11 +239,10 @@ export function ControllerVisualizer({
         const modified = isOblongModified(index);
 
         return {
-            fill: modified ? 'rgba(168, 85, 247, 0.4)' : 'rgba(168, 85, 247, 0.15)',
-            stroke: 'var(--color-accent-secondary)',
+            fill: modified ? 'rgba(100, 160, 200, 0.4)' : 'rgba(100, 160, 200, 0.15)',
+            stroke: isActive ? '#64A0C8' : 'rgba(100, 160, 200, 0.6)',
             strokeWidth: isActive ? 2 : 1,
             cursor: 'pointer',
-            filter: isActive ? 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.8))' : undefined,
             transition: 'all 0.15s ease',
         };
     };
@@ -264,7 +262,7 @@ export function ControllerVisualizer({
                 }}
             >
                 {/* Background outline paths (non-interactive) */}
-                <g style={{ fill: 'none', stroke: 'rgba(0, 212, 255, 0.3)', strokeWidth: 0.8, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
+                <g style={{ fill: 'none', stroke: 'rgba(30, 143, 201, 0.3)', strokeWidth: 0.8, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
                     <path d="M64.0370 184.9952 L267.1630 184.9952" />
                     <path d="M64.0370 369.9952 L267.1630 369.9952" />
                     <path d="M0.1000 329.8407 L0.1000 225.1497" />
@@ -391,16 +389,17 @@ export function ControllerVisualizer({
                         position: 'absolute',
                         left: panelPosition.x,
                         top: panelPosition.y,
-                        minWidth: 260,
+                        minWidth: 280,
                         background: 'var(--color-bg-card)',
                         border: '1px solid var(--color-border-active)',
                         borderRadius: 'var(--radius-lg)',
                         padding: 'var(--spacing-md)',
                         backdropFilter: 'blur(16px)',
-                        boxShadow: 'var(--shadow-card), var(--shadow-glow-primary)',
+                        boxShadow: 'var(--shadow-card)',
                         zIndex: 100,
                     }}
                 >
+                    {/* Header with close button */}
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -408,21 +407,46 @@ export function ControllerVisualizer({
                         marginBottom: 'var(--spacing-md)',
                         paddingBottom: 'var(--spacing-sm)',
                         borderBottom: '1px solid var(--color-border)',
+                        gap: 'var(--spacing-sm)',
                     }}>
                         <span style={{
                             fontSize: 'var(--font-size-md)',
                             fontWeight: 600,
-                            color: selectedButton.type === 'analog' ? 'var(--color-accent-secondary)' : 'var(--color-accent-primary)'
+                            color: selectedButton.type === 'analog' ? '#64A0C8' : '#1E8FC9',
+                            flex: 1,
                         }}>
                             {selectedButton.label}
                         </span>
                         <span className="pill pill-neutral" style={{
-                            background: selectedButton.type === 'analog' ? 'rgba(168, 85, 247, 0.2)' : undefined,
-                            borderColor: selectedButton.type === 'analog' ? 'rgba(168, 85, 247, 0.4)' : undefined,
-                            color: selectedButton.type === 'analog' ? 'var(--color-accent-secondary)' : undefined,
+                            background: selectedButton.type === 'analog' ? 'rgba(100, 160, 200, 0.2)' : undefined,
+                            borderColor: selectedButton.type === 'analog' ? 'rgba(100, 160, 200, 0.4)' : undefined,
+                            color: selectedButton.type === 'analog' ? '#64A0C8' : undefined,
+                            fontSize: 11,
+                            padding: '2px 8px',
                         }}>
                             {selectedButton.type === 'analog' ? 'Analog' : 'Digital'}
                         </span>
+                        <button
+                            onClick={() => { setSelectedButton(null); setPanelPosition(null); }}
+                            style={{
+                                width: 24,
+                                height: 24,
+                                padding: 0,
+                                border: '1px solid var(--color-border)',
+                                borderRadius: 'var(--radius-sm)',
+                                background: 'var(--color-bg-tertiary)',
+                                color: 'var(--color-text-secondary)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 14,
+                                flexShrink: 0,
+                            }}
+                            title="Close"
+                        >
+                            ✕
+                        </button>
                     </div>
 
                     <div className="col" style={{ gap: 'var(--spacing-sm)' }}>
@@ -433,21 +457,25 @@ export function ControllerVisualizer({
                             value={getCurrentMappingValue()}
                             onChange={(e) => handleMappingChange(Number(e.target.value))}
                             disabled={disabled}
-                            style={{ width: '100%' }}
+                            style={{
+                                width: '100%',
+                                padding: 'var(--spacing-sm) var(--spacing-md)',
+                                fontSize: 'var(--font-size-sm)',
+                                borderRadius: 'var(--radius-md)',
+                                background: 'var(--color-bg-tertiary)',
+                                border: '1px solid var(--color-border)',
+                            }}
                         >
                             {selectedButton.type === 'digital' ? (
                                 <>
-                                    <option value={selectedButton.id}>{digitalInputLabel(selectedButton.id)} (Default)</option>
-                                    <option value={ORCA_DUMMY_FIELD}>Disabled</option>
-                                    {digitalSourceOptions.filter(opt => opt.id !== selectedButton.id).map((opt) => (
+                                    {digitalSourceOptions.map((opt) => (
                                         <option key={opt.id} value={opt.id}>{opt.label}</option>
                                     ))}
                                 </>
                             ) : (
                                 <>
-                                    <option value={selectedButton.id}>{analogInputLabel(selectedButton.id)} (Default)</option>
                                     <option value={ORCA_ANALOG_MAPPING_DISABLED}>Disabled</option>
-                                    {analogSourceOptions.filter(opt => opt.id !== selectedButton.id).map((opt) => (
+                                    {ANALOG_INPUTS.map((opt) => (
                                         <option key={opt.id} value={opt.id}>{opt.label}</option>
                                     ))}
                                 </>
@@ -460,13 +488,6 @@ export function ControllerVisualizer({
                             </button>
                         )}
                     </div>
-
-                    <button
-                        onClick={() => { setSelectedButton(null); setPanelPosition(null); }}
-                        style={{ position: 'absolute', top: 8, right: 8, width: 24, height: 24, padding: 0, border: 'none', background: 'transparent', color: 'var(--color-text-muted)', cursor: 'pointer' }}
-                    >
-                        ✕
-                    </button>
                 </div>
             )}
 
@@ -474,11 +495,11 @@ export function ControllerVisualizer({
             <div className="row" style={{ marginTop: 'var(--spacing-md)', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="row" style={{ gap: 'var(--spacing-lg)' }}>
                     <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
-                        <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid var(--color-accent-primary)', background: 'rgba(0, 212, 255, 0.15)' }} />
+                        <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #1E8FC9', background: 'rgba(30, 143, 201, 0.15)' }} />
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Digital ({DIGITAL_BUTTONS.length})</span>
                     </div>
                     <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
-                        <div style={{ width: 14, height: 14, borderRadius: '4px', border: '2px solid var(--color-accent-secondary)', background: 'rgba(168, 85, 247, 0.15)' }} />
+                        <div style={{ width: 14, height: 14, borderRadius: '4px', border: '2px solid #64A0C8', background: 'rgba(100, 160, 200, 0.15)' }} />
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Analog ({ANALOG_BUTTONS.length})</span>
                     </div>
                 </div>
