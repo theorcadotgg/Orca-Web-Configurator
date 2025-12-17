@@ -16,6 +16,7 @@ import { DpadEditor } from './components/DpadEditor';
 import { TriggerEditor } from './components/TriggerEditor';
 import { StickCurveEditor } from './components/StickCurveEditor';
 import { ValidationStatus } from './components/ValidationStatus';
+import { ConfirmModal } from './components/ConfirmModal';
 import {
   DIGITAL_INPUTS,
   ANALOG_INPUTS,
@@ -78,6 +79,7 @@ export default function App() {
 
   const [deviceValidation, setDeviceValidation] = useState<DeviceValidationState | null>(null);
   const [rebootAfterSave, setRebootAfterSave] = useState(true);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const importRef = useRef<HTMLInputElement | null>(null);
 
@@ -598,7 +600,7 @@ export default function App() {
           hasLocalErrors={localValidation.errors.length > 0}
           onValidate={validateOnDevice}
           onSave={saveToDevice}
-          onReset={resetDefaultsOnDevice}
+          onReset={() => setShowResetConfirm(true)}
           onReboot={rebootNow}
           onExportCurrent={exportCurrentBlob}
           onExportDraft={exportDraftBlob}
@@ -619,6 +621,21 @@ export default function App() {
           if (file) void importBlobFromFile(file);
           e.target.value = '';
         }}
+      />
+
+      {/* Factory Reset Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showResetConfirm}
+        title="Factory Reset"
+        message="Are you sure you want to reset all settings to factory defaults? This will wipe out all your custom configurations."
+        confirmLabel="Reset"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={() => {
+          setShowResetConfirm(false);
+          void resetDefaultsOnDevice();
+        }}
+        onCancel={() => setShowResetConfirm(false)}
       />
     </div>
   );
