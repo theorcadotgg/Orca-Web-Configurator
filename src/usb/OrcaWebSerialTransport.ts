@@ -33,10 +33,23 @@ export class OrcaWebSerialTransport implements OrcaTransport {
     private readonly port: SerialPort,
     private readonly reader: ReadableStreamDefaultReader<Uint8Array>,
     private readonly writer: WritableStreamDefaultWriter<Uint8Array>,
-  ) { }
+  ) {
+    // Listen for disconnect events
+    // Note: TypeScript types for SerialPort may not include 'disconnect' event yet
+    (this.port as unknown as EventTarget).addEventListener('disconnect', this.handleDisconnect);
+  }
 
   private rx: Uint8Array<ArrayBufferLike> = new Uint8Array(0) as Uint8Array<ArrayBufferLike>;
   private seq = 1;
+  private disconnectCallback?: () => void;
+
+  private handleDisconnect = () => {
+    this.disconnectCallback?.();
+  };
+
+  setOnDisconnect(callback: (() => void) | undefined): void {
+    this.disconnectCallback = callback;
+  }
 
   static async requestAndOpen(): Promise<OrcaWebSerialTransport> {
     if (!navigator.serial) {
@@ -70,6 +83,9 @@ export class OrcaWebSerialTransport implements OrcaTransport {
 
   async close(): Promise<void> {
     try {
+      // Remove disconnect event listener
+      (this.port as unknown as EventTarget).removeEventListener('disconnect', this.handleDisconnect);
+
       try {
         await this.reader.cancel();
       } catch {

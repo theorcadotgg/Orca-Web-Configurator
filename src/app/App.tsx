@@ -117,6 +117,15 @@ export default function App() {
     try {
       setBusy(true);
       const nextTransport = await OrcaWebSerialTransport.requestAndOpen();
+
+      // Set up disconnect detection
+      nextTransport.setOnDisconnect(() => {
+        // Device was unplugged - reset UI to disconnected state
+        resetConnection();
+        setLastError('Device disconnected');
+        setBusy(false);
+      });
+
       const info = await nextTransport.getInfo();
       setTransport(nextTransport);
       setDeviceInfo(info);
