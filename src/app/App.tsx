@@ -25,6 +25,7 @@ import {
   isLockedDigitalDestination,
   isLockedDigitalSource,
 } from '../schema/orcaMappings';
+import OrcaLogo from '../assets/Orca_Logo_B.png';
 
 type DeviceValidationState = ValidateStagedResult & { decoded: string[] };
 type Compatibility = 'ok' | 'major_mismatch' | 'minor_mismatch' | 'unknown';
@@ -408,7 +409,8 @@ export default function App() {
       {/* Header */}
       <header className="layout-header">
         <div className="header-logo">
-          <span className="header-title">Orca Configurator</span>
+          <img src={OrcaLogo} alt="Orca Logo" style={{ height: '32px', marginRight: '12px' }} />
+          <span className="header-title">Orca Control Panel</span>
         </div>
 
         <ModeTabs
