@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { SettingsDraft, StickCurveParamsV1 } from '../../schema/settingsBlob';
 
 type Props = {
@@ -369,6 +370,167 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                     />
                 </div>
             </div>
+
+            {/* Melee Calculator - Only in Orca mode */}
+            {mode === 'orca' && (
+                <MeleeCalculator
+                    xMag={xMag}
+                    upMag={upMag}
+                    downMag={downMag}
+                    xNotch={xNotch}
+                    upNotch={upNotch}
+                    downNotch={downNotch}
+                />
+            )}
+        </div>
+    );
+}
+
+type MeleeCalculatorProps = {
+    xMag: number;
+    upMag: number;
+    downMag: number;
+    xNotch: number;
+    upNotch: number;
+    downNotch: number;
+};
+
+function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: MeleeCalculatorProps) {
+    const [isExpanded, setIsExpanded] = useState(false);
+
+    // Walk Speed Check
+    const walkSpeed = xNotch > 33 ? 'WalkMid' : 'WalkSlow';
+
+    // Helper function to calculate and format notch coordinates
+    function calculateNotch(x: number, y: number): { clamp: number; xCoord: string; yCoord: string; display: string } {
+        const clamp = 80 / Math.sqrt(x ** 2 + y ** 2);
+        const xCoord = (Math.trunc(x * clamp) / 80).toFixed(4);
+        const yCoord = (Math.trunc(y * clamp) / 80).toFixed(4);
+        return { clamp, xCoord, yCoord, display: `(${xCoord}, ${yCoord})` };
+    }
+
+    // Max Wavedash Notch
+    const maxWD = calculateNotch(xMag, downNotch);
+    const maxWDDisplay = `(${maxWD.xCoord}x, -${maxWD.yCoord}y)`;
+
+    // Min Wavedash Notch
+    const minWD = calculateNotch(xNotch, downMag);
+    const minWDDisplay = `(${minWD.xCoord}x, -${minWD.yCoord}y)`;
+
+    // Slight Up (Over Slight Up)
+    const slightUp = calculateNotch(xMag, upNotch);
+    const slightUpDisplay = `(${slightUp.xCoord}x, ${slightUp.yCoord}y)`;
+
+    // Slight Over (Up Slight Over)
+    const slightOver = calculateNotch(xNotch, upMag);
+    const slightOverDisplay = `(${slightOver.xCoord}x, ${slightOver.yCoord}y)`;
+
+    // South Diagonal
+    const southDiag = calculateNotch(xMag, downMag);
+    const southDiagDisplay = `(${southDiag.xCoord}x, -${southDiag.yCoord}y)`;
+
+    // North Diagonal
+    const northDiag = calculateNotch(xMag, upMag);
+    const northDiagDisplay = `(${northDiag.xCoord}x, ${northDiag.yCoord}y)`;
+
+    // South Diagonal Behavior
+    const southY = parseFloat(southDiag.yCoord);
+    let southBehavior: string;
+    if (southY <= 0.6000) {
+        southBehavior = 'Pivot Down-Angled FTilt, Cannot Shield Drop';
+    } else if (southY >= 0.6125 && southY <= 0.6500) {
+        southBehavior = 'Pivot Down-Angled FTilt, UCF 0.84+ Shield Drop';
+    } else if (southY >= 0.6625 && southY <= 0.6875) {
+        southBehavior = 'Vanilla Shield Drop';
+    } else if (southY >= 0.7000 && southY <= 0.7125) {
+        southBehavior = 'Optimal Trajectory DI, Jab Cancel, UCF Shield Drop';
+    } else if (southY >= 0.7250 && southY <= 0.7500) {
+        southBehavior = 'Jab Cancel, UCF Shield Drop';
+    } else {
+        southBehavior = 'UCF Shield Drop';
+    }
+
+    return (
+        <div style={{
+            marginTop: 'var(--spacing-md)',
+            padding: 'var(--spacing-md)',
+            background: 'var(--color-bg-tertiary)',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border)',
+        }}>
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 0,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 'var(--font-size-sm)',
+                    fontWeight: 600,
+                    color: 'var(--color-text-secondary)',
+                }}
+            >
+                <span>Melee Calculator</span>
+                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+                    {isExpanded ? '▼' : '▶'}
+                </span>
+            </button>
+
+            {isExpanded && (
+                <div style={{
+                    marginTop: 'var(--spacing-sm)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--spacing-xs)',
+                }}>
+                    <ResultRow label="Walk Speed on X Notch" value={walkSpeed} />
+                    <ResultRow label="Max Wavedash Notch" value={maxWDDisplay} />
+                    <ResultRow label="Min Wavedash Notch" value={minWDDisplay} />
+                    <ResultRow label="Slight Up Notch" value={slightUpDisplay} />
+                    <ResultRow label="Slight Over Notch" value={slightOverDisplay} />
+                    <ResultRow label="North Diagonal" value={northDiagDisplay} />
+                    <ResultRow label="South Diagonal" value={southDiagDisplay} />
+                    <div style={{
+                        fontSize: 'var(--font-size-xs)',
+                        color: 'var(--color-text-muted)',
+                        marginTop: 'var(--spacing-xs)',
+                        paddingTop: 'var(--spacing-xs)',
+                        borderTop: '1px solid var(--color-border)',
+                    }}>
+                        <div style={{ fontWeight: 600, marginBottom: 'var(--spacing-xs)' }}>South Diagonal Behavior:</div>
+                        <div style={{
+                            color: southBehavior === 'Optimal Trajectory DI, Jab Cancel, UCF Shield Drop'
+                                ? 'white'
+                                : 'inherit'
+                        }}>
+                            {southBehavior}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+type ResultRowProps = {
+    label: string;
+    value: string;
+};
+
+function ResultRow({ label, value }: ResultRowProps) {
+    return (
+        <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 'var(--font-size-xs)',
+            padding: 'var(--spacing-xs) 0',
+        }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>{label}:</span>
+            <span style={{ color: 'var(--color-text-primary)', fontWeight: 500, fontFamily: 'monospace' }}>{value}</span>
         </div>
     );
 }
