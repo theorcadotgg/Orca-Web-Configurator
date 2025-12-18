@@ -19,7 +19,7 @@ const PRESETS = {
     rivals2: {
         orca: {
             magnitude: 120, // 120/128 ≈ 0.9375
-            notch: 40,      // 40/128 ≈ 0.3125
+            notch: 50,      // 50/128 ≈ 0.3906
         },
         gp2040: {
             magnitude: 125, // 125/128 ≈ 0.9766
