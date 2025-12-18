@@ -6,6 +6,7 @@ import {
   encodeBeginSessionRequest,
   encodeCommitStagedRequest,
   encodeCommitStagedSlotRequest,
+  encodeGetInputStateRequest,
   encodeGetInfoRequest,
   encodeRebootRequest,
   encodeReadBlobRequest,
@@ -24,7 +25,8 @@ import {
   parseErrorPayload,
   tryDecodeFrameFromBuffer,
 } from '../protocol/orcaProtocol';
-import type { BeginSessionInfo, DeviceInfo, OrcaTransport, ValidateStagedResult } from './OrcaTransport';
+import type { BeginSessionInfo, DeviceInfo, OrcaInputState, OrcaTransport, ValidateStagedResult } from './OrcaTransport';
+import { OrcaDeviceError } from './OrcaTransport';
 
 function readU32Le(payload: Uint8Array<ArrayBufferLike>, offset: number): number {
   return (
@@ -33,6 +35,10 @@ function readU32Le(payload: Uint8Array<ArrayBufferLike>, offset: number): number
     (payload[offset + 2]! << 16) |
     (payload[offset + 3]! << 24)
   ) >>> 0;
+}
+
+function readU16Le(payload: Uint8Array<ArrayBufferLike>, offset: number): number {
+  return payload[offset]! | (payload[offset + 1]! << 8);
 }
 
 export class OrcaWebSerialTransport implements OrcaTransport {
@@ -49,6 +55,7 @@ export class OrcaWebSerialTransport implements OrcaTransport {
   private rx: Uint8Array<ArrayBufferLike> = new Uint8Array(0) as Uint8Array<ArrayBufferLike>;
   private seq = 1;
   private disconnectCallback?: () => void;
+  private ioChain: Promise<unknown> = Promise.resolve();
 
   private handleDisconnect = () => {
     this.disconnectCallback?.();
@@ -129,6 +136,15 @@ export class OrcaWebSerialTransport implements OrcaTransport {
     await this.writer.write(buf);
   }
 
+  private enqueueIO<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.ioChain.then(fn, fn);
+    this.ioChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
   private async readSome(): Promise<void> {
     const res = await this.reader.read();
     if (res.done || !res.value) {
@@ -152,14 +168,20 @@ export class OrcaWebSerialTransport implements OrcaTransport {
     }
   }
 
+  private async sendAndRead(request: Uint8Array<ArrayBufferLike>): Promise<{ msgType: number; seq: number; payload: Uint8Array<ArrayBufferLike> }> {
+    return this.enqueueIO(async () => {
+      await this.write(request);
+      return await this.readFrame();
+    });
+  }
+
   async getInfo(): Promise<DeviceInfo> {
     const seq = this.seq++;
-    await this.write(encodeGetInfoRequest(seq));
-    const frame = await this.readFrame();
+    const frame = await this.sendAndRead(encodeGetInfoRequest(seq));
 
     if (frame.msgType === OrcaMsgType.ERROR) {
       const { cmd, err } = parseErrorPayload(frame.payload);
-      throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+      throw new OrcaDeviceError(cmd, err);
     }
 
     const payload = frame.payload;
@@ -181,12 +203,11 @@ export class OrcaWebSerialTransport implements OrcaTransport {
 
   async beginSession(): Promise<BeginSessionInfo> {
     const seq = this.seq++;
-    await this.write(encodeBeginSessionRequest(seq));
-    const frame = await this.readFrame();
+    const frame = await this.sendAndRead(encodeBeginSessionRequest(seq));
 
     if (frame.msgType === OrcaMsgType.ERROR) {
       const { cmd, err } = parseErrorPayload(frame.payload);
-      throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+      throw new OrcaDeviceError(cmd, err);
     }
 
     const payload = frame.payload;
@@ -198,27 +219,44 @@ export class OrcaWebSerialTransport implements OrcaTransport {
 
   async unlockWrites(): Promise<void> {
     const seq = this.seq++;
-    await this.write(encodeUnlockWritesRequest(seq));
-    const frame = await this.readFrame();
+    const frame = await this.sendAndRead(encodeUnlockWritesRequest(seq));
 
     if (frame.msgType === OrcaMsgType.ERROR) {
       const { cmd, err } = parseErrorPayload(frame.payload);
-      throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+      throw new OrcaDeviceError(cmd, err);
     }
+  }
+
+  async getInputState(): Promise<OrcaInputState> {
+    const seq = this.seq++;
+    const frame = await this.sendAndRead(encodeGetInputStateRequest(seq));
+
+    if (frame.msgType === OrcaMsgType.ERROR) {
+      const { cmd, err } = parseErrorPayload(frame.payload);
+      throw new OrcaDeviceError(cmd, err);
+    }
+
+    const payload = frame.payload;
+    // [0]=cmd, [4..7]=digital_mask, [8..]=analog_u16[5]
+    if (payload.length < 18) throw new Error('Bad GET_INPUT_STATE response length');
+    const digitalMask = readU32Le(payload, 4);
+    const analog: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      const q = readU16Le(payload, 8 + i * 2);
+      analog.push(q / 65535);
+    }
+    return { digitalMask, analog };
   }
 
   async readBlobChunk(slot: number, offset: number, length: number): Promise<Uint8Array> {
     const seq = this.seq++;
-    if (slot === 0) {
-      await this.write(encodeReadBlobRequest(seq, offset, length));
-    } else {
-      await this.write(encodeReadBlobSlotRequest(seq, slot, offset, length));
-    }
-    const frame = await this.readFrame();
+    const frame = slot === 0
+      ? await this.sendAndRead(encodeReadBlobRequest(seq, offset, length))
+      : await this.sendAndRead(encodeReadBlobSlotRequest(seq, slot, offset, length));
 
     if (frame.msgType === OrcaMsgType.ERROR) {
       const { cmd, err } = parseErrorPayload(frame.payload);
-      throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+      throw new OrcaDeviceError(cmd, err);
     }
 
     const payload = frame.payload;
@@ -267,15 +305,12 @@ export class OrcaWebSerialTransport implements OrcaTransport {
     // BEGIN
     {
       const seq = this.seq++;
-      if (slot === 0) {
-        await this.write(encodeWriteBlobBeginRequest(seq, blob.length));
-      } else {
-        await this.write(encodeWriteBlobBeginSlotRequest(seq, slot, blob.length));
-      }
-      const frame = await this.readFrame();
+      const frame = slot === 0
+        ? await this.sendAndRead(encodeWriteBlobBeginRequest(seq, blob.length))
+        : await this.sendAndRead(encodeWriteBlobBeginSlotRequest(seq, slot, blob.length));
       if (frame.msgType === OrcaMsgType.ERROR) {
         const { cmd, err } = parseErrorPayload(frame.payload);
-        throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+        throw new OrcaDeviceError(cmd, err);
       }
     }
 
@@ -287,15 +322,12 @@ export class OrcaWebSerialTransport implements OrcaTransport {
       options?.onProgress?.(offset, blob.length);
 
       const seq = this.seq++;
-      if (slot === 0) {
-        await this.write(encodeWriteBlobChunkRequest(seq, offset, chunk));
-      } else {
-        await this.write(encodeWriteBlobChunkSlotRequest(seq, slot, offset, chunk));
-      }
-      const frame = await this.readFrame();
+      const frame = slot === 0
+        ? await this.sendAndRead(encodeWriteBlobChunkRequest(seq, offset, chunk))
+        : await this.sendAndRead(encodeWriteBlobChunkSlotRequest(seq, slot, offset, chunk));
       if (frame.msgType === OrcaMsgType.ERROR) {
         const { cmd, err } = parseErrorPayload(frame.payload);
-        throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+        throw new OrcaDeviceError(cmd, err);
       }
 
       offset += len;
@@ -305,30 +337,24 @@ export class OrcaWebSerialTransport implements OrcaTransport {
     // END
     {
       const seq = this.seq++;
-      if (slot === 0) {
-        await this.write(encodeWriteBlobEndRequest(seq));
-      } else {
-        await this.write(encodeWriteBlobEndSlotRequest(seq, slot));
-      }
-      const frame = await this.readFrame();
+      const frame = slot === 0
+        ? await this.sendAndRead(encodeWriteBlobEndRequest(seq))
+        : await this.sendAndRead(encodeWriteBlobEndSlotRequest(seq, slot));
       if (frame.msgType === OrcaMsgType.ERROR) {
         const { cmd, err } = parseErrorPayload(frame.payload);
-        throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+        throw new OrcaDeviceError(cmd, err);
       }
     }
   }
 
   async validateStaged(slot: number): Promise<ValidateStagedResult> {
     const seq = this.seq++;
-    if (slot === 0) {
-      await this.write(encodeValidateStagedRequest(seq));
-    } else {
-      await this.write(encodeValidateStagedSlotRequest(seq, slot));
-    }
-    const frame = await this.readFrame();
+    const frame = slot === 0
+      ? await this.sendAndRead(encodeValidateStagedRequest(seq))
+      : await this.sendAndRead(encodeValidateStagedSlotRequest(seq, slot));
     if (frame.msgType === OrcaMsgType.ERROR) {
       const { cmd, err } = parseErrorPayload(frame.payload);
-      throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+      throw new OrcaDeviceError(cmd, err);
     }
     const payload = frame.payload;
     if (payload.length < 12) throw new Error('Bad VALIDATE_STAGED response length');
@@ -339,15 +365,12 @@ export class OrcaWebSerialTransport implements OrcaTransport {
 
   async commitStaged(slot: number): Promise<{ generation: number }> {
     const seq = this.seq++;
-    if (slot === 0) {
-      await this.write(encodeCommitStagedRequest(seq));
-    } else {
-      await this.write(encodeCommitStagedSlotRequest(seq, slot));
-    }
-    const frame = await this.readFrame();
+    const frame = slot === 0
+      ? await this.sendAndRead(encodeCommitStagedRequest(seq))
+      : await this.sendAndRead(encodeCommitStagedSlotRequest(seq, slot));
     if (frame.msgType === OrcaMsgType.ERROR) {
       const { cmd, err } = parseErrorPayload(frame.payload);
-      throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+      throw new OrcaDeviceError(cmd, err);
     }
     const payload = frame.payload;
     if (payload.length < 8) throw new Error('Bad COMMIT_STAGED response length');
@@ -357,15 +380,12 @@ export class OrcaWebSerialTransport implements OrcaTransport {
 
   async resetDefaults(slot: number): Promise<{ generation: number }> {
     const seq = this.seq++;
-    if (slot === 0) {
-      await this.write(encodeResetDefaultsRequest(seq));
-    } else {
-      await this.write(encodeResetDefaultsSlotRequest(seq, slot));
-    }
-    const frame = await this.readFrame();
+    const frame = slot === 0
+      ? await this.sendAndRead(encodeResetDefaultsRequest(seq))
+      : await this.sendAndRead(encodeResetDefaultsSlotRequest(seq, slot));
     if (frame.msgType === OrcaMsgType.ERROR) {
       const { cmd, err } = parseErrorPayload(frame.payload);
-      throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+      throw new OrcaDeviceError(cmd, err);
     }
     const payload = frame.payload;
     if (payload.length < 8) throw new Error('Bad RESET_DEFAULTS response length');
@@ -375,11 +395,10 @@ export class OrcaWebSerialTransport implements OrcaTransport {
 
   async reboot(): Promise<void> {
     const seq = this.seq++;
-    await this.write(encodeRebootRequest(seq));
-    const frame = await this.readFrame();
+    const frame = await this.sendAndRead(encodeRebootRequest(seq));
     if (frame.msgType === OrcaMsgType.ERROR) {
       const { cmd, err } = parseErrorPayload(frame.payload);
-      throw new Error(`Device error (cmd=${cmd}, err=${err})`);
+      throw new OrcaDeviceError(cmd, err);
     }
   }
 }

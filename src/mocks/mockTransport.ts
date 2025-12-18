@@ -12,7 +12,7 @@ import {
   ORCA_CONFIG_SETTINGS_VERSION_MAJOR,
   ORCA_CONFIG_SETTINGS_VERSION_MINOR,
 } from '@shared/orca_config_idl_generated';
-import type { BeginSessionInfo, DeviceInfo, OrcaTransport, ValidateStagedResult } from '../usb/OrcaTransport';
+import type { BeginSessionInfo, DeviceInfo, OrcaInputState, OrcaTransport, ValidateStagedResult } from '../usb/OrcaTransport';
 
 function writeU16Le(bytes: Uint8Array, offset: number, value: number) {
   bytes[offset] = value & 0xff;
@@ -75,6 +75,13 @@ export class MockOrcaTransport implements OrcaTransport {
   async unlockWrites(): Promise<void> {
     if (!this.sessionActive) throw new Error('No active session');
     this.writesUnlocked = true;
+  }
+
+  async getInputState(): Promise<OrcaInputState> {
+    return {
+      digitalMask: 0,
+      analog: [0.5, 0.5, 0.5, 0.5, 0],
+    };
   }
 
   async readBlobChunk(slot: number, offset: number, length: number): Promise<Uint8Array> {

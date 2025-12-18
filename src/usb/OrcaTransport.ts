@@ -17,12 +17,29 @@ export type ValidateStagedResult = {
   repaired: boolean;
 };
 
+export type OrcaInputState = {
+  digitalMask: number;
+  analog: number[]; // [5], normalized 0..1
+};
+
+export class OrcaDeviceError extends Error {
+  constructor(
+    public readonly cmd: number,
+    public readonly err: number,
+  ) {
+    super(`Device error (cmd=${cmd}, err=${err})`);
+    this.name = 'OrcaDeviceError';
+  }
+}
+
 export interface OrcaTransport {
   close(): Promise<void>;
 
   getInfo(): Promise<DeviceInfo>;
   beginSession(): Promise<BeginSessionInfo>;
   unlockWrites(): Promise<void>;
+
+  getInputState(): Promise<OrcaInputState>;
 
   readBlobChunk(slot: number, offset: number, length: number): Promise<Uint8Array>;
   readBlob(slot: number, options?: {

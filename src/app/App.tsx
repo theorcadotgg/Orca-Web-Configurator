@@ -15,6 +15,7 @@ import { ControllerVisualizer } from './components/ControllerVisualizer';
 import { DpadEditor } from './components/DpadEditor';
 import { TriggerEditor } from './components/TriggerEditor';
 import { StickCurveEditor } from './components/StickCurveEditor';
+import { LiveInputPreviewCard } from './components/LiveInputPreviewCard';
 import { ValidationStatus } from './components/ValidationStatus';
 import { ConfirmModal } from './components/ConfirmModal';
 import {
@@ -32,6 +33,7 @@ type DeviceValidationState = ValidateStagedResult & { decoded: string[] };
 type Compatibility = 'ok' | 'major_mismatch' | 'minor_mismatch' | 'unknown';
 type SlotMode = 'orca' | 'gp2040';
 type SlotId = 0 | 1;
+type MainView = 'layout' | 'inputs';
 
 const TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT = 1 << 0;
 const ORCA_DPAD_DEST = 11;
@@ -112,6 +114,15 @@ export default function App() {
   const [progress, setProgress] = useState('');
   const [lastError, setLastError] = useState('');
   const [configMode, setConfigMode] = useState<SlotMode>('orca');
+  const [mainView, setMainView] = useState<MainView>(() => {
+    try {
+      const stored = window.localStorage.getItem('orca.mainView');
+      if (stored === 'layout' || stored === 'inputs') return stored;
+    } catch {
+      // ignore
+    }
+    return 'layout';
+  });
   const [editingProfile, setEditingProfile] = useState<number | null>(null);
   const [gp2040LabelPreset, setGp2040LabelPreset] = useState<Gp2040LabelPreset>(() => {
     try {
@@ -130,6 +141,14 @@ export default function App() {
       // ignore
     }
   }, [gp2040LabelPreset]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('orca.mainView', mainView);
+    } catch {
+      // ignore
+    }
+  }, [mainView]);
 
   // Data state
   const [slotStates, setSlotStates] = useState<Record<SlotId, SlotState>>({
@@ -697,29 +716,63 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Controller Visualizer */}
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, padding: 'var(--spacing-md) 0' }}>
-                  <ControllerVisualizer
-                    digitalMapping={digitalMapping}
-                    analogMapping={analogMapping}
-                    defaultDigitalMapping={defaultDigitalMapping}
-                    defaultAnalogMapping={defaultAnalogMapping}
-                    disabled={busy}
-                    destinationLabelMode={configMode}
-                    gp2040LabelPreset={gp2040LabelPreset}
-                    gp2040AnalogTriggerRouting={gp2040AnalogTriggerOutput}
-                    onDigitalMappingChange={setDigitalMapping}
-                    onAnalogMappingChange={setAnalogMapping}
-                    onClearAllBindings={clearAllBindings}
-                    onResetToDefault={resetToDefaultBindings}
-                  />
+                {/* Main View Toggle */}
+                <div className="row mb-md" style={{ justifyContent: 'center' }}>
+                  <div className="mode-tabs" style={{ marginLeft: 0 }}>
+                    <button
+                      className={`mode-tab ${mainView === 'layout' ? 'active' : ''}`}
+                      onClick={() => setMainView('layout')}
+                      type="button"
+                    >
+                      Layout
+                    </button>
+                    <button
+                      className={`mode-tab ${mainView === 'inputs' ? 'active' : ''}`}
+                      onClick={() => setMainView('inputs')}
+                      type="button"
+                    >
+                      Inputs
+                    </button>
+                  </div>
                 </div>
 
-                {/* Remapped indicator */}
-                {remappedCount > 0 && (
-                  <div className="text-center text-sm text-secondary">
-                    {remappedCount} button{remappedCount > 1 ? 's' : ''} remapped
-                  </div>
+                {mainView === 'layout' ? (
+                  <>
+                    {/* Controller Visualizer */}
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, padding: 'var(--spacing-md) 0' }}>
+                      <ControllerVisualizer
+                        digitalMapping={digitalMapping}
+                        analogMapping={analogMapping}
+                        defaultDigitalMapping={defaultDigitalMapping}
+                        defaultAnalogMapping={defaultAnalogMapping}
+                        disabled={busy}
+                        destinationLabelMode={configMode}
+                        gp2040LabelPreset={gp2040LabelPreset}
+                        gp2040AnalogTriggerRouting={gp2040AnalogTriggerOutput}
+                        onDigitalMappingChange={setDigitalMapping}
+                        onAnalogMappingChange={setAnalogMapping}
+                        onClearAllBindings={clearAllBindings}
+                        onResetToDefault={resetToDefaultBindings}
+                      />
+                    </div>
+
+                    {/* Remapped indicator */}
+                    {remappedCount > 0 && (
+                      <div className="text-center text-sm text-secondary">
+                        {remappedCount} button{remappedCount > 1 ? 's' : ''} remapped
+                      </div>
+                    )}
+                  </>
+                ) : baseBlob ? (
+                  <LiveInputPreviewCard
+                    transport={transport}
+                    draft={draft}
+                    baseBlob={baseBlob}
+                    disabled={busy}
+                    style={{ marginTop: 0 }}
+                  />
+                ) : (
+                  <div className="text-sm text-muted">No settings loaded</div>
                 )}
               </div>
             ) : null}
