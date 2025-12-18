@@ -53,10 +53,10 @@ const DIGITAL_BUTTONS: ButtonConfig[] = [
 // ANALOG BUTTONS -> Oblong Path Groups (5 oblongs)
 // ============================================================
 const ANALOG_BUTTONS: ButtonConfig[] = [
-    { id: 0, label: 'Joystick X Left', shortLabel: 'J←', type: 'analog', elementIndex: 2 },
-    { id: 1, label: 'Joystick X Right', shortLabel: 'J→', type: 'analog', elementIndex: 0 },
-    { id: 2, label: 'Joystick Y Up', shortLabel: 'J↑', type: 'analog', elementIndex: 1 },
-    { id: 3, label: 'Joystick Y Down', shortLabel: 'J↓', type: 'analog', elementIndex: 3 },
+    { id: 0, label: 'Joystick X Left', shortLabel: '←', type: 'analog', elementIndex: 2 },
+    { id: 1, label: 'Joystick X Right', shortLabel: '→', type: 'analog', elementIndex: 0 },
+    { id: 2, label: 'Joystick Y Up', shortLabel: '↑', type: 'analog', elementIndex: 1 },
+    { id: 3, label: 'Joystick Y Down', shortLabel: '↓', type: 'analog', elementIndex: 3 },
     { id: 4, label: 'Trigger R Analog', shortLabel: 'TR', type: 'analog', elementIndex: 4 },
 ];
 
