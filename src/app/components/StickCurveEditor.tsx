@@ -103,10 +103,18 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
     const params = draft.stickCurveParams[activeProfile] ?? draft.stickCurveParams[0]!;
     const currentPreset = detectPreset(params, mode);
 
+    // Track if user explicitly selected custom mode
+    const [forceCustom, setForceCustom] = useState(false);
+
+    // Show sliders if detected as custom OR user explicitly selected custom
+    const showCustomSliders = currentPreset === 'custom' || forceCustom;
+
     // GP2040 supports extended ranges: magnitude up to 154 (1.2 * 128), notch up to 100
-    // Orca mode uses more conservative ranges
-    const magnitudeMax = mode === 'gp2040' ? 154 : 125;
-    const notchMax = mode === 'gp2040' ? 100 : 55;
+    // Orca mode uses specific ranges per ruleset
+    const magnitudeMin = mode === 'gp2040' ? 70 : 80;
+    const magnitudeMax = mode === 'gp2040' ? 154 : 120;
+    const notchMin = mode === 'gp2040' ? 20 : 25;
+    const notchMax = mode === 'gp2040' ? 100 : 50;
 
     function updateParams(patch: Partial<StickCurveParamsV1>) {
         const updated = cloneDraft(draft);
@@ -138,6 +146,9 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
             updated.stickCurveParams[activeProfile]!.notch[4] ?? 0.234,
         ];
         onChange(updated);
+
+        // Reset force custom when applying a preset
+        setForceCustom(false);
     }
 
     function setAxisValue(field: 'range' | 'notch', axisIndices: number[], value: number) {
@@ -238,25 +249,28 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                         alignItems: 'center',
                         gap: 'var(--spacing-xs)',
                         padding: 'var(--spacing-sm) var(--spacing-md)',
-                        background: currentPreset === 'custom' ? 'var(--color-bg-secondary)' : 'var(--color-bg-tertiary)',
+                        background: showCustomSliders ? 'var(--color-bg-secondary)' : 'var(--color-bg-tertiary)',
                         borderRadius: 'var(--radius-md)',
-                        cursor: 'default',
+                        cursor: disabled ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s ease',
-                        border: currentPreset === 'custom' ? '1px solid var(--color-accent-primary)' : '1px solid var(--color-border)',
+                        border: showCustomSliders ? '1px solid var(--color-accent-primary)' : '1px solid var(--color-border)',
                         opacity: disabled ? 0.5 : 1,
                     }}>
                         <input
                             type="radio"
                             name="stickPreset"
-                            checked={currentPreset === 'custom'}
-                            onChange={() => { }}
+                            checked={showCustomSliders}
+                            onChange={() => {
+                                // Switching to custom mode - keep current values but allow editing
+                                setForceCustom(true);
+                            }}
                             disabled={disabled}
                             style={{ display: 'none' }}
                         />
                         <span style={{
                             fontSize: 'var(--font-size-sm)',
                             fontWeight: 500,
-                            color: currentPreset === 'custom' ? 'var(--color-accent-primary)' : 'var(--color-text-muted)',
+                            color: showCustomSliders ? 'var(--color-accent-primary)' : 'var(--color-text-muted)',
                         }}>
                             Custom
                         </span>
@@ -265,111 +279,113 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                 <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
                     {currentPreset === 'melee' && 'Optimized for Super Smash Bros. Melee'}
                     {currentPreset === 'rivals2' && 'Optimized for Rivals of Aether 2'}
-                    {currentPreset === 'custom' && 'Custom values - adjust sliders below'}
+                    {showCustomSliders && 'Custom values - adjust sliders below'}
                 </span>
             </div>
 
-            {/* Custom Controls - Always visible but highlighted when custom */}
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'var(--spacing-md)',
-                padding: 'var(--spacing-md)',
-                background: 'var(--color-bg-secondary)',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--color-border)',
-                transition: 'all 0.2s ease',
-            }}>
-                {/* Magnitude Section */}
-                <div>
-                    <div style={{
-                        fontSize: 'var(--font-size-sm)',
-                        fontWeight: 600,
-                        color: 'var(--color-text-secondary)',
-                        marginBottom: 'var(--spacing-sm)'
-                    }}>
-                        Full Press Magnitude
+            {/* Custom Controls - Only visible when custom mode is selected */}
+            {showCustomSliders && (
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--spacing-md)',
+                    padding: 'var(--spacing-md)',
+                    background: 'var(--color-bg-secondary)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-accent-primary)',
+                    transition: 'all 0.2s ease',
+                }}>
+                    {/* Magnitude Section */}
+                    <div>
+                        <div style={{
+                            fontSize: 'var(--font-size-sm)',
+                            fontWeight: 600,
+                            color: 'var(--color-text-secondary)',
+                            marginBottom: 'var(--spacing-sm)'
+                        }}>
+                            Full Press Magnitude
+                        </div>
+
+                        {/* X-Axis Magnitude */}
+                        <SliderControl
+                            label="X-Axis"
+                            value={xMag}
+                            min={magnitudeMin}
+                            max={magnitudeMax}
+                            disabled={disabled}
+                            onChange={(v) => setAxisValue('range', [0, 1], v)}
+                            accentColor="var(--color-accent-primary)"
+                        />
+
+                        {/* Up Magnitude */}
+                        <SliderControl
+                            label="Up"
+                            value={upMag}
+                            min={magnitudeMin}
+                            max={magnitudeMax}
+                            disabled={disabled}
+                            onChange={(v) => setAxisValue('range', [2], v)}
+                            accentColor="var(--color-accent-primary)"
+                        />
+
+                        {/* Down Magnitude */}
+                        <SliderControl
+                            label="Down"
+                            value={downMag}
+                            min={magnitudeMin}
+                            max={magnitudeMax}
+                            disabled={disabled}
+                            onChange={(v) => setAxisValue('range', [3], v)}
+                            accentColor="var(--color-accent-primary)"
+                        />
                     </div>
 
-                    {/* X-Axis Magnitude */}
-                    <SliderControl
-                        label="X-Axis"
-                        value={xMag}
-                        min={70}
-                        max={magnitudeMax}
-                        disabled={disabled}
-                        onChange={(v) => setAxisValue('range', [0, 1], v)}
-                        accentColor="var(--color-accent-primary)"
-                    />
+                    {/* Notch Section */}
+                    <div>
+                        <div style={{
+                            fontSize: 'var(--font-size-sm)',
+                            fontWeight: 600,
+                            color: 'var(--color-text-secondary)',
+                            marginBottom: 'var(--spacing-sm)'
+                        }}>
+                            Light Press Notch
+                        </div>
 
-                    {/* Up Magnitude */}
-                    <SliderControl
-                        label="Up"
-                        value={upMag}
-                        min={70}
-                        max={magnitudeMax}
-                        disabled={disabled}
-                        onChange={(v) => setAxisValue('range', [2], v)}
-                        accentColor="var(--color-accent-primary)"
-                    />
+                        {/* X-Axis Notch */}
+                        <SliderControl
+                            label="X-Axis"
+                            value={xNotch}
+                            min={notchMin}
+                            max={notchMax}
+                            disabled={disabled}
+                            onChange={(v) => setAxisValue('notch', [0, 1], v)}
+                            accentColor="var(--color-accent-secondary)"
+                        />
 
-                    {/* Down Magnitude */}
-                    <SliderControl
-                        label="Down"
-                        value={downMag}
-                        min={70}
-                        max={magnitudeMax}
-                        disabled={disabled}
-                        onChange={(v) => setAxisValue('range', [3], v)}
-                        accentColor="var(--color-accent-primary)"
-                    />
-                </div>
+                        {/* Up Notch */}
+                        <SliderControl
+                            label="Up"
+                            value={upNotch}
+                            min={notchMin}
+                            max={notchMax}
+                            disabled={disabled}
+                            onChange={(v) => setAxisValue('notch', [2], v)}
+                            accentColor="var(--color-accent-secondary)"
+                        />
 
-                {/* Notch Section */}
-                <div>
-                    <div style={{
-                        fontSize: 'var(--font-size-sm)',
-                        fontWeight: 600,
-                        color: 'var(--color-text-secondary)',
-                        marginBottom: 'var(--spacing-sm)'
-                    }}>
-                        Light Press Notch
+                        {/* Down Notch */}
+                        <SliderControl
+                            label="Down"
+                            value={downNotch}
+                            min={notchMin}
+                            max={notchMax}
+                            disabled={disabled}
+                            onChange={(v) => setAxisValue('notch', [3], v)}
+                            accentColor="var(--color-accent-secondary)"
+                        />
                     </div>
-
-                    {/* X-Axis Notch */}
-                    <SliderControl
-                        label="X-Axis"
-                        value={xNotch}
-                        min={20}
-                        max={notchMax}
-                        disabled={disabled}
-                        onChange={(v) => setAxisValue('notch', [0, 1], v)}
-                        accentColor="var(--color-accent-secondary)"
-                    />
-
-                    {/* Up Notch */}
-                    <SliderControl
-                        label="Up"
-                        value={upNotch}
-                        min={20}
-                        max={notchMax}
-                        disabled={disabled}
-                        onChange={(v) => setAxisValue('notch', [2], v)}
-                        accentColor="var(--color-accent-secondary)"
-                    />
-
-                    {/* Down Notch */}
-                    <SliderControl
-                        label="Down"
-                        value={downNotch}
-                        min={20}
-                        max={notchMax}
-                        disabled={disabled}
-                        onChange={(v) => setAxisValue('notch', [3], v)}
-                        accentColor="var(--color-accent-secondary)"
-                    />
                 </div>
-            </div>
+            )}
 
             {/* Melee Calculator - Only in Orca mode */}
             {mode === 'orca' && (
@@ -396,7 +412,7 @@ type MeleeCalculatorProps = {
 };
 
 function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: MeleeCalculatorProps) {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
 
     // Walk Speed Check
     const walkSpeed = xNotch > 33 ? 'WalkMid' : 'WalkSlow';

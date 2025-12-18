@@ -923,7 +923,7 @@ export default function App() {
                     Stored per mode and profile. GP2040 analog trigger routing is configured in the main mapping.
                   </div>
                 )}
-                <TriggerEditor draft={draft} disabled={busy} onChange={onDraftChange} />
+                <TriggerEditor draft={draft} disabled={busy} onChange={onDraftChange} mode={configMode} />
               </>
             ) : (
               <div className="text-sm text-muted">Connect to configure</div>

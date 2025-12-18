@@ -1,9 +1,11 @@
+import { useState, useEffect } from 'react';
 import type { SettingsDraft } from '../../schema/settingsBlob';
 
 type Props = {
     draft: SettingsDraft;
     disabled?: boolean;
     onChange: (next: SettingsDraft) => void;
+    mode?: 'orca' | 'gp2040';
 };
 
 function clamp(n: number, min: number, max: number): number {
@@ -36,10 +38,18 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
     };
 }
 
-export function TriggerEditor({ draft, disabled, onChange }: Props) {
+export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Props) {
     const activeProfile = draft.activeProfile ?? 0;
     const policy = draft.triggerPolicy[activeProfile] ?? draft.triggerPolicy[0];
     if (!policy) return null;
+
+    // Lightshield-only mode state
+    const [lightshieldOnly, setLightshieldOnly] = useState(false);
+
+    // Orca mode uses specific ranges per ruleset
+    const triggerMin = mode === 'orca' ? 140 : 0;
+    const triggerMax = mode === 'orca' ? 220 : 255;
+    const lightshieldMin = mode === 'orca' ? 49 : 0;
 
     function updatePolicy(patch: Partial<typeof policy>) {
         const updated = cloneDraft(draft);
@@ -52,6 +62,33 @@ export function TriggerEditor({ draft, disabled, onChange }: Props) {
     const analogRangeMax255 = to255(policy.analogRangeMax);
     const digitalFullPress255 = to255(policy.digitalFullPress);
     const digitalLightshield255 = to255(policy.digitalLightshield);
+
+    // Calculate lightshield max based on current trigger value (for Orca mode)
+    const lightshieldMax = mode === 'orca' ? Math.floor(analogRangeMax255 / 2) : 255;
+
+    // Effect to sync max output with lightshield when lightshield-only is enabled
+    useEffect(() => {
+        if (lightshieldOnly && mode === 'orca') {
+            // Set analogRangeMax to match digitalLightshield (or +1 if needed)
+            const targetValue = digitalLightshield255;
+            if (analogRangeMax255 !== targetValue) {
+                updatePolicy({ analogRangeMax: from255(targetValue) });
+            }
+        }
+    }, [lightshieldOnly, digitalLightshield255]);
+
+    // Handler for lightshield slider when lightshield-only is enabled
+    function handleLightshieldChange(value: number) {
+        const clampedValue = clamp(value, lightshieldMin, lightshieldMax);
+        updatePolicy({ digitalLightshield: from255(clampedValue) });
+        if (lightshieldOnly) {
+            // Also update analog max to match
+            updatePolicy({
+                digitalLightshield: from255(clampedValue),
+                analogRangeMax: from255(clampedValue)
+            });
+        }
+    }
 
     return (
         <div className="col" style={{ gap: 12 }}>
@@ -116,6 +153,16 @@ export function TriggerEditor({ draft, disabled, onChange }: Props) {
                             opacity: 0.6,
                             transition: 'height 0.15s ease'
                         }} />
+                        {/* Lightshield threshold line */}
+                        <div style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            bottom: `${(digitalLightshield255 / 255) * 100}%`,
+                            height: 2,
+                            background: '#FF9800',
+                            zIndex: 1
+                        }} />
                     </div>
                 </div>
             </div>
@@ -126,6 +173,32 @@ export function TriggerEditor({ draft, disabled, onChange }: Props) {
                 <span style={{ color: '#FF9800' }}>━ Lightshield</span>
             </div>
 
+            {/* Lightshield Only Checkbox - Orca mode only */}
+            {mode === 'orca' && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                    <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 11,
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        opacity: disabled ? 0.5 : 1
+                    }}>
+                        <input
+                            type="checkbox"
+                            checked={lightshieldOnly}
+                            onChange={(e) => setLightshieldOnly(e.target.checked)}
+                            disabled={disabled}
+                            style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+                        />
+                        <span style={{ color: '#FF9800' }}>Lightshield Only</span>
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: 10 }}>
+                            (binds max output to lightshield)
+                        </span>
+                    </label>
+                </div>
+            )}
+
             {/* Sliders - compact single-line format */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {/* Analog Max */}
@@ -133,21 +206,32 @@ export function TriggerEditor({ draft, disabled, onChange }: Props) {
                     <span style={{ fontSize: 11, width: 90, flexShrink: 0 }}>Analog Max</span>
                     <input
                         type="range"
-                        min={0}
-                        max={255}
-                        value={analogRangeMax255}
+                        min={triggerMin}
+                        max={triggerMax}
+                        value={clamp(analogRangeMax255, triggerMin, triggerMax)}
                         onChange={(e) => updatePolicy({ analogRangeMax: from255(Number(e.target.value)) })}
-                        disabled={disabled}
-                        style={{ flex: 1, minWidth: 0 }}
+                        disabled={disabled || (lightshieldOnly && mode === 'orca')}
+                        style={{
+                            flex: 1,
+                            minWidth: 0,
+                            opacity: (lightshieldOnly && mode === 'orca') ? 0.5 : 1
+                        }}
                     />
                     <input
                         type="number"
-                        min={0}
-                        max={255}
-                        value={analogRangeMax255}
+                        min={triggerMin}
+                        max={triggerMax}
+                        value={clamp(analogRangeMax255, triggerMin, triggerMax)}
                         onChange={(e) => updatePolicy({ analogRangeMax: from255(Number(e.target.value)) })}
-                        disabled={disabled}
-                        style={{ width: 48, fontSize: 11, padding: '2px 4px', textAlign: 'center', flexShrink: 0 }}
+                        disabled={disabled || (lightshieldOnly && mode === 'orca')}
+                        style={{
+                            width: 48,
+                            fontSize: 11,
+                            padding: '2px 4px',
+                            textAlign: 'center',
+                            flexShrink: 0,
+                            opacity: (lightshieldOnly && mode === 'orca') ? 0.5 : 1
+                        }}
                     />
                 </div>
 
@@ -179,19 +263,19 @@ export function TriggerEditor({ draft, disabled, onChange }: Props) {
                     <span style={{ fontSize: 11, width: 90, flexShrink: 0, color: '#FF9800' }}>Lightshield</span>
                     <input
                         type="range"
-                        min={0}
-                        max={255}
-                        value={digitalLightshield255}
-                        onChange={(e) => updatePolicy({ digitalLightshield: from255(Number(e.target.value)) })}
+                        min={lightshieldMin}
+                        max={lightshieldMax}
+                        value={clamp(digitalLightshield255, lightshieldMin, lightshieldMax)}
+                        onChange={(e) => handleLightshieldChange(Number(e.target.value))}
                         disabled={disabled}
                         style={{ flex: 1, minWidth: 0 }}
                     />
                     <input
                         type="number"
-                        min={0}
-                        max={255}
-                        value={digitalLightshield255}
-                        onChange={(e) => updatePolicy({ digitalLightshield: from255(Number(e.target.value)) })}
+                        min={lightshieldMin}
+                        max={lightshieldMax}
+                        value={clamp(digitalLightshield255, lightshieldMin, lightshieldMax)}
+                        onChange={(e) => handleLightshieldChange(Number(e.target.value))}
                         disabled={disabled}
                         style={{ width: 48, fontSize: 11, padding: '2px 4px', textAlign: 'center', flexShrink: 0 }}
                     />
