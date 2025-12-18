@@ -5,7 +5,7 @@ import {
   ORCA_CONFIG_SETTINGS_PROFILE_COUNT,
 } from '@shared/orca_config_idl_generated';
 import { buildSettingsBlob, tryParseSettingsBlob, type ParsedSettings, type SettingsDraft } from '../schema/settingsBlob';
-import { ORCA_PROFILE_FILE_TYPE, parseProfileFileV1, serializeProfileFileV1, type OrcaProfileFileV1, type ProfileMode } from '../schema/profileFile';
+import { ORCA_PROFILE_FILE_TYPE, ORCA_PROFILE_FILE_VERSION, parseProfileFileV1, serializeProfileFileV1, type OrcaProfileFileV1, type ProfileMode } from '../schema/profileFile';
 import { decodeStagedInvalidMask, validateSettingsDraft } from '../validators/settingsValidation';
 import type { DeviceInfo, OrcaTransport, ValidateStagedResult } from '../usb/OrcaTransport';
 import { OrcaWebSerialTransport } from '../usb/OrcaWebSerialTransport';
@@ -26,6 +26,11 @@ import {
   ORCA_ANALOG_MAPPING_DISABLED,
   isLockedDigitalDestination,
   isLockedDigitalSource,
+  DPAD_UP_VIRTUAL_DEST,
+  DPAD_DOWN_VIRTUAL_DEST,
+  DPAD_LEFT_VIRTUAL_DEST,
+  DPAD_RIGHT_VIRTUAL_DEST,
+  isVirtualDpadDestination,
 } from '../schema/orcaMappings';
 import { isGp2040LabelPreset, type Gp2040LabelPreset } from '../schema/gp2040Labels';
 import OrcaLogo from '../assets/Orca_Logo_B.png';
@@ -39,6 +44,10 @@ type MainView = 'layout' | 'inputs';
 const TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT = 1 << 0;
 const ORCA_DPAD_DEST = 11;
 const ORCA_LIGHTSHIELD_SRC = 12;
+const ORCA_C_LEFT_SRC = 7;
+const ORCA_C_RIGHT_SRC = 8;
+const ORCA_C_UP_SRC = 9;
+const ORCA_C_DOWN_SRC = 10;
 const GP2040_ANALOG_LT_VIRTUAL_ID = 254; // Must match ControllerVisualizer
 
 type SlotState = {
@@ -362,7 +371,105 @@ export default function App() {
 
   function setDigitalMapping(dest: number, src: number) {
     if (!draft) return;
+
+    const digital = (index: number) => ({ type: 1, index, threshold: 0, hysteresis: 0 });
+    const defaultCStickMode = 1;
+
+    // Check if this is a DPAD virtual destination - handle it specially
+    if (isVirtualDpadDestination(dest)) {
+      const updated = cloneDraft(draft);
+      const layer = updated.dpadLayer[activeProfile] ?? updated.dpadLayer[0];
+      if (!layer) return;
+
+      // Map virtual dest ID to DPAD direction and update dpadLayer.
+      // If src is ORCA_DUMMY_FIELD, treat as "unbind" for that direction.
+      // Heuristic:
+      // Selecting a DPAD virtual destination from the per-button dropdown implies a repurpose binding:
+      // set the direction to "Always on" and disable the source button's normal output mapping.
+      const boundMode = 2;
+
+      if (dest === DPAD_UP_VIRTUAL_DEST) {
+        if (src === ORCA_DUMMY_FIELD) {
+          layer.mode_up = defaultCStickMode;
+          layer.up = digital(ORCA_C_UP_SRC);
+        } else {
+          layer.mode_up = boundMode;
+          layer.up = digital(src);
+        }
+      } else if (dest === DPAD_DOWN_VIRTUAL_DEST) {
+        if (src === ORCA_DUMMY_FIELD) {
+          layer.mode_down = defaultCStickMode;
+          layer.down = digital(ORCA_C_DOWN_SRC);
+        } else {
+          layer.mode_down = boundMode;
+          layer.down = digital(src);
+        }
+      } else if (dest === DPAD_LEFT_VIRTUAL_DEST) {
+        if (src === ORCA_DUMMY_FIELD) {
+          layer.mode_left = defaultCStickMode;
+          layer.left = digital(ORCA_C_LEFT_SRC);
+        } else {
+          layer.mode_left = boundMode;
+          layer.left = digital(src);
+        }
+      } else if (dest === DPAD_RIGHT_VIRTUAL_DEST) {
+        if (src === ORCA_DUMMY_FIELD) {
+          layer.mode_right = defaultCStickMode;
+          layer.right = digital(ORCA_C_RIGHT_SRC);
+        } else {
+          layer.mode_right = boundMode;
+          layer.right = digital(src);
+        }
+      }
+
+      updated.dpadLayer[activeProfile] = layer;
+
+      // Repurpose behavior: disable the source button's normal output mapping.
+      if (src !== ORCA_DUMMY_FIELD) {
+        updated.digitalMappings[activeProfile] = [...(updated.digitalMappings[activeProfile] ?? [])];
+        const currentMapping = updated.digitalMappings[activeProfile]!;
+        // Find where src is currently mapped and disable it
+        for (let i = 0; i < currentMapping.length; i++) {
+          const mappedSrc = currentMapping[i] ?? defaultDigitalMapping[i] ?? i;
+          if (mappedSrc === src && !isLockedDigitalDestination(i)) {
+            currentMapping[i] = ORCA_DUMMY_FIELD;
+            break;
+          }
+        }
+      }
+
+      onDraftChange(updated);
+      return;
+    }
+
+    // Normal digital mapping logic
     const updated = cloneDraft(draft);
+
+    // If this source was being used for any DPAD direction, restore those directions to the default C-stick bindings.
+    {
+      const layer = updated.dpadLayer[activeProfile] ?? updated.dpadLayer[0];
+      if (layer && src !== ORCA_DUMMY_FIELD) {
+        const isSrc = (s: { type: number; index: number } | undefined) => (s?.type === 1 && s.index === src);
+        if (isSrc(layer.up)) {
+          layer.mode_up = defaultCStickMode;
+          layer.up = digital(ORCA_C_UP_SRC);
+        }
+        if (isSrc(layer.down)) {
+          layer.mode_down = defaultCStickMode;
+          layer.down = digital(ORCA_C_DOWN_SRC);
+        }
+        if (isSrc(layer.left)) {
+          layer.mode_left = defaultCStickMode;
+          layer.left = digital(ORCA_C_LEFT_SRC);
+        }
+        if (isSrc(layer.right)) {
+          layer.mode_right = defaultCStickMode;
+          layer.right = digital(ORCA_C_RIGHT_SRC);
+        }
+        updated.dpadLayer[activeProfile] = layer;
+      }
+    }
+
     updated.digitalMappings[activeProfile] = [...(updated.digitalMappings[activeProfile] ?? [])];
     const currentMapping = updated.digitalMappings[activeProfile]!;
     const currentSrc = currentMapping[dest] ?? defaultDigitalMapping[dest] ?? dest;
@@ -582,7 +689,7 @@ export default function App() {
 
     const fileData: OrcaProfileFileV1 = {
       type: ORCA_PROFILE_FILE_TYPE,
-      version: 1,
+      version: ORCA_PROFILE_FILE_VERSION,
       mode: configMode,
       label,
       digitalMapping: [...digitalMapping],
@@ -832,6 +939,7 @@ export default function App() {
                         destinationLabelMode={configMode}
                         gp2040LabelPreset={gp2040LabelPreset}
                         gp2040AnalogTriggerRouting={gp2040AnalogTriggerOutput}
+                        dpadLayer={draft.dpadLayer[activeProfile]}
                         onDigitalMappingChange={setDigitalMapping}
                         onAnalogMappingChange={setAnalogMapping}
                         onClearAllBindings={clearAllBindings}
@@ -846,7 +954,7 @@ export default function App() {
                       </div>
                     )}
                   </>
-                ) : baseBlob ? (
+                ) : mainView === 'inputs' && baseBlob ? (
                   <LiveInputPreviewCard
                     transport={transport}
                     draft={draft}
@@ -894,7 +1002,14 @@ export default function App() {
           {/* DPAD Panel */}
           <CollapsiblePanel
             title="DPAD Layer"
-            badge={draft?.dpadLayer?.[activeProfile]?.mode !== 0 ? <span className="pill pill-brand" style={{ marginLeft: 8 }}>Active</span> : null}
+            badge={
+              (() => {
+                const layer = draft?.dpadLayer?.[activeProfile];
+                if (!layer) return null;
+                const active = (layer.mode_up !== 0) || (layer.mode_down !== 0) || (layer.mode_left !== 0) || (layer.mode_right !== 0);
+                return active ? <span className="pill pill-brand" style={{ marginLeft: 8 }}>Active</span> : null;
+              })()
+            }
           >
             {draft ? (
               <DpadEditor draft={draft} disabled={busy} onChange={onDraftChange} contextMode={configMode} gp2040LabelPreset={gp2040LabelPreset} />

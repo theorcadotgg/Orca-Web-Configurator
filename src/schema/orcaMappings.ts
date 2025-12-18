@@ -65,6 +65,26 @@ export const DIGITAL_INPUTS: DigitalInputDef[] = [
   { id: ORCA_DUMMY_FIELD, key: 'ORCA_DUMMY_FIELD', label: 'Disabled (Dummy)', lockedSystem: false, isDummy: true },
 ].map((d) => ({ ...d, lockedSystem: d.lockedSystem || isLockedSystemButton(d.id) }));
 
+// Virtual DPAD destination IDs (not real firmware destinations, handled specially in UI)
+export const DPAD_UP_VIRTUAL_DEST = 252;
+export const DPAD_DOWN_VIRTUAL_DEST = 253;
+export const DPAD_LEFT_VIRTUAL_DEST = 254;
+export const DPAD_RIGHT_VIRTUAL_DEST = 255;
+
+// Helper to check if a destination is a virtual DPAD button
+export function isVirtualDpadDestination(id: number): boolean {
+  return id === DPAD_UP_VIRTUAL_DEST || id === DPAD_DOWN_VIRTUAL_DEST ||
+    id === DPAD_LEFT_VIRTUAL_DEST || id === DPAD_RIGHT_VIRTUAL_DEST;
+}
+
+// Virtual DPAD destinations for binding dropdown
+export const DPAD_VIRTUAL_DESTINATIONS: DigitalInputDef[] = [
+  { id: DPAD_UP_VIRTUAL_DEST, key: 'DPAD_UP', label: 'DPAD Up', lockedSystem: false, isDummy: false },
+  { id: DPAD_DOWN_VIRTUAL_DEST, key: 'DPAD_DOWN', label: 'DPAD Down', lockedSystem: false, isDummy: false },
+  { id: DPAD_LEFT_VIRTUAL_DEST, key: 'DPAD_LEFT', label: 'DPAD Left', lockedSystem: false, isDummy: false },
+  { id: DPAD_RIGHT_VIRTUAL_DEST, key: 'DPAD_RIGHT', label: 'DPAD Right', lockedSystem: false, isDummy: false },
+];
+
 export const ANALOG_INPUTS: AnalogInputDef[] = [
   { id: 0, key: 'ORCA_JOYSTICK_X_LEFT', label: 'Joystick X Left' },
   { id: 1, key: 'ORCA_JOYSTICK_X_RIGHT', label: 'Joystick X Right' },
@@ -81,7 +101,9 @@ if (ANALOG_INPUTS.length !== ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT) {
 }
 
 export function digitalInputLabel(id: number): string {
-  return DIGITAL_INPUTS.find((d) => d.id === id)?.label ?? `Digital ${id}`;
+  return DIGITAL_INPUTS.find((d) => d.id === id)?.label ??
+    DPAD_VIRTUAL_DESTINATIONS.find((d) => d.id === id)?.label ??
+    `Digital ${id}`;
 }
 
 export function analogInputLabel(id: number): string {

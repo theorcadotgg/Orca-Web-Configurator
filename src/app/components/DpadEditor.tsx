@@ -13,7 +13,7 @@ type Props = {
 
 const MODE_OPTIONS: { value: number; label: string }[] = [
     { value: 0, label: 'Disabled' },
-    { value: 1, label: 'While held' },
+    { value: 1, label: 'With Modifier' },
     { value: 2, label: 'Always on' },
 ];
 
@@ -63,6 +63,7 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
     }
 
     const isGp2040 = contextMode === 'gp2040';
+    const allowAnalogDpadSources = isGp2040;
     const gp2040LabelSet = isGp2040 ? getGp2040DestinationLabelSet(gp2040LabelPreset) : null;
     const l1OutputLabel = isGp2040 ? (gp2040LabelSet?.digital?.[ORCA_DPAD_DEST]?.label ?? 'L1') : 'L1';
     const enableIsLinkedToL1 =
@@ -89,13 +90,17 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
 
     function applyPreset(preset: 'cstick_held' | 'ls_held' | 'ls_always') {
         if (disabled) return;
+        if (!allowAnalogDpadSources && preset !== 'cstick_held') return;
 
         const digital = (index: number) => ({ type: 1, index, threshold: 0, hysteresis: 0 });
         const analogGe = (index: number, threshold = 0.6, hysteresis = 0.05) => ({ type: 2, index, threshold, hysteresis });
 
         if (preset === 'cstick_held') {
             setLayer({
-                mode: 1,
+                mode_up: 1,
+                mode_down: 1,
+                mode_left: 1,
+                mode_right: 1,
                 enable: digital(ORCA_DPAD_DEST),
                 up: digital(ORCA_C_UP),
                 down: digital(ORCA_C_DOWN),
@@ -107,7 +112,10 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
 
         if (preset === 'ls_held') {
             setLayer({
-                mode: 1,
+                mode_up: 1,
+                mode_down: 1,
+                mode_left: 1,
+                mode_right: 1,
                 enable: digital(ORCA_DPAD_DEST),
                 up: analogGe(ORCA_ANALOG_Y_UP),
                 down: analogGe(ORCA_ANALOG_Y_DOWN),
@@ -118,7 +126,10 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
         }
 
         setLayer({
-            mode: 2,
+            mode_up: 2,
+            mode_down: 2,
+            mode_left: 2,
+            mode_right: 2,
             enable: digital(ORCA_DPAD_DEST),
             up: analogGe(ORCA_ANALOG_Y_UP),
             down: analogGe(ORCA_ANALOG_Y_DOWN),
@@ -180,73 +191,91 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
                     </button>
                     <button
                         type="button"
-                        disabled={disabled}
+                        disabled={disabled || !allowAnalogDpadSources}
                         onClick={() => applyPreset('ls_held')}
                         style={{ fontSize: 11, padding: '4px 8px' }}
-                        title="Use the left stick analog channels as D-pad while held"
+                        title={allowAnalogDpadSources ? 'Use the left stick analog channels as D-pad while held' : 'Only available in GP2040 mode'}
                     >
                         Stick + modifier
                     </button>
                     <button
                         type="button"
-                        disabled={disabled}
+                        disabled={disabled || !allowAnalogDpadSources}
                         onClick={() => applyPreset('ls_always')}
                         style={{ fontSize: 11, padding: '4px 8px' }}
-                        title="Always use the left stick analog channels as D-pad"
+                        title={allowAnalogDpadSources ? 'Always use the left stick analog channels as D-pad' : 'Only available in GP2040 mode'}
                     >
                         Stick always
                     </button>
                 </div>
             </div>
 
-            {/* Header: DPAD visual + Mode in single row */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                {/* Compact DPAD visual */}
-                <div style={{
-                    display: 'grid',
-                    gridTemplateAreas: `". up ." "left center right" ". down ."`,
-                    gridTemplateColumns: '18px 18px 18px',
-                    gridTemplateRows: '18px 18px 18px',
-                    gap: 2,
-                }}>
-                    <div style={{ gridArea: 'up', background: 'var(--color-brand)', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: 10, color: 'white' }}>↑</span>
-                    </div>
-                    <div style={{ gridArea: 'left', background: 'var(--color-brand)', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: 10, color: 'white' }}>←</span>
-                    </div>
-                    <div style={{ gridArea: 'center', background: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: 2 }} />
-                    <div style={{ gridArea: 'right', background: 'var(--color-brand)', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: 10, color: 'white' }}>→</span>
-                    </div>
-                    <div style={{ gridArea: 'down', background: 'var(--color-brand)', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: 10, color: 'white' }}>↓</span>
-                    </div>
-                </div>
 
-                {/* Mode selector */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Mode</span>
-                    <select
-                        value={layer.mode}
-                        onChange={(e) => updateLayer({ mode: Number(e.target.value) })}
-                        disabled={disabled}
-                        style={{
-                            fontSize: 12,
-                            padding: '3px 8px',
-                            background: 'var(--color-bg-surface)',
-                            border: '1px solid var(--color-border-hover)',
-                            borderRadius: 'var(--radius-sm)',
-                        }}
-                    >
-                        {MODE_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
+            {/* Per-direction mode selectors */ }
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+        {/* Up */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', width: 40 }}>↑ Up</span>
+            <select
+                value={layer.mode_up ?? 0}
+                onChange={(e) => updateLayer({ mode_up: Number(e.target.value) })}
+                disabled={disabled}
+                style={{ fontSize: 11, padding: '2px 6px', flex: 1 }}
+                title="Mode for DPAD Up"
+            >
+                {MODE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
+        </div>
+        {/* Down */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', width: 40 }}>↓ Down</span>
+            <select
+                value={layer.mode_down ?? 0}
+                onChange={(e) => updateLayer({ mode_down: Number(e.target.value) })}
+                disabled={disabled}
+                style={{ fontSize: 11, padding: '2px 6px', flex: 1 }}
+                title="Mode for DPAD Down"
+            >
+                {MODE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
+        </div>
+        {/* Left */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', width: 40 }}>← Left</span>
+            <select
+                value={layer.mode_left ?? 0}
+                onChange={(e) => updateLayer({ mode_left: Number(e.target.value) })}
+                disabled={disabled}
+                style={{ fontSize: 11, padding: '2px 6px', flex: 1 }}
+                title="Mode for DPAD Left"
+            >
+                {MODE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
+        </div>
+        {/* Right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', width: 40 }}>→ Right</span>
+            <select
+                value={layer.mode_right ?? 0}
+                onChange={(e) => updateLayer({ mode_right: Number(e.target.value) })}
+                disabled={disabled}
+                style={{ fontSize: 11, padding: '2px 6px', flex: 1 }}
+                title="Mode for DPAD Right"
+            >
+                {MODE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
+        </div>
+    </div>
 
-            {/* Source Editors - vertical stack, full width */}
+    {/* Source Editors - vertical stack, full width */ }
             <DigitalSourceEditorCompact
                 label={contextMode === 'gp2040' ? 'Modifier' : 'Enable'}
                 value={layer.enable}
@@ -257,26 +286,30 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
                 label="Up"
                 value={layer.up}
                 disabled={disabled}
+                allowAnalog={allowAnalogDpadSources}
                 onChange={(next) => updateLayer({ up: next })}
             />
             <DigitalSourceEditorCompact
                 label="Down"
                 value={layer.down}
                 disabled={disabled}
+                allowAnalog={allowAnalogDpadSources}
                 onChange={(next) => updateLayer({ down: next })}
             />
             <DigitalSourceEditorCompact
                 label="Left"
                 value={layer.left}
                 disabled={disabled}
+                allowAnalog={allowAnalogDpadSources}
                 onChange={(next) => updateLayer({ left: next })}
             />
             <DigitalSourceEditorCompact
                 label="Right"
                 value={layer.right}
                 disabled={disabled}
+                allowAnalog={allowAnalogDpadSources}
                 onChange={(next) => updateLayer({ right: next })}
             />
-        </div>
+        </div >
     );
 }

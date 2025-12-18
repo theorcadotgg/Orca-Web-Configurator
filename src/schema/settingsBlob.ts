@@ -50,7 +50,10 @@ export type DigitalSourceV1 = {
 };
 
 export type DpadLayerV1 = {
-  mode: number;
+  mode_up: number;
+  mode_down: number;
+  mode_left: number;
+  mode_right: number;
   enable: DigitalSourceV1;
   up: DigitalSourceV1;
   down: DigitalSourceV1;
@@ -145,18 +148,24 @@ function parseDpadLayerV1(data: Uint8Array): DpadLayerV1 {
   if (data.length !== OrcaSettingsTlv.DpadLayer.length) {
     throw new Error('Bad DpadLayer length');
   }
-  const mode = data[0] ?? 0;
+  const mode_up = data[0] ?? 0;
+  const mode_down = data[1] ?? 0;
+  const mode_left = data[2] ?? 0;
+  const mode_right = data[3] ?? 0;
   const enable = readDigitalSourceV1(data, 4);
   const up = readDigitalSourceV1(data, 16);
   const down = readDigitalSourceV1(data, 28);
   const left = readDigitalSourceV1(data, 40);
   const right = readDigitalSourceV1(data, 52);
-  return { mode, enable, up, down, left, right };
+  return { mode_up, mode_down, mode_left, mode_right, enable, up, down, left, right };
 }
 
 function encodeDpadLayerV1(layer: DpadLayerV1): Uint8Array {
   const out = new Uint8Array(OrcaSettingsTlv.DpadLayer.length);
-  out[0] = layer.mode & 0xff;
+  out[0] = layer.mode_up & 0xff;
+  out[1] = layer.mode_down & 0xff;
+  out[2] = layer.mode_left & 0xff;
+  out[3] = layer.mode_right & 0xff;
   writeDigitalSourceV1(out, 4, layer.enable);
   writeDigitalSourceV1(out, 16, layer.up);
   writeDigitalSourceV1(out, 28, layer.down);
@@ -296,7 +305,15 @@ export function parseSettingsBlob(blob: Uint8Array): ParsedSettings {
 
   const dpadLayer: DpadLayerV1[] = [];
   for (let i = 0; i < OrcaSettingsTlv.DpadLayer.count; i++) {
-    dpadLayer.push(parseDpadLayerV1(readTlvData(blob, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, i)));
+    const layer = parseDpadLayerV1(readTlvData(blob, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, i));
+    // v1.4 -> v1.5 compatibility: v1.4 stored a single DPAD mode at byte 0 (bytes 1..3 reserved).
+    // If reading a v1.4 blob, mirror the legacy mode across directions for display/editing.
+    if (versionMinor < 5 && layer.mode_down === 0 && layer.mode_left === 0 && layer.mode_right === 0) {
+      layer.mode_down = layer.mode_up;
+      layer.mode_left = layer.mode_up;
+      layer.mode_right = layer.mode_up;
+    }
+    dpadLayer.push(layer);
   }
 
   const triggerPolicy: TriggerPolicyV1[] = [];

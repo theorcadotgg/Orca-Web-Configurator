@@ -9,7 +9,7 @@ type Props = {
 
 const MODE_OPTIONS: { value: number; label: string }[] = [
   { value: 0, label: 'Disabled' },
-  { value: 1, label: 'While held' },
+  { value: 1, label: 'With Modifier' },
   { value: 2, label: 'Always on' },
 ];
 
@@ -44,7 +44,10 @@ export function DpadEditorCard({ draft, disabled, onChange }: Props) {
     onChange(updated);
   }
 
-  const modeLabel = MODE_OPTIONS.find(o => o.value === layer.mode)?.label ?? 'Unknown';
+  const modes = [layer.mode_up ?? 0, layer.mode_down ?? 0, layer.mode_left ?? 0, layer.mode_right ?? 0];
+  const allSameMode = modes.every((m) => m === modes[0]);
+  const isActive = modes.some((m) => m !== 0);
+  const modeLabel = allSameMode ? (MODE_OPTIONS.find(o => o.value === (modes[0] ?? 0))?.label ?? 'Unknown') : 'Mixed';
 
   return (
     <div className="card animate-slide-up">
@@ -53,7 +56,7 @@ export function DpadEditorCard({ draft, disabled, onChange }: Props) {
           <h2 className="card-title">DPAD Layer</h2>
           <p className="card-subtitle">Independent DPAD mapping (digital + analog thresholds)</p>
         </div>
-        <span className={`pill ${layer.mode === 0 ? 'pill-neutral' : 'pill-accent'}`}>
+        <span className={`pill ${isActive ? 'pill-accent' : 'pill-neutral'}`}>
           {modeLabel}
         </span>
       </div>
@@ -161,8 +164,16 @@ export function DpadEditorCard({ draft, disabled, onChange }: Props) {
           Mode:
         </label>
         <select
-          value={layer.mode}
-          onChange={(e) => updateLayer({ mode: Number(e.target.value) })}
+          value={layer.mode_up ?? 0}
+          onChange={(e) => {
+            const mode = Number(e.target.value);
+            updateLayer({
+              mode_up: mode,
+              mode_down: mode,
+              mode_left: mode,
+              mode_right: mode,
+            });
+          }}
           disabled={disabled}
         >
           {MODE_OPTIONS.map((opt) => (

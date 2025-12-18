@@ -153,8 +153,16 @@ export function validateSettingsDraft(draft: SettingsDraft): ValidationResult {
   } else {
     for (let profile = 0; profile < draft.dpadLayer.length; profile++) {
       const layer = draft.dpadLayer[profile]!;
-      if (layer.mode < 0 || layer.mode > 2) {
-        errors.push(`Profile ${profile + 1}: DPAD mode must be 0..2`);
+      const modes: Array<[string, number]> = [
+        ['up', layer.mode_up ?? 0],
+        ['down', layer.mode_down ?? 0],
+        ['left', layer.mode_left ?? 0],
+        ['right', layer.mode_right ?? 0],
+      ];
+      for (const [dir, mode] of modes) {
+        if (mode < 0 || mode > 2) {
+          errors.push(`Profile ${profile + 1}: DPAD ${dir} mode must be 0..2`);
+        }
       }
       errors.push(...validateDigitalSource(layer.enable, `Profile ${profile + 1}: DPAD enable`));
       errors.push(...validateDigitalSource(layer.up, `Profile ${profile + 1}: DPAD up`));

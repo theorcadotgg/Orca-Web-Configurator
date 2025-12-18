@@ -32,10 +32,10 @@ export const GP2040_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
 };
 
 export const GP2040_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
-  0: { label: 'LX-', shortLabel: 'LX-' }, // ORCA_JOYSTICK_X_LEFT
-  1: { label: 'LX+', shortLabel: 'LX+' }, // ORCA_JOYSTICK_X_RIGHT
-  2: { label: 'LY+', shortLabel: 'LY+' }, // ORCA_JOYSTICK_Y_UP
-  3: { label: 'LY-', shortLabel: 'LY-' }, // ORCA_JOYSTICK_Y_DOWN
+  0: { label: 'LS←', shortLabel: 'LS←' }, // ORCA_JOYSTICK_X_LEFT
+  1: { label: 'LS→', shortLabel: 'LS→' }, // ORCA_JOYSTICK_X_RIGHT
+  2: { label: 'LS↑', shortLabel: 'LS↑' }, // ORCA_JOYSTICK_Y_UP
+  3: { label: 'LS↓', shortLabel: 'LS↓' }, // ORCA_JOYSTICK_Y_DOWN
   4: { label: 'RT', shortLabel: 'RT' }, // ORCA_TRIGGER_R
 };
 
@@ -59,10 +59,10 @@ export const XBOX_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
 };
 
 export const XBOX_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
-  0: { label: 'LX-', shortLabel: 'LX-' }, // ORCA_JOYSTICK_X_LEFT
-  1: { label: 'LX+', shortLabel: 'LX+' }, // ORCA_JOYSTICK_X_RIGHT
-  2: { label: 'LY+', shortLabel: 'LY+' }, // ORCA_JOYSTICK_Y_UP
-  3: { label: 'LY-', shortLabel: 'LY-' }, // ORCA_JOYSTICK_Y_DOWN
+  0: { label: 'LS←', shortLabel: 'LS←' }, // ORCA_JOYSTICK_X_LEFT
+  1: { label: 'LS→', shortLabel: 'LS→' }, // ORCA_JOYSTICK_X_RIGHT
+  2: { label: 'LS↑', shortLabel: 'LS↑' }, // ORCA_JOYSTICK_Y_UP
+  3: { label: 'LS↓', shortLabel: 'LS↓' }, // ORCA_JOYSTICK_Y_DOWN
   4: { label: 'RT (Analog)', shortLabel: 'RT' }, // ORCA_TRIGGER_R
 };
 
@@ -86,10 +86,10 @@ export const SWITCH_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
 };
 
 export const SWITCH_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
-  0: { label: 'LX-', shortLabel: 'LX-' }, // ORCA_JOYSTICK_X_LEFT
-  1: { label: 'LX+', shortLabel: 'LX+' }, // ORCA_JOYSTICK_X_RIGHT
-  2: { label: 'LY+', shortLabel: 'LY+' }, // ORCA_JOYSTICK_Y_UP
-  3: { label: 'LY-', shortLabel: 'LY-' }, // ORCA_JOYSTICK_Y_DOWN
+  0: { label: 'LS←', shortLabel: 'LS←' }, // ORCA_JOYSTICK_X_LEFT
+  1: { label: 'LS→', shortLabel: 'LS→' }, // ORCA_JOYSTICK_X_RIGHT
+  2: { label: 'LS↑', shortLabel: 'LS↑' }, // ORCA_JOYSTICK_Y_UP
+  3: { label: 'LS↓', shortLabel: 'LS↓' }, // ORCA_JOYSTICK_Y_DOWN
   4: { label: 'ZR (Analog)', shortLabel: 'ZR' }, // ORCA_TRIGGER_R
 };
 
@@ -113,10 +113,10 @@ export const PLAYSTATION_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = 
 };
 
 export const PLAYSTATION_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
-  0: { label: 'LX-', shortLabel: 'LX-' }, // ORCA_JOYSTICK_X_LEFT
-  1: { label: 'LX+', shortLabel: 'LX+' }, // ORCA_JOYSTICK_X_RIGHT
-  2: { label: 'LY+', shortLabel: 'LY+' }, // ORCA_JOYSTICK_Y_UP
-  3: { label: 'LY-', shortLabel: 'LY-' }, // ORCA_JOYSTICK_Y_DOWN
+  0: { label: 'LS←', shortLabel: 'LS←' }, // ORCA_JOYSTICK_X_LEFT
+  1: { label: 'LS→', shortLabel: 'LS→' }, // ORCA_JOYSTICK_X_RIGHT
+  2: { label: 'LS↑', shortLabel: 'LS↑' }, // ORCA_JOYSTICK_Y_UP
+  3: { label: 'LS↓', shortLabel: 'LS↓' }, // ORCA_JOYSTICK_Y_DOWN
   4: { label: 'R2 (Analog)', shortLabel: 'R2' }, // ORCA_TRIGGER_R
 };
 

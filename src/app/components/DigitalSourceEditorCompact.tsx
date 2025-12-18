@@ -6,9 +6,10 @@ type Props = {
     value: DigitalSourceV1;
     disabled?: boolean;
     onChange: (next: DigitalSourceV1) => void;
+    allowAnalog?: boolean;
 };
 
-const SOURCE_TYPE_OPTIONS: { value: number; short: string }[] = [
+const SOURCE_TYPE_OPTIONS: { value: number; short: string; disabled?: boolean }[] = [
     { value: 0, short: '—' },
     { value: 1, short: 'Digital' },
     { value: 2, short: 'Analog ≥' },
@@ -19,7 +20,7 @@ const SOURCE_TYPE_OPTIONS: { value: number; short: string }[] = [
  * Compact version of DigitalSourceEditor for sidebar use.
  * Uses two rows for analog mode to show threshold and hysteresis.
  */
-export function DigitalSourceEditorCompact({ label, value, disabled, onChange }: Props) {
+export function DigitalSourceEditorCompact({ label, value, disabled, onChange, allowAnalog = true }: Props) {
     const type = value.type ?? 0;
     const digitalOptions = DIGITAL_INPUTS.filter((d) => !isLockedDigitalSource(d.id));
 
@@ -33,6 +34,20 @@ export function DigitalSourceEditorCompact({ label, value, disabled, onChange }:
     }
 
     const isAnalog = type === 2 || type === 3;
+    const typeOptions = (() => {
+        const base = allowAnalog ? SOURCE_TYPE_OPTIONS : SOURCE_TYPE_OPTIONS.filter((opt) => opt.value === 0 || opt.value === 1);
+        if (!allowAnalog && isAnalog) {
+            return [
+                {
+                    value: type,
+                    short: type === 2 ? 'Analog ≥ (GP2040 only)' : 'Analog ≤ (GP2040 only)',
+                    disabled: true,
+                },
+                ...base,
+            ];
+        }
+        return base;
+    })();
 
     return (
         <div style={{
@@ -72,11 +87,13 @@ export function DigitalSourceEditorCompact({ label, value, disabled, onChange }:
                         minWidth: 70,
                         cursor: 'pointer',
                     }}
-                >
-                    {SOURCE_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.short}</option>
-                    ))}
-                </select>
+	                >
+	                    {typeOptions.map((opt) => (
+	                        <option key={`${opt.value}-${opt.short}`} value={opt.value} disabled={opt.disabled}>
+	                            {opt.short}
+	                        </option>
+	                    ))}
+	                </select>
 
                 {/* Digital source selector */}
                 {type === 1 && (
@@ -105,7 +122,7 @@ export function DigitalSourceEditorCompact({ label, value, disabled, onChange }:
                     <select
                         value={value.index}
                         onChange={(e) => update({ index: Number(e.target.value) })}
-                        disabled={disabled}
+                        disabled={disabled || !allowAnalog}
                         style={{
                             fontSize: 11,
                             padding: '2px 4px',
@@ -141,7 +158,7 @@ export function DigitalSourceEditorCompact({ label, value, disabled, onChange }:
                             step={0.01}
                             value={Number.isFinite(value.threshold) ? value.threshold : 0}
                             onChange={(e) => update({ threshold: Number(e.target.value) })}
-                            disabled={disabled}
+                            disabled={disabled || !allowAnalog}
                             style={{
                                 flex: 1,
                                 fontSize: 11,
@@ -162,7 +179,7 @@ export function DigitalSourceEditorCompact({ label, value, disabled, onChange }:
                             step={0.01}
                             value={Number.isFinite(value.hysteresis) ? value.hysteresis : 0}
                             onChange={(e) => update({ hysteresis: Number(e.target.value) })}
-                            disabled={disabled}
+                            disabled={disabled || !allowAnalog}
                             style={{
                                 flex: 1,
                                 fontSize: 11,

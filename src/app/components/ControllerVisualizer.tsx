@@ -6,7 +6,12 @@ import {
     analogInputLabel,
     isLockedDigitalDestination,
     ORCA_DUMMY_FIELD,
-    ORCA_ANALOG_MAPPING_DISABLED
+    ORCA_ANALOG_MAPPING_DISABLED,
+    DPAD_UP_VIRTUAL_DEST,
+    DPAD_DOWN_VIRTUAL_DEST,
+    DPAD_LEFT_VIRTUAL_DEST,
+    DPAD_RIGHT_VIRTUAL_DEST,
+    DPAD_VIRTUAL_DESTINATIONS,
 } from '../../schema/orcaMappings';
 import { getGp2040DestinationLabelSet, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
 
@@ -100,6 +105,16 @@ interface Props {
     destinationLabelMode?: 'orca' | 'gp2040';
     gp2040LabelPreset?: Gp2040LabelPreset;
     gp2040AnalogTriggerRouting?: 'lt' | 'rt'; // Read-only, derived from trigger policy
+    dpadLayer?: {
+        mode_up: number;
+        mode_down: number;
+        mode_left: number;
+        mode_right: number;
+        up: { type: number; index: number; threshold: number; hysteresis: number };
+        down: { type: number; index: number; threshold: number; hysteresis: number };
+        left: { type: number; index: number; threshold: number; hysteresis: number };
+        right: { type: number; index: number; threshold: number; hysteresis: number };
+    };
     onDigitalMappingChange: (dest: number, src: number) => void;
     onAnalogMappingChange: (dest: number, src: number, virtualDest?: number) => void;
     onClearAllBindings?: () => void;
@@ -115,6 +130,7 @@ export function ControllerVisualizer({
     destinationLabelMode = 'orca',
     gp2040LabelPreset,
     gp2040AnalogTriggerRouting = 'rt',
+    dpadLayer,
     onDigitalMappingChange,
     onAnalogMappingChange,
     onClearAllBindings,
@@ -195,8 +211,10 @@ export function ControllerVisualizer({
 
     const digitalDestinationOptions = useMemo(() => {
         const base = DIGITAL_INPUTS.filter((d) => !isLockedDigitalDestination(d.id) && !d.isDummy).sort((a, b) => a.id - b.id);
-        if (destinationLabelMode !== 'gp2040') return base;
-        return base.map((opt) => {
+        // Add DPAD virtual destinations
+        const withDpad = [...base, ...DPAD_VIRTUAL_DESTINATIONS];
+        if (destinationLabelMode !== 'gp2040') return withDpad;
+        return withDpad.map((opt) => {
             const overlay = gp2040LabelSet.digital[opt.id];
             return overlay ? { ...opt, label: overlay.label } : opt;
         });
@@ -262,9 +280,40 @@ export function ControllerVisualizer({
         }
     }, [selectedButton]);
 
+    // Helper to check if a source is bound to DPAD directions
+    function getDpadBindingsForSource(srcId: number): { direction: string; mode: number; virtualDest: number }[] {
+        if (!dpadLayer) return [];
+        const bindings: { direction: string; mode: number; virtualDest: number }[] = [];
+
+        if (dpadLayer.mode_up !== 0 && dpadLayer.up.type === 1 && dpadLayer.up.index === srcId) {
+            bindings.push({ direction: '↑', mode: dpadLayer.mode_up, virtualDest: DPAD_UP_VIRTUAL_DEST });
+        }
+        if (dpadLayer.mode_down !== 0 && dpadLayer.down.type === 1 && dpadLayer.down.index === srcId) {
+            bindings.push({ direction: '↓', mode: dpadLayer.mode_down, virtualDest: DPAD_DOWN_VIRTUAL_DEST });
+        }
+        if (dpadLayer.mode_left !== 0 && dpadLayer.left.type === 1 && dpadLayer.left.index === srcId) {
+            bindings.push({ direction: '←', mode: dpadLayer.mode_left, virtualDest: DPAD_LEFT_VIRTUAL_DEST });
+        }
+        if (dpadLayer.mode_right !== 0 && dpadLayer.right.type === 1 && dpadLayer.right.index === srcId) {
+            bindings.push({ direction: '→', mode: dpadLayer.mode_right, virtualDest: DPAD_RIGHT_VIRTUAL_DEST });
+        }
+
+        return bindings;
+    }
+
     function getShortMappingLabel(button: ButtonConfig): string {
         if (button.type === 'digital') {
             const destId = digitalDestBySrc[button.id] ?? ORCA_DUMMY_FIELD;
+
+            // Check if this button has DPAD bindings
+            const dpadBindings = getDpadBindingsForSource(button.id);
+
+            // If button is disabled (OFF) but has DPAD bindings, show DPAD label
+            if (destId === ORCA_DUMMY_FIELD && dpadBindings.length > 0) {
+                // Show first DPAD direction with D prefix (e.g., "D↑")
+                return `D${dpadBindings[0].direction}`;
+            }
+
             if (destId === ORCA_DUMMY_FIELD) return 'OFF';
             if (destinationLabelMode === 'gp2040') {
                 const overlay = gp2040LabelSet.digital[destId];
@@ -315,7 +364,15 @@ export function ControllerVisualizer({
             const src = selectedButton.id;
             const currentDest = digitalDestBySrc[src];
             if (value === ORCA_DUMMY_FIELD) {
-                if (currentDest !== undefined) onDigitalMappingChange(currentDest, ORCA_DUMMY_FIELD);
+                if (currentDest !== undefined) {
+                    onDigitalMappingChange(currentDest, ORCA_DUMMY_FIELD);
+                } else {
+                    // If this button is only bound through the DPAD layer (virtual destination), allow clearing it here.
+                    const dpadBindings = getDpadBindingsForSource(src);
+                    if (dpadBindings.length > 0) {
+                        onDigitalMappingChange(dpadBindings[0].virtualDest, ORCA_DUMMY_FIELD);
+                    }
+                }
                 return;
             }
             onDigitalMappingChange(value, src);
@@ -334,7 +391,12 @@ export function ControllerVisualizer({
     function getCurrentMappingValue(): number {
         if (!selectedButton) return 0;
         if (selectedButton.type === 'digital') {
-            return digitalDestBySrc[selectedButton.id] ?? ORCA_DUMMY_FIELD;
+            const src = selectedButton.id;
+            const currentDest = digitalDestBySrc[src];
+            if (currentDest !== undefined) return currentDest;
+            const dpadBindings = getDpadBindingsForSource(src);
+            if (dpadBindings.length > 0) return dpadBindings[0].virtualDest;
+            return ORCA_DUMMY_FIELD;
         }
         const destId = analogDestBySrc[selectedButton.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
         // In GP2040 mode, if mapped to trigger (4) and routed to LT, show the virtual LT ID
@@ -489,6 +551,13 @@ export function ControllerVisualizer({
                         />
                     );
 
+	                    const modifierDpadBinding = getDpadBindingsForSource(button.id).find((b) => b.mode === 1);
+	                    const modifierBadgeText = modifierDpadBinding?.direction ?? '';
+	                    const badgeR = 4.2;
+	                    const badgeRadialOffset = circle.r - badgeR * 0.2; // closer to edge; slight overhang like a badge
+	                    const badgeCx = circle.cx + badgeRadialOffset * Math.SQRT1_2;
+	                    const badgeCy = circle.cy - badgeRadialOffset * Math.SQRT1_2;
+
                     return (
                         <g key={index} className="interactive-element" onClick={(e) => handleElementClick('digital', index, e)}>
                             <circle
@@ -497,6 +566,35 @@ export function ControllerVisualizer({
                                 r={circle.r}
                                 style={circleStyle(index)}
                             />
+                            {modifierBadgeText && (
+                                <g style={{ pointerEvents: 'none' }}>
+	                                    <circle
+	                                        cx={badgeCx}
+	                                        cy={badgeCy}
+	                                        r={badgeR}
+	                                        style={{
+	                                            fill: 'var(--color-brand)',
+	                                            stroke: 'rgba(255, 255, 255, 0.25)',
+	                                            strokeWidth: 0.8,
+	                                            filter: 'drop-shadow(0px 1px 1px rgba(0,0,0,0.35))',
+	                                        }}
+	                                    />
+                                    <text
+                                        x={badgeCx}
+                                        y={badgeCy}
+                                        textAnchor="middle"
+	                                        dominantBaseline="middle"
+	                                        style={{
+	                                            fontSize: 7.5,
+	                                            fontWeight: 900,
+	                                            fill: 'var(--color-text-primary)',
+	                                            userSelect: 'none',
+	                                        }}
+                                    >
+                                        {modifierBadgeText}
+                                    </text>
+                                </g>
+                            )}
                             <text
                                 x={circle.cx}
                                 y={circle.cy + 3}
