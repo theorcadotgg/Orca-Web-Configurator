@@ -695,29 +695,9 @@ export default function App() {
                   })}
                 </div>
 
-                {/* GP2040 Label Presets */}
-                {configMode === 'gp2040' && (
-                  <div className="row mb-md" style={{ justifyContent: 'flex-end' }}>
-                    <span className="text-sm text-secondary">Button labels</span>
-                    <select
-                      value={gp2040LabelPreset}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (isGp2040LabelPreset(value)) setGp2040LabelPreset(value);
-                      }}
-                      disabled={busy}
-                      style={{ minWidth: 220 }}
-                    >
-                      <option value="gp2040">GP2040 (B1/B2/B3/B4)</option>
-                      <option value="xbox">Xbox (A/B/X/Y)</option>
-                      <option value="switch">Switch (B/A/Y/X)</option>
-                      <option value="playstation">PlayStation (✕/○/□/△)</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* Main View Toggle */}
-                <div className="row mb-md" style={{ justifyContent: 'center' }}>
+                {/* Layout / Inputs toggle + optional GP2040 label presets */}
+                <div className="row mb-md">
+                  <div className="flex-1" />
                   <div className="mode-tabs" style={{ marginLeft: 0 }}>
                     <button
                       className={`mode-tab ${mainView === 'layout' ? 'active' : ''}`}
@@ -733,6 +713,27 @@ export default function App() {
                     >
                       Inputs
                     </button>
+                  </div>
+                  <div className="flex-1 row" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    {configMode === 'gp2040' && (
+                      <>
+                        <span className="text-sm text-secondary">Button labels</span>
+                        <select
+                          value={gp2040LabelPreset}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (isGp2040LabelPreset(value)) setGp2040LabelPreset(value);
+                          }}
+                          disabled={busy}
+                          style={{ minWidth: 220 }}
+                        >
+                          <option value="gp2040">GP2040 (B1/B2/B3/B4)</option>
+                          <option value="xbox">Xbox (A/B/X/Y)</option>
+                          <option value="switch">Switch (B/A/Y/X)</option>
+                          <option value="playstation">PlayStation (✕/○/□/△)</option>
+                        </select>
+                      </>
+                    )}
                   </div>
                 </div>
 
