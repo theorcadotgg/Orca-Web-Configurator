@@ -1,5 +1,3 @@
-import type { ReactNode, RefObject } from 'react';
-
 type Props = {
     // State
     dirty: boolean;
@@ -11,13 +9,14 @@ type Props = {
     onSave: () => void;
     onReset: () => void;
     onReboot: () => void;
-    onExportCurrent: () => void;
-    onExportDraft: () => void;
-    onImport: () => void;
+    onExportProfile: () => void;
+    onImportProfile: () => void;
+    onExportDeviceCurrent: () => void;
+    onExportDeviceDraft: () => void;
+    onImportDevice: () => void;
     // Optional
     rebootAfterSave?: boolean;
     onRebootAfterSaveChange?: (value: boolean) => void;
-    importInputRef?: RefObject<HTMLInputElement | null>;
 };
 
 export function ActionToolbar({
@@ -29,12 +28,13 @@ export function ActionToolbar({
     onSave,
     onReset,
     onReboot,
-    onExportCurrent,
-    onExportDraft,
-    onImport,
+    onExportProfile,
+    onImportProfile,
+    onExportDeviceCurrent,
+    onExportDeviceDraft,
+    onImportDevice,
     rebootAfterSave = true,
     onRebootAfterSaveChange,
-    importInputRef,
 }: Props) {
     return (
         <footer className="layout-footer">
@@ -86,13 +86,24 @@ export function ActionToolbar({
 
             {/* Import/Export */}
             <div className="footer-group">
-                <button onClick={onExportCurrent} disabled={busy}>
+                <span className="text-xs text-muted">Profile</span>
+                <button onClick={onExportProfile} disabled={busy} title="Export the currently selected profile">
                     Export
                 </button>
-                <button onClick={onExportDraft} disabled={busy || !dirty}>
+                <button onClick={onImportProfile} disabled={busy} title="Import into the currently selected profile">
+                    Import…
+                </button>
+
+                <div className="footer-divider" style={{ height: 16 }} />
+
+                <span className="text-xs text-muted">Device</span>
+                <button onClick={onExportDeviceCurrent} disabled={busy} title="Export the full device configuration for this mode">
+                    Export
+                </button>
+                <button onClick={onExportDeviceDraft} disabled={busy || !dirty} title="Export unsaved changes for this mode">
                     Export Draft
                 </button>
-                <button onClick={onImport} disabled={busy}>
+                <button onClick={onImportDevice} disabled={busy} title="Import a full device configuration for this mode">
                     Import…
                 </button>
             </div>

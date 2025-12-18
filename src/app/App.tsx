@@ -5,6 +5,7 @@ import {
   ORCA_CONFIG_SETTINGS_PROFILE_COUNT,
 } from '@shared/orca_config_idl_generated';
 import { buildSettingsBlob, tryParseSettingsBlob, type ParsedSettings, type SettingsDraft } from '../schema/settingsBlob';
+import { ORCA_PROFILE_FILE_TYPE, parseProfileFileV1, serializeProfileFileV1, type OrcaProfileFileV1, type ProfileMode } from '../schema/profileFile';
 import { decodeStagedInvalidMask, validateSettingsDraft } from '../validators/settingsValidation';
 import type { DeviceInfo, OrcaTransport, ValidateStagedResult } from '../usb/OrcaTransport';
 import { OrcaWebSerialTransport } from '../usb/OrcaWebSerialTransport';
@@ -31,7 +32,7 @@ import OrcaLogo from '../assets/Orca_Logo_B.png';
 
 type DeviceValidationState = ValidateStagedResult & { decoded: string[] };
 type Compatibility = 'ok' | 'major_mismatch' | 'minor_mismatch' | 'unknown';
-type SlotMode = 'orca' | 'gp2040';
+type SlotMode = ProfileMode;
 type SlotId = 0 | 1;
 type MainView = 'layout' | 'inputs';
 
@@ -66,16 +67,22 @@ function slotDisplayName(slot: SlotId): string {
   return slot === 0 ? 'Orca Mode (Primary)' : 'GP2040 Mode (Secondary)';
 }
 
-function downloadBytes(filename: string, bytes: Uint8Array) {
+function downloadBytes(filename: string, bytes: Uint8Array, mimeType = 'application/octet-stream') {
   const copy = new Uint8Array(bytes.byteLength);
   copy.set(bytes);
-  const blob = new Blob([copy.buffer], { type: 'application/octet-stream' });
+  const blob = new Blob([copy.buffer], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function sanitizeFilenamePart(input: string): string {
+  const trimmed = input.trim();
+  const normalized = trimmed.replace(/[^a-z0-9-_]+/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  return normalized || 'profile';
 }
 
 function cloneDraft(draft: SettingsDraft): SettingsDraft {
@@ -160,7 +167,8 @@ export default function App() {
   const [rebootAfterSave, setRebootAfterSave] = useState(true);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  const importRef = useRef<HTMLInputElement | null>(null);
+  const importDeviceRef = useRef<HTMLInputElement | null>(null);
+  const importProfileRef = useRef<HTMLInputElement | null>(null);
 
   const activeSlot = modeToSlotId(configMode);
   const currentState = slotStates[activeSlot];
@@ -554,7 +562,43 @@ export default function App() {
     if (baseBlob && draft) downloadBytes(`orca-settings-${slotSuffix(activeSlot)}-draft.bin`, buildSettingsBlob(baseBlob, draft));
   }
 
-  async function importBlobFromFile(file: File) {
+  function exportCurrentProfile() {
+    if (!draft) return;
+    setLastError('');
+    setProgress('');
+    setDeviceValidation(null);
+
+    const label = draft.profileLabels[activeProfile]?.trim() || `Profile ${activeProfile + 1}`;
+    const digitalMapping = draft.digitalMappings[activeProfile];
+    const analogMapping = draft.analogMappings[activeProfile];
+    const dpadLayer = draft.dpadLayer[activeProfile];
+    const triggerPolicy = draft.triggerPolicy[activeProfile];
+    const stickCurveParams = draft.stickCurveParams[activeProfile];
+
+    if (!digitalMapping || !analogMapping || !dpadLayer || !triggerPolicy || !stickCurveParams) {
+      setLastError('Cannot export profile: missing profile data.');
+      return;
+    }
+
+    const fileData: OrcaProfileFileV1 = {
+      type: ORCA_PROFILE_FILE_TYPE,
+      version: 1,
+      mode: configMode,
+      label,
+      digitalMapping: [...digitalMapping],
+      analogMapping: [...analogMapping],
+      dpadLayer,
+      triggerPolicy,
+      stickCurveParams,
+    };
+
+    const json = serializeProfileFileV1(fileData);
+    const bytes = new TextEncoder().encode(json);
+    const filename = `orca-profile-${configMode}-p${activeProfile + 1}-${sanitizeFilenamePart(label)}.json`;
+    downloadBytes(filename, bytes, 'application/json');
+  }
+
+  async function importDeviceBlobFromFile(file: File) {
     setLastError('');
     setProgress('');
     setDeviceValidation(null);
@@ -565,6 +609,44 @@ export default function App() {
       const res = tryParseSettingsBlob(blob);
       if (!res.ok) throw new Error(res.error);
       updateSlotState(activeSlot, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: true });
+    } catch (e) {
+      setLastError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function importProfileFromFile(file: File) {
+    setLastError('');
+    setProgress('');
+    setDeviceValidation(null);
+    try {
+      setBusy(true);
+      if (!draft) return;
+
+      const jsonText = await file.text();
+      const imported = parseProfileFileV1(jsonText);
+
+      if (imported.mode !== configMode) {
+        const want = imported.mode === 'orca' ? 'Orca Mode (Primary)' : 'GP2040 Mode (Secondary)';
+        const current = configMode === 'orca' ? 'Orca Mode (Primary)' : 'GP2040 Mode (Secondary)';
+        throw new Error(`Incompatible profile: this file is for ${want}. You're currently editing ${current}. Switch modes to import.`);
+      }
+
+      const updated = cloneDraft(draft);
+      updated.profileLabels[activeProfile] = imported.label.trim() || `Profile ${activeProfile + 1}`;
+      updated.digitalMappings[activeProfile] = imported.digitalMapping;
+      updated.analogMappings[activeProfile] = imported.analogMapping;
+      updated.dpadLayer[activeProfile] = imported.dpadLayer;
+      updated.triggerPolicy[activeProfile] = imported.triggerPolicy;
+      updated.stickCurveParams[activeProfile] = imported.stickCurveParams;
+
+      if (baseBlob) {
+        // Validate that the imported profile yields a buildable blob before mutating UI state.
+        buildSettingsBlob(baseBlob, updated);
+      }
+
+      onDraftChange(updated);
     } catch (e) {
       setLastError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -905,23 +987,38 @@ export default function App() {
           onSave={saveToDevice}
           onReset={() => setShowResetConfirm(true)}
           onReboot={rebootNow}
-          onExportCurrent={exportCurrentBlob}
-          onExportDraft={exportDraftBlob}
-          onImport={() => importRef.current?.click()}
+          onExportProfile={exportCurrentProfile}
+          onImportProfile={() => importProfileRef.current?.click()}
+          onExportDeviceCurrent={exportCurrentBlob}
+          onExportDeviceDraft={exportDraftBlob}
+          onImportDevice={() => importDeviceRef.current?.click()}
           rebootAfterSave={rebootAfterSave}
           onRebootAfterSaveChange={setRebootAfterSave}
         />
       )}
 
-      {/* Hidden file input */}
+      {/* Hidden file input (device config) */}
       <input
-        ref={importRef}
+        ref={importDeviceRef}
         type="file"
         accept=".bin,application/octet-stream"
         style={{ display: 'none' }}
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) void importBlobFromFile(file);
+          if (file) void importDeviceBlobFromFile(file);
+          e.target.value = '';
+        }}
+      />
+
+      {/* Hidden file input (single profile) */}
+      <input
+        ref={importProfileRef}
+        type="file"
+        accept=".json,application/json"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void importProfileFromFile(file);
           e.target.value = '';
         }}
       />
