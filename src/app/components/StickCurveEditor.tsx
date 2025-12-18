@@ -4,18 +4,26 @@ type Props = {
     draft: SettingsDraft;
     disabled?: boolean;
     onChange: (next: SettingsDraft) => void;
+    mode?: 'orca' | 'gp2040'; // Mode determines valid ranges
 };
 
 // Preset definitions - values in the 0-128 scale used by firmware
 // Converted to normalized values when applied
+// GP2040 uses different Rivals 2 values and supports higher ranges
 const PRESETS = {
     melee: {
         magnitude: 99,  // 99/128 ≈ 0.7734
         notch: 33,      // 33/128 ≈ 0.2578
     },
     rivals2: {
-        magnitude: 120, // 120/128 ≈ 0.9375
-        notch: 40,      // 40/128 ≈ 0.3125
+        orca: {
+            magnitude: 120, // 120/128 ≈ 0.9375
+            notch: 40,      // 40/128 ≈ 0.3125
+        },
+        gp2040: {
+            magnitude: 125, // 125/128 ≈ 0.9766
+            notch: 65,      // 65/128 ≈ 0.5078
+        },
     },
 } as const;
 
@@ -29,7 +37,7 @@ function fromNormalized(value: number): number {
     return Math.round(value * 128);
 }
 
-function detectPreset(params: StickCurveParamsV1): PresetMode {
+function detectPreset(params: StickCurveParamsV1, mode: 'orca' | 'gp2040'): PresetMode {
     // Check if all stick axes (0-3) match a preset
     // Axis 4 is trigger, we don't compare it
     const mag = fromNormalized(params.range[0] ?? 0);
@@ -48,12 +56,13 @@ function detectPreset(params: StickCurveParamsV1): PresetMode {
         return 'melee';
     }
 
-    // Check rivals2
-    if (Math.abs(mag - PRESETS.rivals2.magnitude) <= 1 && Math.abs(notch - PRESETS.rivals2.notch) <= 1) {
+    // Check rivals2 (different values for each mode)
+    const rivals2Preset = PRESETS.rivals2[mode];
+    if (Math.abs(mag - rivals2Preset.magnitude) <= 1 && Math.abs(notch - rivals2Preset.notch) <= 1) {
         for (let i = 0; i < 4; i++) {
             const axisMag = fromNormalized(params.range[i] ?? 0);
             const axisNotch = fromNormalized(params.notch[i] ?? 0);
-            if (Math.abs(axisMag - PRESETS.rivals2.magnitude) > 1 || Math.abs(axisNotch - PRESETS.rivals2.notch) > 1) {
+            if (Math.abs(axisMag - rivals2Preset.magnitude) > 1 || Math.abs(axisNotch - rivals2Preset.notch) > 1) {
                 return 'custom';
             }
         }
@@ -88,10 +97,15 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
     };
 }
 
-export function StickCurveEditor({ draft, disabled, onChange }: Props) {
+export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: Props) {
     const activeProfile = draft.activeProfile ?? 0;
     const params = draft.stickCurveParams[activeProfile] ?? draft.stickCurveParams[0]!;
-    const currentPreset = detectPreset(params);
+    const currentPreset = detectPreset(params, mode);
+
+    // GP2040 supports extended ranges: magnitude up to 154 (1.2 * 128), notch up to 100
+    // Orca mode uses more conservative ranges
+    const magnitudeMax = mode === 'gp2040' ? 154 : 125;
+    const notchMax = mode === 'gp2040' ? 100 : 55;
 
     function updateParams(patch: Partial<StickCurveParamsV1>) {
         const updated = cloneDraft(draft);
@@ -103,7 +117,13 @@ export function StickCurveEditor({ draft, disabled, onChange }: Props) {
 
     function applyPreset(preset: 'melee' | 'rivals2') {
         const updated = cloneDraft(draft);
-        const presetValues = PRESETS[preset];
+        let presetValues;
+        if (preset === 'melee') {
+            presetValues = PRESETS.melee;
+        } else {
+            // Use mode-specific Rivals 2 preset
+            presetValues = PRESETS.rivals2[mode];
+        }
         const magNorm = toNormalized(presetValues.magnitude);
         const notchNorm = toNormalized(presetValues.notch);
 
@@ -275,7 +295,7 @@ export function StickCurveEditor({ draft, disabled, onChange }: Props) {
                         label="X-Axis"
                         value={xMag}
                         min={70}
-                        max={125}
+                        max={magnitudeMax}
                         disabled={disabled}
                         onChange={(v) => setAxisValue('range', [0, 1], v)}
                         accentColor="var(--color-accent-primary)"
@@ -286,7 +306,7 @@ export function StickCurveEditor({ draft, disabled, onChange }: Props) {
                         label="Up"
                         value={upMag}
                         min={70}
-                        max={125}
+                        max={magnitudeMax}
                         disabled={disabled}
                         onChange={(v) => setAxisValue('range', [2], v)}
                         accentColor="var(--color-accent-primary)"
@@ -297,7 +317,7 @@ export function StickCurveEditor({ draft, disabled, onChange }: Props) {
                         label="Down"
                         value={downMag}
                         min={70}
-                        max={125}
+                        max={magnitudeMax}
                         disabled={disabled}
                         onChange={(v) => setAxisValue('range', [3], v)}
                         accentColor="var(--color-accent-primary)"
@@ -320,7 +340,7 @@ export function StickCurveEditor({ draft, disabled, onChange }: Props) {
                         label="X-Axis"
                         value={xNotch}
                         min={20}
-                        max={55}
+                        max={notchMax}
                         disabled={disabled}
                         onChange={(v) => setAxisValue('notch', [0, 1], v)}
                         accentColor="var(--color-accent-secondary)"
@@ -331,7 +351,7 @@ export function StickCurveEditor({ draft, disabled, onChange }: Props) {
                         label="Up"
                         value={upNotch}
                         min={20}
-                        max={55}
+                        max={notchMax}
                         disabled={disabled}
                         onChange={(v) => setAxisValue('notch', [2], v)}
                         accentColor="var(--color-accent-secondary)"
@@ -342,7 +362,7 @@ export function StickCurveEditor({ draft, disabled, onChange }: Props) {
                         label="Down"
                         value={downNotch}
                         min={20}
-                        max={55}
+                        max={notchMax}
                         disabled={disabled}
                         onChange={(v) => setAxisValue('notch', [3], v)}
                         accentColor="var(--color-accent-secondary)"

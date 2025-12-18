@@ -771,7 +771,7 @@ export default function App() {
           <CollapsiblePanel title="Stick Configuration">
             {draft ? (
               <>
-                <StickCurveEditor draft={draft} disabled={busy} onChange={onDraftChange} />
+                <StickCurveEditor draft={draft} disabled={busy} onChange={onDraftChange} mode={configMode} />
               </>
             ) : (
               <div className="text-sm text-muted">Connect to configure</div>
