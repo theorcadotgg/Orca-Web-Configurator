@@ -23,21 +23,22 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
         profileLabels: [...draft.profileLabels],
         digitalMappings: draft.digitalMappings.map((m) => [...m]),
         analogMappings: draft.analogMappings.map((m) => [...m]),
-        dpadLayer: {
-            ...draft.dpadLayer,
-            enable: { ...draft.dpadLayer.enable },
-            up: { ...draft.dpadLayer.up },
-            down: { ...draft.dpadLayer.down },
-            left: { ...draft.dpadLayer.left },
-            right: { ...draft.dpadLayer.right },
-        },
-        triggerPolicy: { ...draft.triggerPolicy },
+        dpadLayer: draft.dpadLayer.map((layer) => ({
+            ...layer,
+            enable: { ...layer.enable },
+            up: { ...layer.up },
+            down: { ...layer.down },
+            left: { ...layer.left },
+            right: { ...layer.right },
+        })),
+        triggerPolicy: draft.triggerPolicy.map((policy) => ({ ...policy })),
     };
 }
 
 export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp2040LabelPreset }: Props) {
-    const layer = draft.dpadLayer;
     const activeProfile = draft.activeProfile ?? 0;
+    const layer = draft.dpadLayer[activeProfile] ?? draft.dpadLayer[0];
+    if (!layer) return null;
 
     // In GP2040 mode, Orca destination 11 ("ORCA_DPAD") is labeled as the GP2040 shoulder button (L1/LB/L).
     const ORCA_DPAD_DEST = 11;
@@ -55,7 +56,9 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
 
     function updateLayer(patch: Partial<typeof layer>) {
         const updated = cloneDraft(draft);
-        updated.dpadLayer = { ...updated.dpadLayer, ...patch };
+        const current = updated.dpadLayer[activeProfile] ?? updated.dpadLayer[0];
+        if (!current) return;
+        updated.dpadLayer[activeProfile] = { ...current, ...patch };
         onChange(updated);
     }
 
@@ -67,7 +70,7 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
 
     function setLayer(nextLayer: typeof layer) {
         const updated = cloneDraft(draft);
-        updated.dpadLayer = nextLayer;
+        updated.dpadLayer[activeProfile] = nextLayer;
         onChange(updated);
     }
 

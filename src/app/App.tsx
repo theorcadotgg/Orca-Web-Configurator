@@ -82,15 +82,22 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
     profileLabels: [...draft.profileLabels],
     digitalMappings: draft.digitalMappings.map((m) => [...m]),
     analogMappings: draft.analogMappings.map((m) => [...m]),
-    dpadLayer: { ...draft.dpadLayer, enable: { ...draft.dpadLayer.enable }, up: { ...draft.dpadLayer.up }, down: { ...draft.dpadLayer.down }, left: { ...draft.dpadLayer.left }, right: { ...draft.dpadLayer.right } },
-    triggerPolicy: { ...draft.triggerPolicy },
-    stickCurveParams: {
-      ...draft.stickCurveParams,
-      range: [...draft.stickCurveParams.range],
-      notch: [...draft.stickCurveParams.notch],
-      dz_lower: [...draft.stickCurveParams.dz_lower],
-      dz_upper: [...draft.stickCurveParams.dz_upper],
-    },
+    dpadLayer: draft.dpadLayer.map((layer) => ({
+      ...layer,
+      enable: { ...layer.enable },
+      up: { ...layer.up },
+      down: { ...layer.down },
+      left: { ...layer.left },
+      right: { ...layer.right },
+    })),
+    triggerPolicy: draft.triggerPolicy.map((policy) => ({ ...policy })),
+    stickCurveParams: draft.stickCurveParams.map((p) => ({
+      ...p,
+      range: [...p.range],
+      notch: [...p.notch],
+      dz_lower: [...p.dz_lower],
+      dz_upper: [...p.dz_upper],
+    })),
   };
 }
 
@@ -185,9 +192,10 @@ export default function App() {
 
   const gp2040AnalogTriggerOutput = useMemo(() => {
     if (!draft) return 'rt' as const;
-    const analogToLt = (draft.triggerPolicy.flags & TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT) !== 0;
+    const policy = draft.triggerPolicy[activeProfile] ?? draft.triggerPolicy[0];
+    const analogToLt = ((policy?.flags ?? 0) & TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT) !== 0;
     return analogToLt ? ('lt' as const) : ('rt' as const);
-  }, [draft]);
+  }, [activeProfile, draft]);
 
   // Handlers
   async function connect() {
@@ -374,9 +382,15 @@ export default function App() {
       // In GP2040 mode, automatically update trigger policy flag based on virtual destination
       if (configMode === 'gp2040' && dest === 4 && virtualDest !== undefined) {
         const routeToLt = virtualDest === GP2040_ANALOG_LT_VIRTUAL_ID;
-        updated.triggerPolicy.flags = routeToLt
-          ? (updated.triggerPolicy.flags | TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT)
-          : (updated.triggerPolicy.flags & ~TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT);
+        const policy = updated.triggerPolicy[activeProfile] ?? updated.triggerPolicy[0];
+        if (policy) {
+          updated.triggerPolicy[activeProfile] = {
+            ...policy,
+            flags: routeToLt
+              ? (policy.flags | TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT)
+              : (policy.flags & ~TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT),
+          };
+        }
       }
     }
     onDraftChange(updated);
@@ -742,7 +756,10 @@ export default function App() {
           </div>
 
           {/* DPAD Panel */}
-          <CollapsiblePanel title="DPAD Layer" badge={draft?.dpadLayer.mode !== 0 ? <span className="pill pill-brand" style={{ marginLeft: 8 }}>Active</span> : null}>
+          <CollapsiblePanel
+            title="DPAD Layer"
+            badge={draft?.dpadLayer?.[activeProfile]?.mode !== 0 ? <span className="pill pill-brand" style={{ marginLeft: 8 }}>Active</span> : null}
+          >
             {draft ? (
               <DpadEditor draft={draft} disabled={busy} onChange={onDraftChange} contextMode={configMode} gp2040LabelPreset={gp2040LabelPreset} />
             ) : (
@@ -754,12 +771,7 @@ export default function App() {
           <CollapsiblePanel title="Stick Configuration">
             {draft ? (
               <>
-                {activeSlot === 1 && (
-                  <div className="text-xs text-muted" style={{ marginBottom: 'var(--spacing-sm)' }}>
-                    Mirrored from Orca mode (read-only in GP2040 mode).
-                  </div>
-                )}
-                <StickCurveEditor draft={draft} disabled={busy || activeSlot === 1} onChange={onDraftChange} />
+                <StickCurveEditor draft={draft} disabled={busy} onChange={onDraftChange} />
               </>
             ) : (
               <div className="text-sm text-muted">Connect to configure</div>
@@ -772,7 +784,7 @@ export default function App() {
               <>
                 {activeSlot === 1 && (
                   <div className="text-xs text-muted" style={{ marginBottom: 'var(--spacing-sm)' }}>
-                    Stored per mode. GP2040 analog trigger routing is configured in the main mapping.
+                    Stored per mode and profile. GP2040 analog trigger routing is configured in the main mapping.
                   </div>
                 )}
                 <TriggerEditor draft={draft} disabled={busy} onChange={onDraftChange} />

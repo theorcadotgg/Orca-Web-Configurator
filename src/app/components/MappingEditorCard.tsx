@@ -16,8 +16,15 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
     profileLabels: [...draft.profileLabels],
     digitalMappings: draft.digitalMappings.map((m) => [...m]),
     analogMappings: draft.analogMappings.map((m) => [...m]),
-    dpadLayer: { ...draft.dpadLayer, enable: { ...draft.dpadLayer.enable }, up: { ...draft.dpadLayer.up }, down: { ...draft.dpadLayer.down }, left: { ...draft.dpadLayer.left }, right: { ...draft.dpadLayer.right } },
-    triggerPolicy: { ...draft.triggerPolicy },
+    dpadLayer: draft.dpadLayer.map((layer) => ({
+      ...layer,
+      enable: { ...layer.enable },
+      up: { ...layer.up },
+      down: { ...layer.down },
+      left: { ...layer.left },
+      right: { ...layer.right },
+    })),
+    triggerPolicy: draft.triggerPolicy.map((policy) => ({ ...policy })),
   };
 }
 

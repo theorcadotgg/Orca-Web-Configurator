@@ -69,32 +69,35 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
         profileLabels: [...draft.profileLabels],
         digitalMappings: draft.digitalMappings.map((m) => [...m]),
         analogMappings: draft.analogMappings.map((m) => [...m]),
-        dpadLayer: {
-            ...draft.dpadLayer,
-            enable: { ...draft.dpadLayer.enable },
-            up: { ...draft.dpadLayer.up },
-            down: { ...draft.dpadLayer.down },
-            left: { ...draft.dpadLayer.left },
-            right: { ...draft.dpadLayer.right },
-        },
-        triggerPolicy: { ...draft.triggerPolicy },
-        stickCurveParams: {
-            ...draft.stickCurveParams,
-            range: [...draft.stickCurveParams.range],
-            notch: [...draft.stickCurveParams.notch],
-            dz_lower: [...draft.stickCurveParams.dz_lower],
-            dz_upper: [...draft.stickCurveParams.dz_upper],
-        },
+        dpadLayer: draft.dpadLayer.map((layer) => ({
+            ...layer,
+            enable: { ...layer.enable },
+            up: { ...layer.up },
+            down: { ...layer.down },
+            left: { ...layer.left },
+            right: { ...layer.right },
+        })),
+        triggerPolicy: draft.triggerPolicy.map((policy) => ({ ...policy })),
+        stickCurveParams: draft.stickCurveParams.map((p) => ({
+            ...p,
+            range: [...p.range],
+            notch: [...p.notch],
+            dz_lower: [...p.dz_lower],
+            dz_upper: [...p.dz_upper],
+        })),
     };
 }
 
 export function StickCurveEditor({ draft, disabled, onChange }: Props) {
-    const params = draft.stickCurveParams;
+    const activeProfile = draft.activeProfile ?? 0;
+    const params = draft.stickCurveParams[activeProfile] ?? draft.stickCurveParams[0]!;
     const currentPreset = detectPreset(params);
 
     function updateParams(patch: Partial<StickCurveParamsV1>) {
         const updated = cloneDraft(draft);
-        updated.stickCurveParams = { ...updated.stickCurveParams, ...patch };
+        const current = updated.stickCurveParams[activeProfile] ?? updated.stickCurveParams[0];
+        if (!current) return;
+        updated.stickCurveParams[activeProfile] = { ...current, ...patch };
         onChange(updated);
     }
 
@@ -105,24 +108,24 @@ export function StickCurveEditor({ draft, disabled, onChange }: Props) {
         const notchNorm = toNormalized(presetValues.notch);
 
         // Apply to stick axes (0-3), preserve trigger (4)
-        updated.stickCurveParams.range = [
+        updated.stickCurveParams[activeProfile]!.range = [
             magNorm, magNorm, magNorm, magNorm,
-            updated.stickCurveParams.range[4] ?? 1.0,
+            updated.stickCurveParams[activeProfile]!.range[4] ?? 1.0,
         ];
-        updated.stickCurveParams.notch = [
+        updated.stickCurveParams[activeProfile]!.notch = [
             notchNorm, notchNorm, notchNorm, notchNorm,
-            updated.stickCurveParams.notch[4] ?? 0.234,
+            updated.stickCurveParams[activeProfile]!.notch[4] ?? 0.234,
         ];
         onChange(updated);
     }
 
     function setAxisValue(field: 'range' | 'notch', axisIndices: number[], value: number) {
         const updated = cloneDraft(draft);
-        const arr = [...updated.stickCurveParams[field]];
+        const arr = [...updated.stickCurveParams[activeProfile]![field]];
         for (const i of axisIndices) {
             arr[i] = toNormalized(value);
         }
-        updated.stickCurveParams[field] = arr;
+        updated.stickCurveParams[activeProfile]![field] = arr;
         onChange(updated);
     }
 
@@ -251,9 +254,9 @@ export function StickCurveEditor({ draft, disabled, onChange }: Props) {
                 flexDirection: 'column',
                 gap: 'var(--spacing-md)',
                 padding: 'var(--spacing-md)',
-                background: currentPreset === 'custom' ? 'var(--color-bg-tertiary)' : 'var(--color-bg-secondary)',
+                background: 'var(--color-bg-secondary)',
                 borderRadius: 'var(--radius-md)',
-                border: currentPreset === 'custom' ? '1px solid var(--color-accent-primary)' : '1px solid var(--color-border)',
+                border: '1px solid var(--color-border)',
                 transition: 'all 0.2s ease',
             }}>
                 {/* Magnitude Section */}

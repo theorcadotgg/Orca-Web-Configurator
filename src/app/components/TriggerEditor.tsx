@@ -24,24 +24,28 @@ function cloneDraft(draft: SettingsDraft): SettingsDraft {
         profileLabels: [...draft.profileLabels],
         digitalMappings: draft.digitalMappings.map((m) => [...m]),
         analogMappings: draft.analogMappings.map((m) => [...m]),
-        dpadLayer: {
-            ...draft.dpadLayer,
-            enable: { ...draft.dpadLayer.enable },
-            up: { ...draft.dpadLayer.up },
-            down: { ...draft.dpadLayer.down },
-            left: { ...draft.dpadLayer.left },
-            right: { ...draft.dpadLayer.right },
-        },
-        triggerPolicy: { ...draft.triggerPolicy },
+        dpadLayer: draft.dpadLayer.map((layer) => ({
+            ...layer,
+            enable: { ...layer.enable },
+            up: { ...layer.up },
+            down: { ...layer.down },
+            left: { ...layer.left },
+            right: { ...layer.right },
+        })),
+        triggerPolicy: draft.triggerPolicy.map((policy) => ({ ...policy })),
     };
 }
 
 export function TriggerEditor({ draft, disabled, onChange }: Props) {
-    const policy = draft.triggerPolicy;
+    const activeProfile = draft.activeProfile ?? 0;
+    const policy = draft.triggerPolicy[activeProfile] ?? draft.triggerPolicy[0];
+    if (!policy) return null;
 
     function updatePolicy(patch: Partial<typeof policy>) {
         const updated = cloneDraft(draft);
-        updated.triggerPolicy = { ...updated.triggerPolicy, ...patch };
+        const current = updated.triggerPolicy[activeProfile] ?? updated.triggerPolicy[0];
+        if (!current) return;
+        updated.triggerPolicy[activeProfile] = { ...current, ...patch };
         onChange(updated);
     }
 

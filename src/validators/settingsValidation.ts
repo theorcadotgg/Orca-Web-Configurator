@@ -48,19 +48,19 @@ function validateDigitalSource(src: DigitalSourceV1, label: string): string[] {
   }
 }
 
-function validateTriggerPolicy(policy: TriggerPolicyV1): string[] {
+function validateTriggerPolicy(policy: TriggerPolicyV1, label: string): string[] {
   const errors: string[] = [];
   if (!isFiniteNumber(policy.analogRangeMax) || policy.analogRangeMax < 0 || policy.analogRangeMax > 1) {
-    errors.push('Trigger: analog range max must be within [0, 1]');
+    errors.push(`${label}: analog range max must be within [0, 1]`);
   }
   if (!isFiniteNumber(policy.digitalFullPress) || policy.digitalFullPress < 0 || policy.digitalFullPress > 1) {
-    errors.push('Trigger: digital full press must be within [0, 1]');
+    errors.push(`${label}: digital full press must be within [0, 1]`);
   }
   if (!isFiniteNumber(policy.digitalLightshield) || policy.digitalLightshield < 0 || policy.digitalLightshield > 1) {
-    errors.push('Trigger: digital lightshield must be within [0, 1]');
+    errors.push(`${label}: digital lightshield must be within [0, 1]`);
   }
   if (isFiniteNumber(policy.digitalFullPress) && isFiniteNumber(policy.digitalLightshield) && policy.digitalLightshield > policy.digitalFullPress) {
-    errors.push('Trigger: lightshield threshold must be <= full press threshold');
+    errors.push(`${label}: lightshield threshold must be <= full press threshold`);
   }
   return errors;
 }
@@ -148,16 +148,29 @@ export function validateSettingsDraft(draft: SettingsDraft): ValidationResult {
     }
   }
 
-  if (draft.dpadLayer.mode < 0 || draft.dpadLayer.mode > 2) {
-    errors.push('DPAD: mode must be 0..2');
+  if (draft.dpadLayer.length !== ORCA_CONFIG_SETTINGS_PROFILE_COUNT) {
+    errors.push(`Expected ${ORCA_CONFIG_SETTINGS_PROFILE_COUNT} DPAD Layer profiles`);
+  } else {
+    for (let profile = 0; profile < draft.dpadLayer.length; profile++) {
+      const layer = draft.dpadLayer[profile]!;
+      if (layer.mode < 0 || layer.mode > 2) {
+        errors.push(`Profile ${profile + 1}: DPAD mode must be 0..2`);
+      }
+      errors.push(...validateDigitalSource(layer.enable, `Profile ${profile + 1}: DPAD enable`));
+      errors.push(...validateDigitalSource(layer.up, `Profile ${profile + 1}: DPAD up`));
+      errors.push(...validateDigitalSource(layer.down, `Profile ${profile + 1}: DPAD down`));
+      errors.push(...validateDigitalSource(layer.left, `Profile ${profile + 1}: DPAD left`));
+      errors.push(...validateDigitalSource(layer.right, `Profile ${profile + 1}: DPAD right`));
+    }
   }
-  errors.push(...validateDigitalSource(draft.dpadLayer.enable, 'DPAD enable'));
-  errors.push(...validateDigitalSource(draft.dpadLayer.up, 'DPAD up'));
-  errors.push(...validateDigitalSource(draft.dpadLayer.down, 'DPAD down'));
-  errors.push(...validateDigitalSource(draft.dpadLayer.left, 'DPAD left'));
-  errors.push(...validateDigitalSource(draft.dpadLayer.right, 'DPAD right'));
 
-  errors.push(...validateTriggerPolicy(draft.triggerPolicy));
+  if (draft.triggerPolicy.length !== ORCA_CONFIG_SETTINGS_PROFILE_COUNT) {
+    errors.push(`Expected ${ORCA_CONFIG_SETTINGS_PROFILE_COUNT} Trigger Policy profiles`);
+  } else {
+    for (let profile = 0; profile < draft.triggerPolicy.length; profile++) {
+      errors.push(...validateTriggerPolicy(draft.triggerPolicy[profile]!, `Profile ${profile + 1}: Trigger`));
+    }
+  }
 
   return { errors, warnings };
 }

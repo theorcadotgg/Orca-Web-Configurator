@@ -80,9 +80,9 @@ export type SettingsDraft = {
   profileLabels: string[];
   digitalMappings: number[][];
   analogMappings: number[][];
-  dpadLayer: DpadLayerV1;
-  triggerPolicy: TriggerPolicyV1;
-  stickCurveParams: StickCurveParamsV1;
+  dpadLayer: DpadLayerV1[];
+  triggerPolicy: TriggerPolicyV1[];
+  stickCurveParams: StickCurveParamsV1[];
 };
 
 export type ParsedSettings = {
@@ -294,9 +294,19 @@ export function parseSettingsBlob(blob: Uint8Array): ParsedSettings {
     analogMappings.push(Array.from(data));
   }
 
-  const dpadLayer = parseDpadLayerV1(readTlvData(blob, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, 0));
-  const triggerPolicy = parseTriggerPolicyV1(readTlvData(blob, OrcaSettingsTlv.TriggerPolicy satisfies TlvInfo, 0));
-  const stickCurveParams = parseStickCurveParamsV1(readTlvData(blob, OrcaSettingsTlv.StickCurveParams satisfies TlvInfo, 0));
+  const dpadLayer: DpadLayerV1[] = [];
+  for (let i = 0; i < OrcaSettingsTlv.DpadLayer.count; i++) {
+    dpadLayer.push(parseDpadLayerV1(readTlvData(blob, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, i)));
+  }
+
+  const triggerPolicy: TriggerPolicyV1[] = [];
+  for (let i = 0; i < OrcaSettingsTlv.TriggerPolicy.count; i++) {
+    triggerPolicy.push(parseTriggerPolicyV1(readTlvData(blob, OrcaSettingsTlv.TriggerPolicy satisfies TlvInfo, i)));
+  }
+  const stickCurveParams: StickCurveParamsV1[] = [];
+  for (let i = 0; i < OrcaSettingsTlv.StickCurveParams.count; i++) {
+    stickCurveParams.push(parseStickCurveParamsV1(readTlvData(blob, OrcaSettingsTlv.StickCurveParams satisfies TlvInfo, i)));
+  }
 
   const draft: SettingsDraft = {
     activeProfile,
@@ -341,12 +351,40 @@ export function buildSettingsBlob(baseBlob: Uint8Array, draft: SettingsDraft): U
     writeTlvData(out, OrcaSettingsTlv.AnalogMappings satisfies TlvInfo, i, Uint8Array.from(mapping.map((v) => v & 0xff)));
   }
 
-  writeTlvData(out, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, 0, encodeDpadLayerV1(draft.dpadLayer));
-  writeTlvData(out, OrcaSettingsTlv.TriggerPolicy satisfies TlvInfo, 0, encodeTriggerPolicyV1(draft.triggerPolicy));
-  writeTlvData(out, OrcaSettingsTlv.StickCurveParams satisfies TlvInfo, 0, encodeStickCurveParamsV1(draft.stickCurveParams));
+  if (draft.dpadLayer.length !== OrcaSettingsTlv.DpadLayer.count) {
+    throw new Error(`Bad DPAD layer length (want ${OrcaSettingsTlv.DpadLayer.count}, got ${draft.dpadLayer.length})`);
+  }
+  for (let i = 0; i < OrcaSettingsTlv.DpadLayer.count; i++) {
+    const layer = draft.dpadLayer[i];
+    if (!layer) {
+      throw new Error(`Missing DPAD layer for profile ${i}`);
+    }
+    writeTlvData(out, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, i, encodeDpadLayerV1(layer));
+  }
+
+  if (draft.triggerPolicy.length !== OrcaSettingsTlv.TriggerPolicy.count) {
+    throw new Error(`Bad trigger policy length (want ${OrcaSettingsTlv.TriggerPolicy.count}, got ${draft.triggerPolicy.length})`);
+  }
+  for (let i = 0; i < OrcaSettingsTlv.TriggerPolicy.count; i++) {
+    const policy = draft.triggerPolicy[i];
+    if (!policy) {
+      throw new Error(`Missing trigger policy for profile ${i}`);
+    }
+    writeTlvData(out, OrcaSettingsTlv.TriggerPolicy satisfies TlvInfo, i, encodeTriggerPolicyV1(policy));
+  }
+
+  if (draft.stickCurveParams.length !== OrcaSettingsTlv.StickCurveParams.count) {
+    throw new Error(`Bad stick curve params length (want ${OrcaSettingsTlv.StickCurveParams.count}, got ${draft.stickCurveParams.length})`);
+  }
+  for (let i = 0; i < OrcaSettingsTlv.StickCurveParams.count; i++) {
+    const params = draft.stickCurveParams[i];
+    if (!params) {
+      throw new Error(`Missing stick curve params for profile ${i}`);
+    }
+    writeTlvData(out, OrcaSettingsTlv.StickCurveParams satisfies TlvInfo, i, encodeStickCurveParamsV1(params));
+  }
 
   const nextCrc = crc32([out.slice(0, out.length - 4)]);
   writeU32Le(out, out.length - 4, nextCrc);
   return out;
 }
-
