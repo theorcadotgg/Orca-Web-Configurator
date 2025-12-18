@@ -41,11 +41,15 @@ function makeMockBlob(): Uint8Array {
 }
 
 export class MockOrcaTransport implements OrcaTransport {
-  private flashBlob = makeMockBlob();
-  private stagedBlob: Uint8Array | null = null;
+  private flashBlobs = [makeMockBlob(), makeMockBlob()];
+  private stagedBlobs: Array<Uint8Array | null> = [null, null];
   private sessionId = 1;
   private sessionActive = false;
   private writesUnlocked = false;
+
+  private assertSlot(slot: number): asserts slot is 0 | 1 {
+    if (slot !== 0 && slot !== 1) throw new Error(`Invalid slot ${slot}`);
+  }
 
   async close(): Promise<void> {}
 
@@ -56,6 +60,7 @@ export class MockOrcaTransport implements OrcaTransport {
       settingsMinor: ORCA_CONFIG_SETTINGS_VERSION_MINOR,
       blobSize: ORCA_CONFIG_SETTINGS_BLOB_SIZE,
       maxChunk: 256,
+      slotCount: 2,
     };
   }
 
@@ -63,7 +68,7 @@ export class MockOrcaTransport implements OrcaTransport {
     this.sessionActive = true;
     this.writesUnlocked = false;
     this.sessionId += 1;
-    this.stagedBlob = null;
+    this.stagedBlobs = [null, null];
     return { sessionId: this.sessionId, writeUnlocked: false };
   }
 
@@ -72,15 +77,17 @@ export class MockOrcaTransport implements OrcaTransport {
     this.writesUnlocked = true;
   }
 
-  async readBlobChunk(offset: number, length: number): Promise<Uint8Array> {
-    return this.flashBlob.slice(offset, offset + length);
+  async readBlobChunk(slot: number, offset: number, length: number): Promise<Uint8Array> {
+    this.assertSlot(slot);
+    return this.flashBlobs[slot].slice(offset, offset + length);
   }
 
-  async readBlob(options?: {
+  async readBlob(slot: number, options?: {
     blobSize?: number;
     maxChunk?: number;
     onProgress?: (offset: number, total: number) => void;
   }): Promise<Uint8Array> {
+    this.assertSlot(slot);
     const blobSize = options?.blobSize ?? ORCA_CONFIG_SETTINGS_BLOB_SIZE;
     const maxChunk = options?.maxChunk ?? 256;
     const blob = new Uint8Array(blobSize);
@@ -88,7 +95,7 @@ export class MockOrcaTransport implements OrcaTransport {
     while (offset < blobSize) {
       const len = Math.min(maxChunk, blobSize - offset);
       options?.onProgress?.(offset, blobSize);
-      blob.set(await this.readBlobChunk(offset, len), offset);
+      blob.set(await this.readBlobChunk(slot, offset, len), offset);
       offset += len;
     }
     options?.onProgress?.(blobSize, blobSize);
@@ -96,51 +103,59 @@ export class MockOrcaTransport implements OrcaTransport {
   }
 
   async writeBlob(
+    slot: number,
     blob: Uint8Array,
     options?: { maxChunk?: number; onProgress?: (offset: number, total: number) => void },
   ): Promise<void> {
     if (!this.sessionActive) throw new Error('No active session');
+    this.assertSlot(slot);
     if (blob.length !== ORCA_CONFIG_SETTINGS_BLOB_SIZE) throw new Error('Bad blob size');
     options?.onProgress?.(0, blob.length);
-    this.stagedBlob = blob.slice();
+    this.stagedBlobs[slot] = blob.slice();
     options?.onProgress?.(blob.length, blob.length);
   }
 
-  async validateStaged(): Promise<ValidateStagedResult> {
-    if (!this.sessionActive || !this.stagedBlob) throw new Error('Nothing staged');
+  async validateStaged(slot: number): Promise<ValidateStagedResult> {
+    if (!this.sessionActive) throw new Error('No active session');
+    this.assertSlot(slot);
+    if (!this.stagedBlobs[slot]) throw new Error('Nothing staged');
     return { invalidMask: 0, repaired: false };
   }
 
-  async commitStaged(): Promise<{ generation: number }> {
-    if (!this.sessionActive || !this.stagedBlob) throw new Error('Nothing staged');
+  async commitStaged(slot: number): Promise<{ generation: number }> {
+    if (!this.sessionActive) throw new Error('No active session');
+    this.assertSlot(slot);
+    const stagedBlob = this.stagedBlobs[slot];
+    if (!stagedBlob) throw new Error('Nothing staged');
     if (!this.writesUnlocked) throw new Error('Writes not unlocked');
-    const next = this.stagedBlob.slice();
+    const next = stagedBlob.slice();
     const baseGen =
-      this.flashBlob[ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET]! |
-      (this.flashBlob[ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 1]! << 8) |
-      (this.flashBlob[ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 2]! << 16) |
-      (this.flashBlob[ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 3]! << 24);
+      this.flashBlobs[slot][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET]! |
+      (this.flashBlobs[slot][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 1]! << 8) |
+      (this.flashBlobs[slot][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 2]! << 16) |
+      (this.flashBlobs[slot][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 3]! << 24);
     const generation = (baseGen + 1) >>> 0;
     writeU32Le(next, ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET, generation);
-    this.flashBlob = next;
-    this.stagedBlob = null;
+    this.flashBlobs[slot] = next;
+    this.stagedBlobs[slot] = null;
     this.writesUnlocked = false;
     return { generation };
   }
 
-  async resetDefaults(): Promise<{ generation: number }> {
+  async resetDefaults(slot: number): Promise<{ generation: number }> {
     if (!this.sessionActive) throw new Error('No active session');
+    this.assertSlot(slot);
     if (!this.writesUnlocked) throw new Error('Writes not unlocked');
     const baseGen =
-      this.flashBlob[ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET]! |
-      (this.flashBlob[ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 1]! << 8) |
-      (this.flashBlob[ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 2]! << 16) |
-      (this.flashBlob[ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 3]! << 24);
+      this.flashBlobs[slot][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET]! |
+      (this.flashBlobs[slot][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 1]! << 8) |
+      (this.flashBlobs[slot][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 2]! << 16) |
+      (this.flashBlobs[slot][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 3]! << 24);
     const next = makeMockBlob();
     const generation = (baseGen + 1) >>> 0;
     writeU32Le(next, ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET, generation);
-    this.flashBlob = next;
-    this.stagedBlob = null;
+    this.flashBlobs[slot] = next;
+    this.stagedBlobs[slot] = null;
     this.writesUnlocked = false;
     return { generation };
   }

@@ -4,6 +4,7 @@ export type DeviceInfo = {
   settingsMinor: number;
   blobSize: number;
   maxChunk: number;
+  slotCount: number;
 };
 
 export type BeginSessionInfo = {
@@ -23,14 +24,15 @@ export interface OrcaTransport {
   beginSession(): Promise<BeginSessionInfo>;
   unlockWrites(): Promise<void>;
 
-  readBlobChunk(offset: number, length: number): Promise<Uint8Array>;
-  readBlob(options?: {
+  readBlobChunk(slot: number, offset: number, length: number): Promise<Uint8Array>;
+  readBlob(slot: number, options?: {
     blobSize?: number;
     maxChunk?: number;
     onProgress?: (offset: number, total: number) => void;
   }): Promise<Uint8Array>;
 
   writeBlob(
+    slot: number,
     blob: Uint8Array,
     options?: {
       maxChunk?: number;
@@ -38,9 +40,8 @@ export interface OrcaTransport {
     },
   ): Promise<void>;
 
-  validateStaged(): Promise<ValidateStagedResult>;
-  commitStaged(): Promise<{ generation: number }>;
-  resetDefaults(): Promise<{ generation: number }>;
+  validateStaged(slot: number): Promise<ValidateStagedResult>;
+  commitStaged(slot: number): Promise<{ generation: number }>;
+  resetDefaults(slot: number): Promise<{ generation: number }>;
   reboot(): Promise<void>;
 }
-

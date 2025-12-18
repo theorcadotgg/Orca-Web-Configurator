@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ORCA_CONFIG_SCHEMA_ID,
   ORCA_CONFIG_SETTINGS_VERSION_MAJOR,
@@ -25,10 +25,44 @@ import {
   isLockedDigitalDestination,
   isLockedDigitalSource,
 } from '../schema/orcaMappings';
+import { isGp2040LabelPreset, type Gp2040LabelPreset } from '../schema/gp2040Labels';
 import OrcaLogo from '../assets/Orca_Logo_B.png';
 
 type DeviceValidationState = ValidateStagedResult & { decoded: string[] };
 type Compatibility = 'ok' | 'major_mismatch' | 'minor_mismatch' | 'unknown';
+type SlotMode = 'orca' | 'gp2040';
+type SlotId = 0 | 1;
+
+const TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT = 1 << 0;
+const ORCA_DPAD_DEST = 11;
+const ORCA_LIGHTSHIELD_SRC = 12;
+const GP2040_ANALOG_LT_VIRTUAL_ID = 254; // Must match ControllerVisualizer
+
+type SlotState = {
+  baseBlob: Uint8Array | null;
+  parsed: ParsedSettings | null;
+  draft: SettingsDraft | null;
+  dirty: boolean;
+};
+
+const EMPTY_SLOT_STATE: SlotState = {
+  baseBlob: null,
+  parsed: null,
+  draft: null,
+  dirty: false,
+};
+
+function modeToSlotId(mode: SlotMode): SlotId {
+  return mode === 'gp2040' ? 1 : 0;
+}
+
+function slotSuffix(slot: SlotId): string {
+  return slot === 0 ? 'primary' : 'secondary';
+}
+
+function slotDisplayName(slot: SlotId): string {
+  return slot === 0 ? 'Orca Mode (Primary)' : 'GP2040 Mode (Secondary)';
+}
 
 function downloadBytes(filename: string, bytes: Uint8Array) {
   const copy = new Uint8Array(bytes.byteLength);
@@ -70,19 +104,47 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
   const [lastError, setLastError] = useState('');
-  const [configMode, setConfigMode] = useState<'orca' | 'gp2040'>('orca');
+  const [configMode, setConfigMode] = useState<SlotMode>('orca');
+  const [gp2040LabelPreset, setGp2040LabelPreset] = useState<Gp2040LabelPreset>(() => {
+    try {
+      const stored = window.localStorage.getItem('orca.gp2040LabelPreset');
+      if (stored && isGp2040LabelPreset(stored)) return stored;
+    } catch {
+      // ignore
+    }
+    return 'gp2040';
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('orca.gp2040LabelPreset', gp2040LabelPreset);
+    } catch {
+      // ignore
+    }
+  }, [gp2040LabelPreset]);
 
   // Data state
-  const [baseBlob, setBaseBlob] = useState<Uint8Array | null>(null);
-  const [parsed, setParsed] = useState<ParsedSettings | null>(null);
-  const [draft, setDraft] = useState<SettingsDraft | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const [slotStates, setSlotStates] = useState<Record<SlotId, SlotState>>({
+    0: { ...EMPTY_SLOT_STATE },
+    1: { ...EMPTY_SLOT_STATE },
+  });
 
   const [deviceValidation, setDeviceValidation] = useState<DeviceValidationState | null>(null);
   const [rebootAfterSave, setRebootAfterSave] = useState(true);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const importRef = useRef<HTMLInputElement | null>(null);
+
+  const activeSlot = modeToSlotId(configMode);
+  const currentState = slotStates[activeSlot];
+  const baseBlob = currentState.baseBlob;
+  const parsed = currentState.parsed;
+  const draft = currentState.draft;
+  const dirty = currentState.dirty;
+
+  function updateSlotState(slot: SlotId, patch: Partial<SlotState>) {
+    setSlotStates((prev) => ({ ...prev, [slot]: { ...prev[slot], ...patch } }));
+  }
 
   // Computed state
   const compatibility: Compatibility = useMemo(() => {
@@ -106,8 +168,25 @@ export default function App() {
   );
 
   const activeProfile = draft?.activeProfile ?? 0;
-  const digitalMapping = draft?.digitalMappings[activeProfile] ?? [];
-  const analogMapping = draft?.analogMappings[activeProfile] ?? [];
+  const digitalMapping: number[] = draft?.digitalMappings[activeProfile] ?? [];
+  const analogMapping: number[] = draft?.analogMappings[activeProfile] ?? [];
+
+  const defaultDigitalMapping = useMemo(() => {
+    const base = Array.from({ length: DIGITAL_INPUTS.length }, (_, i) => i);
+    if (configMode === 'gp2040') {
+      base[ORCA_DPAD_DEST] = ORCA_LIGHTSHIELD_SRC;
+      base[ORCA_LIGHTSHIELD_SRC] = ORCA_DUMMY_FIELD;
+    }
+    return base;
+  }, [configMode]);
+
+  const defaultAnalogMapping = useMemo(() => Array.from({ length: ANALOG_INPUTS.length }, (_, i) => i), []);
+
+  const gp2040AnalogTriggerOutput = useMemo(() => {
+    if (!draft) return 'rt' as const;
+    const analogToLt = (draft.triggerPolicy.flags & TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT) !== 0;
+    return analogToLt ? ('lt' as const) : ('rt' as const);
+  }, [draft]);
 
   // Handlers
   async function connect() {
@@ -116,6 +195,7 @@ export default function App() {
     setDeviceValidation(null);
     try {
       setBusy(true);
+      setSlotStates({ 0: { ...EMPTY_SLOT_STATE }, 1: { ...EMPTY_SLOT_STATE } });
       const nextTransport = await OrcaWebSerialTransport.requestAndOpen();
 
       // Set up disconnect detection
@@ -130,18 +210,21 @@ export default function App() {
       setTransport(nextTransport);
       setDeviceInfo(info);
 
+      const gp2040Enabled = info.slotCount >= 2;
+      const slotToRead: SlotId = (activeSlot === 1 && !gp2040Enabled) ? 0 : activeSlot;
+      if (activeSlot === 1 && !gp2040Enabled) {
+        setConfigMode('orca');
+      }
+
       setProgress('Reading settings...');
-      const blob = await nextTransport.readBlob({
+      const blob = await nextTransport.readBlob(slotToRead, {
         blobSize: info.blobSize,
         maxChunk: info.maxChunk,
         onProgress: (offset, total) => setProgress(`Reading ${offset}/${total}...`),
       });
-      setBaseBlob(blob);
       const res = tryParseSettingsBlob(blob);
       if (!res.ok) throw new Error(res.error);
-      setParsed(res.value);
-      setDraft(res.value.draft);
-      setDirty(false);
+      updateSlotState(slotToRead, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
       setProgress('');
     } catch (e) {
       setLastError(e instanceof Error ? e.message : String(e));
@@ -161,10 +244,7 @@ export default function App() {
     } finally {
       setTransport(null);
       setDeviceInfo(null);
-      setBaseBlob(null);
-      setParsed(null);
-      setDraft(null);
-      setDirty(false);
+      setSlotStates({ 0: { ...EMPTY_SLOT_STATE }, 1: { ...EMPTY_SLOT_STATE } });
       setBusy(false);
     }
   }
@@ -173,17 +253,58 @@ export default function App() {
   function resetConnection() {
     setTransport(null);
     setDeviceInfo(null);
-    setBaseBlob(null);
-    setParsed(null);
-    setDraft(null);
-    setDirty(false);
+    setSlotStates({ 0: { ...EMPTY_SLOT_STATE }, 1: { ...EMPTY_SLOT_STATE } });
     setDeviceValidation(null);
     setProgress('');
   }
 
+  async function handleModeChange(nextMode: SlotMode) {
+    if (busy) return;
+    if (nextMode === configMode) return;
+
+    const nextSlot = modeToSlotId(nextMode);
+    if (transport && nextSlot === 1 && (deviceInfo?.slotCount ?? 0) < 2) return;
+
+    if (dirty) {
+      const ok = window.confirm(
+        `Switch modes while ${slotDisplayName(activeSlot)} has unsaved changes? (Unsaved changes stay in this tab until you save or disconnect.)`,
+      );
+      if (!ok) return;
+    }
+
+    setLastError('');
+    setProgress('');
+    setDeviceValidation(null);
+
+    if (transport && deviceInfo) {
+      const nextState = slotStates[nextSlot];
+      if (!nextState.baseBlob || !nextState.draft) {
+        try {
+          setBusy(true);
+          setProgress('Reading settings...');
+          const blob = await transport.readBlob(nextSlot, {
+            blobSize: deviceInfo.blobSize,
+            maxChunk: deviceInfo.maxChunk,
+            onProgress: (offset, total) => setProgress(`Reading ${offset}/${total}...`),
+          });
+          const res = tryParseSettingsBlob(blob);
+          if (!res.ok) throw new Error(res.error);
+          updateSlotState(nextSlot, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+        } catch (e) {
+          setLastError(e instanceof Error ? e.message : String(e));
+          return;
+        } finally {
+          setBusy(false);
+          setProgress('');
+        }
+      }
+    }
+
+    setConfigMode(nextMode);
+  }
+
   function onDraftChange(next: SettingsDraft) {
-    setDraft(next);
-    setDirty(true);
+    updateSlotState(activeSlot, { draft: next, dirty: true });
     setDeviceValidation(null);
   }
 
@@ -199,16 +320,16 @@ export default function App() {
     const updated = cloneDraft(draft);
     updated.digitalMappings[activeProfile] = [...(updated.digitalMappings[activeProfile] ?? [])];
     const currentMapping = updated.digitalMappings[activeProfile]!;
-    const currentSrc = currentMapping[dest] ?? dest;
+    const currentSrc = currentMapping[dest] ?? defaultDigitalMapping[dest] ?? dest;
 
     if (src === ORCA_DUMMY_FIELD) {
       currentMapping[dest] = src;
     } else {
-      const numSlots = Math.max(currentMapping.length, DIGITAL_INPUTS.length);
+      const numSlots = Math.max(currentMapping.length, defaultDigitalMapping.length, DIGITAL_INPUTS.length);
       for (let otherDest = 0; otherDest < numSlots; otherDest++) {
         if (otherDest === dest) continue;
         if (isLockedDigitalDestination(otherDest)) continue;
-        const otherSrc = currentMapping[otherDest] ?? otherDest;
+        const otherSrc = currentMapping[otherDest] ?? defaultDigitalMapping[otherDest] ?? otherDest;
         if (otherSrc === src) {
           currentMapping[otherDest] = currentSrc;
           break;
@@ -219,26 +340,34 @@ export default function App() {
     onDraftChange(updated);
   }
 
-  function setAnalogMapping(dest: number, src: number) {
+  function setAnalogMapping(dest: number, src: number, virtualDest?: number) {
     if (!draft) return;
     const updated = cloneDraft(draft);
     updated.analogMappings[activeProfile] = [...(updated.analogMappings[activeProfile] ?? [])];
     const currentMapping = updated.analogMappings[activeProfile]!;
-    const currentSrc = currentMapping[dest] ?? dest;
+    const currentSrc = currentMapping[dest] ?? defaultAnalogMapping[dest] ?? dest;
 
     if (src === ORCA_ANALOG_MAPPING_DISABLED) {
       currentMapping[dest] = src;
     } else {
-      const numSlots = Math.max(currentMapping.length, ANALOG_INPUTS.length);
+      const numSlots = Math.max(currentMapping.length, defaultAnalogMapping.length, ANALOG_INPUTS.length);
       for (let otherDest = 0; otherDest < numSlots; otherDest++) {
         if (otherDest === dest) continue;
-        const otherSrc = currentMapping[otherDest] ?? otherDest;
+        const otherSrc = currentMapping[otherDest] ?? defaultAnalogMapping[otherDest] ?? otherDest;
         if (otherSrc === src) {
           currentMapping[otherDest] = currentSrc;
           break;
         }
       }
       currentMapping[dest] = src;
+
+      // In GP2040 mode, automatically update trigger policy flag based on virtual destination
+      if (configMode === 'gp2040' && dest === 4 && virtualDest !== undefined) {
+        const routeToLt = virtualDest === GP2040_ANALOG_LT_VIRTUAL_ID;
+        updated.triggerPolicy.flags = routeToLt
+          ? (updated.triggerPolicy.flags | TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT)
+          : (updated.triggerPolicy.flags & ~TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT);
+      }
     }
     onDraftChange(updated);
   }
@@ -256,12 +385,12 @@ export default function App() {
   function resetToDefaultBindings() {
     if (!draft) return;
     const updated = cloneDraft(draft);
-    // Reset each digital button to map to itself (identity mapping)
-    updated.digitalMappings[activeProfile] = digitalMapping.map((_, dest) => dest);
-    // Reset each analog input to map to itself (identity mapping)
-    updated.analogMappings[activeProfile] = analogMapping.map((_, dest) => dest);
+    updated.digitalMappings[activeProfile] = [...defaultDigitalMapping];
+    updated.analogMappings[activeProfile] = [...defaultAnalogMapping];
     onDraftChange(updated);
   }
+
+
 
   async function validateOnDevice() {
     if (!transport || !baseBlob || !draft) return;
@@ -271,11 +400,11 @@ export default function App() {
       setBusy(true);
       await transport.beginSession();
       const staged = buildSettingsBlob(baseBlob, draft);
-      await transport.writeBlob(staged, {
+      await transport.writeBlob(activeSlot, staged, {
         maxChunk: deviceInfo?.maxChunk ?? 256,
         onProgress: (offset, total) => setProgress(`Staging ${offset}/${total}...`),
       });
-      const res = await transport.validateStaged();
+      const res = await transport.validateStaged(activeSlot);
       setDeviceValidation({ ...res, decoded: decodeStagedInvalidMask(res.invalidMask) });
       setProgress('');
     } catch (e) {
@@ -295,28 +424,25 @@ export default function App() {
       setBusy(true);
       await transport.beginSession();
       const staged = buildSettingsBlob(baseBlob, draft);
-      await transport.writeBlob(staged, {
+      await transport.writeBlob(activeSlot, staged, {
         maxChunk: deviceInfo.maxChunk,
         onProgress: (offset, total) => setProgress(`Writing ${offset}/${total}...`),
       });
-      const v = await transport.validateStaged();
+      const v = await transport.validateStaged(activeSlot);
       const decoded = decodeStagedInvalidMask(v.invalidMask);
       setDeviceValidation({ ...v, decoded });
       if (v.invalidMask !== 0) throw new Error(`Validation failed: ${decoded.join(', ')}`);
 
       await transport.unlockWrites();
-      const { generation } = await transport.commitStaged();
+      const { generation } = await transport.commitStaged(activeSlot);
 
-      const readBack = await transport.readBlob({
+      const readBack = await transport.readBlob(activeSlot, {
         blobSize: deviceInfo.blobSize,
         maxChunk: deviceInfo.maxChunk,
       });
-      setBaseBlob(readBack);
       const res = tryParseSettingsBlob(readBack);
       if (!res.ok) throw new Error(`Read-back failed: ${res.error}`);
-      setParsed(res.value);
-      setDraft(res.value.draft);
-      setDirty(false);
+      updateSlotState(activeSlot, { baseBlob: readBack, parsed: res.value, draft: res.value.draft, dirty: false });
 
       if (rebootAfterSave) {
         setProgress('Rebooting...');
@@ -350,14 +476,11 @@ export default function App() {
       setBusy(true);
       await transport.beginSession();
       await transport.unlockWrites();
-      await transport.resetDefaults();
-      const readBack = await transport.readBlob({ blobSize: deviceInfo.blobSize, maxChunk: deviceInfo.maxChunk });
-      setBaseBlob(readBack);
+      await transport.resetDefaults(activeSlot);
+      const readBack = await transport.readBlob(activeSlot, { blobSize: deviceInfo.blobSize, maxChunk: deviceInfo.maxChunk });
       const res = tryParseSettingsBlob(readBack);
       if (!res.ok) throw new Error(res.error);
-      setParsed(res.value);
-      setDraft(res.value.draft);
-      setDirty(false);
+      updateSlotState(activeSlot, { baseBlob: readBack, parsed: res.value, draft: res.value.draft, dirty: false });
       setProgress('');
     } catch (e) {
       setLastError(e instanceof Error ? e.message : String(e));
@@ -381,11 +504,11 @@ export default function App() {
   }
 
   function exportCurrentBlob() {
-    if (baseBlob) downloadBytes('orca-settings.bin', baseBlob);
+    if (baseBlob) downloadBytes(`orca-settings-${slotSuffix(activeSlot)}.bin`, baseBlob);
   }
 
   function exportDraftBlob() {
-    if (baseBlob && draft) downloadBytes('orca-settings-draft.bin', buildSettingsBlob(baseBlob, draft));
+    if (baseBlob && draft) downloadBytes(`orca-settings-${slotSuffix(activeSlot)}-draft.bin`, buildSettingsBlob(baseBlob, draft));
   }
 
   async function importBlobFromFile(file: File) {
@@ -398,10 +521,7 @@ export default function App() {
       const blob = new Uint8Array(ab);
       const res = tryParseSettingsBlob(blob);
       if (!res.ok) throw new Error(res.error);
-      setBaseBlob(blob);
-      setParsed(res.value);
-      setDraft(res.value.draft);
-      setDirty(true);
+      updateSlotState(activeSlot, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: true });
     } catch (e) {
       setLastError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -411,7 +531,20 @@ export default function App() {
 
   const deviceErrors = deviceValidation?.decoded ?? null;
   const deviceRepaired = deviceValidation?.repaired ?? null;
-  const remappedCount = digitalMapping.filter((s, d) => s !== d).length + analogMapping.filter((s, d) => s !== d).length;
+  const remappedCount = useMemo(() => {
+    let count = 0;
+    for (let dest = 0; dest < defaultDigitalMapping.length; dest++) {
+      const def = defaultDigitalMapping[dest] ?? dest;
+      const cur = digitalMapping[dest] ?? def;
+      if (cur !== def) count++;
+    }
+    for (let dest = 0; dest < defaultAnalogMapping.length; dest++) {
+      const def = defaultAnalogMapping[dest] ?? dest;
+      const cur = analogMapping[dest] ?? def;
+      if (cur !== def) count++;
+    }
+    return count;
+  }, [analogMapping, defaultAnalogMapping, defaultDigitalMapping, digitalMapping]);
 
   return (
     <div className="layout-container">
@@ -424,8 +557,8 @@ export default function App() {
 
         <ModeTabs
           currentMode={configMode}
-          onModeChange={setConfigMode}
-          gp2040Enabled={false}
+          onModeChange={handleModeChange}
+          gp2040Enabled={!transport || (deviceInfo?.slotCount ?? 0) >= 2}
         />
 
         <div className="header-status">
@@ -476,12 +609,38 @@ export default function App() {
                   ))}
                 </div>
 
+                {/* GP2040 Label Presets */}
+                {configMode === 'gp2040' && (
+                  <div className="row mb-md" style={{ justifyContent: 'flex-end' }}>
+                    <span className="text-sm text-secondary">Button labels</span>
+                    <select
+                      value={gp2040LabelPreset}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (isGp2040LabelPreset(value)) setGp2040LabelPreset(value);
+                      }}
+                      disabled={busy}
+                      style={{ minWidth: 220 }}
+                    >
+                      <option value="gp2040">GP2040 (B1/B2/B3/B4)</option>
+                      <option value="xbox">Xbox (A/B/X/Y)</option>
+                      <option value="switch">Switch (B/A/Y/X)</option>
+                      <option value="playstation">PlayStation (✕/○/□/△)</option>
+                    </select>
+                  </div>
+                )}
+
                 {/* Controller Visualizer */}
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, padding: 'var(--spacing-md) 0' }}>
                   <ControllerVisualizer
                     digitalMapping={digitalMapping}
                     analogMapping={analogMapping}
+                    defaultDigitalMapping={defaultDigitalMapping}
+                    defaultAnalogMapping={defaultAnalogMapping}
                     disabled={busy}
+                    destinationLabelMode={configMode}
+                    gp2040LabelPreset={gp2040LabelPreset}
+                    gp2040AnalogTriggerRouting={gp2040AnalogTriggerOutput}
                     onDigitalMappingChange={setDigitalMapping}
                     onAnalogMappingChange={setAnalogMapping}
                     onClearAllBindings={clearAllBindings}
@@ -532,7 +691,7 @@ export default function App() {
           {/* DPAD Panel */}
           <CollapsiblePanel title="DPAD Layer" badge={draft?.dpadLayer.mode !== 0 ? <span className="pill pill-brand" style={{ marginLeft: 8 }}>Active</span> : null}>
             {draft ? (
-              <DpadEditor draft={draft} disabled={busy} onChange={onDraftChange} />
+              <DpadEditor draft={draft} disabled={busy} onChange={onDraftChange} contextMode={configMode} gp2040LabelPreset={gp2040LabelPreset} />
             ) : (
               <div className="text-sm text-muted">Connect to configure</div>
             )}
@@ -541,7 +700,14 @@ export default function App() {
           {/* Stick Curve Panel */}
           <CollapsiblePanel title="Stick Configuration">
             {draft ? (
-              <StickCurveEditor draft={draft} disabled={busy} onChange={onDraftChange} />
+              <>
+                {activeSlot === 1 && (
+                  <div className="text-xs text-muted" style={{ marginBottom: 'var(--spacing-sm)' }}>
+                    Mirrored from Orca mode (read-only in GP2040 mode).
+                  </div>
+                )}
+                <StickCurveEditor draft={draft} disabled={busy || activeSlot === 1} onChange={onDraftChange} />
+              </>
             ) : (
               <div className="text-sm text-muted">Connect to configure</div>
             )}
@@ -550,7 +716,14 @@ export default function App() {
           {/* Trigger Panel */}
           <CollapsiblePanel title="Trigger Policy">
             {draft ? (
-              <TriggerEditor draft={draft} disabled={busy} onChange={onDraftChange} />
+              <>
+                {activeSlot === 1 && (
+                  <div className="text-xs text-muted" style={{ marginBottom: 'var(--spacing-sm)' }}>
+                    Stored per mode. GP2040 analog trigger routing is configured in the main mapping.
+                  </div>
+                )}
+                <TriggerEditor draft={draft} disabled={busy} onChange={onDraftChange} />
+              </>
             ) : (
               <div className="text-sm text-muted">Connect to configure</div>
             )}
@@ -638,7 +811,7 @@ export default function App() {
       <ConfirmModal
         isOpen={showResetConfirm}
         title="Factory Reset"
-        message="Are you sure you want to reset all settings to factory defaults? This will wipe out all your custom configurations."
+        message={`Reset ${slotDisplayName(activeSlot)} settings to factory defaults? This will wipe out all custom configurations for this mode.`}
         confirmLabel="Reset"
         cancelLabel="Cancel"
         danger

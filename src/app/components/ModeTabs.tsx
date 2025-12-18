@@ -13,14 +13,14 @@ export function ModeTabs({ currentMode, onModeChange, gp2040Enabled = false }: P
                 className={`mode-tab ${currentMode === 'orca' ? 'active' : ''}`}
                 onClick={() => onModeChange('orca')}
             >
-                Orca Mode
+                Orca Mode (Primary)
             </button>
             <button
                 className={`mode-tab ${currentMode === 'gp2040' ? 'active' : ''} ${!gp2040Enabled ? 'disabled' : ''}`}
                 onClick={() => gp2040Enabled && onModeChange('gp2040')}
-                title={!gp2040Enabled ? 'Coming soon' : undefined}
+                title={!gp2040Enabled ? 'Secondary slot not supported by connected firmware' : undefined}
             >
-                GP2040 Mode
+                GP2040 Mode (Secondary)
             </button>
         </div>
     );

@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import {
     DIGITAL_INPUTS,
     ANALOG_INPUTS,
@@ -8,6 +8,7 @@ import {
     ORCA_DUMMY_FIELD,
     ORCA_ANALOG_MAPPING_DISABLED
 } from '../../schema/orcaMappings';
+import { getGp2040DestinationLabelSet, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
 
 /**
  * =====================================================
@@ -87,12 +88,20 @@ const OBLONGS = [
     { cx: 300, cy: 246 },   // 4 - TR (right side oblong)
 ];
 
+// Virtual destination ID for LT in GP2040 mode (to distinguish from RT which uses ID 4)
+const GP2040_ANALOG_LT_VIRTUAL_ID = 254;
+
 interface Props {
     digitalMapping: number[];
     analogMapping: number[];
+    defaultDigitalMapping?: number[];
+    defaultAnalogMapping?: number[];
     disabled?: boolean;
+    destinationLabelMode?: 'orca' | 'gp2040';
+    gp2040LabelPreset?: Gp2040LabelPreset;
+    gp2040AnalogTriggerRouting?: 'lt' | 'rt'; // Read-only, derived from trigger policy
     onDigitalMappingChange: (dest: number, src: number) => void;
-    onAnalogMappingChange: (dest: number, src: number) => void;
+    onAnalogMappingChange: (dest: number, src: number, virtualDest?: number) => void;
     onClearAllBindings?: () => void;
     onResetToDefault?: () => void;
 }
@@ -100,7 +109,12 @@ interface Props {
 export function ControllerVisualizer({
     digitalMapping,
     analogMapping,
+    defaultDigitalMapping,
+    defaultAnalogMapping,
     disabled,
+    destinationLabelMode = 'orca',
+    gp2040LabelPreset,
+    gp2040AnalogTriggerRouting = 'rt',
     onDigitalMappingChange,
     onAnalogMappingChange,
     onClearAllBindings,
@@ -110,18 +124,115 @@ export function ControllerVisualizer({
     const [selectedButton, setSelectedButton] = useState<ButtonConfig | null>(null);
     const [panelPosition, setPanelPosition] = useState<{ x: number; y: number } | null>(null);
 
-    const digitalSourceOptions = useMemo(() =>
-        DIGITAL_INPUTS.filter((d) => !d.lockedSystem && !d.isDummy).sort((a, b) => a.id - b.id), []);
-    const analogSourceOptions = useMemo(() =>
-        ANALOG_INPUTS.sort((a, b) => a.id - b.id), []);
+    const digitalButtons = DIGITAL_BUTTONS;
+    const analogButtons = ANALOG_BUTTONS;
+    const gp2040LabelSet = useMemo(() => getGp2040DestinationLabelSet(gp2040LabelPreset), [gp2040LabelPreset]);
+
+    // Helper to get trigger labels based on preset
+    const getGp2040TriggerLabels = useMemo(() => {
+        const presetLabels = {
+            switch: { lt: { label: 'ZL (Analog)', shortLabel: 'ZL' }, rt: { label: 'ZR (Analog)', shortLabel: 'ZR' } },
+            playstation: { lt: { label: 'L2 (Analog)', shortLabel: 'L2' }, rt: { label: 'R2 (Analog)', shortLabel: 'R2' } },
+            xbox: { lt: { label: 'LT (Analog)', shortLabel: 'LT' }, rt: { label: 'RT (Analog)', shortLabel: 'RT' } },
+            gp2040: { lt: { label: 'LT', shortLabel: 'LT' }, rt: { label: 'RT', shortLabel: 'RT' } },
+        };
+        return presetLabels[gp2040LabelPreset || 'gp2040'];
+    }, [gp2040LabelPreset]);
+
+    const effectiveDigitalMapping = useMemo(() => {
+        return Array.from({ length: DIGITAL_INPUTS.length }, (_, dest) => {
+            const defId = defaultDigitalMapping?.[dest] ?? dest;
+            return digitalMapping[dest] ?? defId;
+        });
+    }, [defaultDigitalMapping, digitalMapping]);
+
+    const effectiveAnalogMapping = useMemo(() => {
+        return Array.from({ length: ANALOG_INPUTS.length }, (_, dest) => {
+            const defId = defaultAnalogMapping?.[dest] ?? dest;
+            return analogMapping[dest] ?? defId;
+        });
+    }, [analogMapping, defaultAnalogMapping]);
+
+    const digitalDestBySrc = useMemo(() => {
+        const out: Array<number | undefined> = Array.from({ length: DIGITAL_INPUTS.length }, () => undefined);
+        for (let dest = 0; dest < effectiveDigitalMapping.length; dest++) {
+            const src = effectiveDigitalMapping[dest];
+            if (src === ORCA_DUMMY_FIELD) continue;
+            if (src >= 0 && src < out.length) out[src] = dest;
+        }
+        return out;
+    }, [effectiveDigitalMapping]);
+
+    const analogDestBySrc = useMemo(() => {
+        const out: Array<number | undefined> = Array.from({ length: ANALOG_INPUTS.length }, () => undefined);
+        for (let dest = 0; dest < effectiveAnalogMapping.length; dest++) {
+            const src = effectiveAnalogMapping[dest];
+            if (src === ORCA_ANALOG_MAPPING_DISABLED) continue;
+            if (src >= 0 && src < out.length) out[src] = dest;
+        }
+        return out;
+    }, [effectiveAnalogMapping]);
+
+    const defaultDigitalDestBySrc = useMemo(() => {
+        const out: Array<number | undefined> = Array.from({ length: DIGITAL_INPUTS.length }, () => undefined);
+        for (let dest = 0; dest < DIGITAL_INPUTS.length; dest++) {
+            const src = defaultDigitalMapping?.[dest] ?? dest;
+            if (src === ORCA_DUMMY_FIELD) continue;
+            if (src >= 0 && src < out.length) out[src] = dest;
+        }
+        return out;
+    }, [defaultDigitalMapping]);
+
+    const defaultAnalogDestBySrc = useMemo(() => {
+        const out: Array<number | undefined> = Array.from({ length: ANALOG_INPUTS.length }, () => undefined);
+        for (let dest = 0; dest < ANALOG_INPUTS.length; dest++) {
+            const src = defaultAnalogMapping?.[dest] ?? dest;
+            if (src === ORCA_ANALOG_MAPPING_DISABLED) continue;
+            if (src >= 0 && src < out.length) out[src] = dest;
+        }
+        return out;
+    }, [defaultAnalogMapping]);
+
+    const digitalDestinationOptions = useMemo(() => {
+        const base = DIGITAL_INPUTS.filter((d) => !isLockedDigitalDestination(d.id) && !d.isDummy).sort((a, b) => a.id - b.id);
+        if (destinationLabelMode !== 'gp2040') return base;
+        return base.map((opt) => {
+            const overlay = gp2040LabelSet.digital[opt.id];
+            return overlay ? { ...opt, label: overlay.label } : opt;
+        });
+    }, [destinationLabelMode, gp2040LabelSet]);
+
+    const analogDestinationOptions = useMemo(() => {
+        const base = [...ANALOG_INPUTS].sort((a, b) => a.id - b.id);
+        if (destinationLabelMode !== 'gp2040') return base;
+
+        // In GP2040 mode, replace the trigger option (id=4) with BOTH LT and RT options
+        const result = base.flatMap((opt) => {
+            if (opt.id === 4) {
+                // Replace with both LT and RT options
+                return [
+                    { id: GP2040_ANALOG_LT_VIRTUAL_ID, key: 'GP2040_LT', label: getGp2040TriggerLabels.lt.label },
+                    { id: 4, key: 'GP2040_RT', label: getGp2040TriggerLabels.rt.label },
+                ];
+            }
+            const overlay = gp2040LabelSet.analog[opt.id];
+            return [overlay ? { ...opt, label: overlay.label } : opt];
+        });
+        return result;
+    }, [destinationLabelMode, getGp2040TriggerLabels, gp2040LabelSet]);
 
     // Get button config by type and element index
     function getButtonForElement(type: 'digital' | 'analog', elementIndex: number): ButtonConfig | undefined {
-        const list = type === 'digital' ? DIGITAL_BUTTONS : ANALOG_BUTTONS;
+        const list = type === 'digital' ? digitalButtons : analogButtons;
         return list.find(b => b.elementIndex === elementIndex);
     }
 
-    function handleElementClick(type: 'digital' | 'analog', elementIndex: number, e: React.MouseEvent) {
+    useEffect(() => {
+        setSelectedButton(null);
+        setPanelPosition(null);
+    }, [destinationLabelMode]);
+
+    function handleElementClick(type: 'digital' | 'analog', elementIndex: number, e: ReactMouseEvent) {
         if (disabled) return;
         const button = getButtonForElement(type, elementIndex);
         if (!button) return;
@@ -138,7 +249,7 @@ export function ControllerVisualizer({
     }
 
     useEffect(() => {
-        function handleClickOutside(e: MouseEvent) {
+        function handleClickOutside(e: globalThis.MouseEvent) {
             const target = e.target as HTMLElement;
             if (!target.closest('.interactive-element') && !target.closest('.mapping-panel')) {
                 setSelectedButton(null);
@@ -151,45 +262,41 @@ export function ControllerVisualizer({
         }
     }, [selectedButton]);
 
-    function getMappingLabel(button: ButtonConfig): string {
-        if (button.type === 'digital') {
-            const srcId = digitalMapping[button.id];
-            if (srcId === undefined || srcId === button.id) return '';
-            if (srcId === ORCA_DUMMY_FIELD) return 'OFF';
-            return digitalInputLabel(srcId);
-        } else {
-            const srcId = analogMapping[button.id];
-            if (srcId === undefined || srcId === button.id) return '';
-            if (srcId === ORCA_ANALOG_MAPPING_DISABLED) return 'OFF';
-            return analogInputLabel(srcId);
-        }
-    }
-
-    // Get SHORT label for what a button is mapped to
     function getShortMappingLabel(button: ButtonConfig): string {
         if (button.type === 'digital') {
-            const srcId = digitalMapping[button.id];
-            if (srcId === undefined || srcId === button.id) return button.shortLabel;
-            if (srcId === ORCA_DUMMY_FIELD) return 'OFF';
-            // Find the source button and return its shortLabel
-            const srcButton = DIGITAL_BUTTONS.find(b => b.id === srcId);
-            return srcButton?.shortLabel ?? digitalInputLabel(srcId);
+            const destId = digitalDestBySrc[button.id] ?? ORCA_DUMMY_FIELD;
+            if (destId === ORCA_DUMMY_FIELD) return 'OFF';
+            if (destinationLabelMode === 'gp2040') {
+                const overlay = gp2040LabelSet.digital[destId];
+                if (overlay) return overlay.shortLabel;
+            }
+            return digitalButtons.find((b) => b.id === destId)?.shortLabel ?? digitalInputLabel(destId);
         } else {
-            const srcId = analogMapping[button.id];
-            if (srcId === undefined || srcId === button.id) return button.shortLabel;
-            if (srcId === ORCA_ANALOG_MAPPING_DISABLED) return 'OFF';
-            // Find the source button and return its shortLabel
-            const srcButton = ANALOG_BUTTONS.find(b => b.id === srcId);
-            return srcButton?.shortLabel ?? analogInputLabel(srcId);
+            const destId = analogDestBySrc[button.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
+            if (destId === ORCA_ANALOG_MAPPING_DISABLED) return 'OFF';
+            if (destinationLabelMode === 'gp2040') {
+                if (destId === 4) {
+                    // Determine if routed to LT or RT based on the routing parameter
+                    return gp2040AnalogTriggerRouting === 'lt'
+                        ? getGp2040TriggerLabels.lt.shortLabel
+                        : getGp2040TriggerLabels.rt.shortLabel;
+                }
+                const overlay = gp2040LabelSet.analog[destId];
+                if (overlay) return overlay.shortLabel;
+            }
+            return analogButtons.find((b) => b.id === destId)?.shortLabel ?? analogInputLabel(destId);
         }
     }
 
     function isModified(button: ButtonConfig): boolean {
         if (button.type === 'digital') {
-            return digitalMapping[button.id] !== undefined && digitalMapping[button.id] !== button.id;
-        } else {
-            return analogMapping[button.id] !== undefined && analogMapping[button.id] !== button.id;
+            const currentDest = digitalDestBySrc[button.id] ?? ORCA_DUMMY_FIELD;
+            const defaultDest = defaultDigitalDestBySrc[button.id] ?? ORCA_DUMMY_FIELD;
+            return currentDest !== defaultDest;
         }
+        const currentDest = analogDestBySrc[button.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
+        const defaultDest = defaultAnalogDestBySrc[button.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
+        return currentDest !== defaultDest;
     }
 
     function isCircleModified(circleIndex: number): boolean {
@@ -205,22 +312,47 @@ export function ControllerVisualizer({
     function handleMappingChange(value: number) {
         if (!selectedButton) return;
         if (selectedButton.type === 'digital') {
-            onDigitalMappingChange(selectedButton.id, value);
+            const src = selectedButton.id;
+            const currentDest = digitalDestBySrc[src];
+            if (value === ORCA_DUMMY_FIELD) {
+                if (currentDest !== undefined) onDigitalMappingChange(currentDest, ORCA_DUMMY_FIELD);
+                return;
+            }
+            onDigitalMappingChange(value, src);
         } else {
-            onAnalogMappingChange(selectedButton.id, value);
+            const src = selectedButton.id;
+            const currentDest = analogDestBySrc[src];
+            if (value === ORCA_ANALOG_MAPPING_DISABLED) {
+                if (currentDest !== undefined) onAnalogMappingChange(currentDest, ORCA_ANALOG_MAPPING_DISABLED);
+                return;
+            }
+            // Pass the virtual dest ID if it's the LT option, so App.tsx can handle routing
+            onAnalogMappingChange(value === GP2040_ANALOG_LT_VIRTUAL_ID ? 4 : value, src, value);
         }
     }
 
     function getCurrentMappingValue(): number {
         if (!selectedButton) return 0;
         if (selectedButton.type === 'digital') {
-            return digitalMapping[selectedButton.id] ?? selectedButton.id;
-        } else {
-            return analogMapping[selectedButton.id] ?? selectedButton.id;
+            return digitalDestBySrc[selectedButton.id] ?? ORCA_DUMMY_FIELD;
         }
+        const destId = analogDestBySrc[selectedButton.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
+        // In GP2040 mode, if mapped to trigger (4) and routed to LT, show the virtual LT ID
+        if (destinationLabelMode === 'gp2040' && destId === 4 && gp2040AnalogTriggerRouting === 'lt') {
+            return GP2040_ANALOG_LT_VIRTUAL_ID;
+        }
+        return destId;
     }
 
-    const circleStyle = (index: number): React.CSSProperties => {
+    function getDefaultMappingValue(): number {
+        if (!selectedButton) return 0;
+        if (selectedButton.type === 'digital') {
+            return defaultDigitalDestBySrc[selectedButton.id] ?? ORCA_DUMMY_FIELD;
+        }
+        return defaultAnalogDestBySrc[selectedButton.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
+    }
+
+    const circleStyle = (index: number): CSSProperties => {
         const isActive = selectedButton?.type === 'digital' && selectedButton?.elementIndex === index;
         const modified = isCircleModified(index);
         const button = getButtonForElement('digital', index);
@@ -236,7 +368,7 @@ export function ControllerVisualizer({
         };
     };
 
-    const oblongStyle = (index: number): React.CSSProperties => {
+    const oblongStyle = (index: number): CSSProperties => {
         const isActive = selectedButton?.type === 'analog' && selectedButton?.elementIndex === index;
         const modified = isOblongModified(index);
 
@@ -370,14 +502,14 @@ export function ControllerVisualizer({
                                 y={circle.cy + 3}
                                 textAnchor="middle"
                                 style={{
-                                    fontSize: isModified(button) ? 7 : 9,
+                                    fontSize: 9,
                                     fontWeight: 700,
                                     fill: 'var(--color-text-primary)',
                                     pointerEvents: 'none',
                                     userSelect: 'none',
                                 }}
                             >
-                                {isModified(button) ? getMappingLabel(button) : button.shortLabel}
+                                {getShortMappingLabel(button)}
                             </text>
                         </g>
                     );
@@ -412,14 +544,28 @@ export function ControllerVisualizer({
                         borderBottom: '1px solid var(--color-border)',
                         gap: 'var(--spacing-sm)',
                     }}>
-                        <span style={{
-                            fontSize: 'var(--font-size-md)',
-                            fontWeight: 600,
-                            color: selectedButton.type === 'analog' ? '#64A0C8' : '#1E8FC9',
-                            flex: 1,
-                        }}>
-                            {selectedButton.label}
-                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                                fontSize: 'var(--font-size-md)',
+                                fontWeight: 600,
+                                color: selectedButton.type === 'analog' ? '#64A0C8' : '#1E8FC9',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}>
+                                {selectedButton.label}
+                            </div>
+                            {destinationLabelMode === 'gp2040' && (
+                                <div style={{ marginTop: 2, fontSize: 11, color: 'var(--color-text-muted)' }}>
+                                    Orca role: {selectedButton.type === 'digital' ? digitalInputLabel(selectedButton.id) : analogInputLabel(selectedButton.id)}
+                                </div>
+                            )}
+                            {destinationLabelMode === 'gp2040' && selectedButton.type === 'digital' && selectedButton.id === 11 && (
+                                <div style={{ marginTop: 2, fontSize: 11, color: 'var(--color-text-muted)' }}>
+                                    DPAD Layer enable is configured separately (sidebar).
+                                </div>
+                            )}
+                        </div>
                         <span className="pill pill-neutral" style={{
                             background: selectedButton.type === 'analog' ? 'rgba(100, 160, 200, 0.2)' : undefined,
                             borderColor: selectedButton.type === 'analog' ? 'rgba(100, 160, 200, 0.4)' : undefined,
@@ -454,7 +600,7 @@ export function ControllerVisualizer({
 
                     <div className="col" style={{ gap: 'var(--spacing-sm)' }}>
                         <label style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
-                            Maps to:
+                            Output:
                         </label>
                         <select
                             value={getCurrentMappingValue()}
@@ -471,22 +617,25 @@ export function ControllerVisualizer({
                         >
                             {selectedButton.type === 'digital' ? (
                                 <>
-                                    {digitalSourceOptions.map((opt) => (
+                                    <option value={ORCA_DUMMY_FIELD}>Disabled (OFF)</option>
+                                    {digitalDestinationOptions.map((opt) => (
                                         <option key={opt.id} value={opt.id}>{opt.label}</option>
                                     ))}
                                 </>
                             ) : (
                                 <>
-                                    <option value={ORCA_ANALOG_MAPPING_DISABLED}>Disabled</option>
-                                    {ANALOG_INPUTS.map((opt) => (
+                                    <option value={ORCA_ANALOG_MAPPING_DISABLED}>Disabled (OFF)</option>
+                                    {analogDestinationOptions.map((opt) => (
                                         <option key={opt.id} value={opt.id}>{opt.label}</option>
                                     ))}
                                 </>
                             )}
                         </select>
 
+
+
                         {isModified(selectedButton) && (
-                            <button onClick={() => handleMappingChange(selectedButton.id)} style={{ marginTop: 'var(--spacing-xs)' }}>
+                            <button onClick={() => handleMappingChange(getDefaultMappingValue())} style={{ marginTop: 'var(--spacing-xs)' }}>
                                 Reset to default
                             </button>
                         )}

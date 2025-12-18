@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 
 type Props = {
     // State
@@ -17,7 +17,7 @@ type Props = {
     // Optional
     rebootAfterSave?: boolean;
     onRebootAfterSaveChange?: (value: boolean) => void;
-    importInputRef?: React.RefObject<HTMLInputElement | null>;
+    importInputRef?: RefObject<HTMLInputElement | null>;
 };
 
 export function ActionToolbar({

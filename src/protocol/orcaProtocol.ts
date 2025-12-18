@@ -79,9 +79,28 @@ export function encodeReadBlobRequest(seq: number, offset: number, length: numbe
   return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
 }
 
+export function encodeReadBlobSlotRequest(seq: number, slotId: number, offset: number, length: number): ByteArray {
+  const payload = new Uint8Array(12);
+  payload[0] = OrcaCmd.READ_BLOB_SLOT;
+  payload[1] = slotId & 0xff;
+  const dv = new DataView(payload.buffer);
+  dv.setUint32(4, offset >>> 0, true);
+  dv.setUint32(8, length >>> 0, true);
+  return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
+}
+
 export function encodeWriteBlobBeginRequest(seq: number, totalSize: number): ByteArray {
   const payload = new Uint8Array(8);
   payload[0] = OrcaCmd.WRITE_BLOB_BEGIN;
+  const dv = new DataView(payload.buffer);
+  dv.setUint32(4, totalSize >>> 0, true);
+  return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
+}
+
+export function encodeWriteBlobBeginSlotRequest(seq: number, slotId: number, totalSize: number): ByteArray {
+  const payload = new Uint8Array(8);
+  payload[0] = OrcaCmd.WRITE_BLOB_BEGIN_SLOT;
+  payload[1] = slotId & 0xff;
   const dv = new DataView(payload.buffer);
   dv.setUint32(4, totalSize >>> 0, true);
   return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
@@ -97,20 +116,59 @@ export function encodeWriteBlobChunkRequest(seq: number, offset: number, data: U
   return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
 }
 
+export function encodeWriteBlobChunkSlotRequest(seq: number, slotId: number, offset: number, data: Uint8Array): ByteArray {
+  const payload = new Uint8Array(12 + data.length);
+  payload[0] = OrcaCmd.WRITE_BLOB_CHUNK_SLOT;
+  payload[1] = slotId & 0xff;
+  const dv = new DataView(payload.buffer);
+  dv.setUint32(4, offset >>> 0, true);
+  dv.setUint32(8, data.length >>> 0, true);
+  payload.set(data, 12);
+  return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
+}
+
 export function encodeWriteBlobEndRequest(seq: number): ByteArray {
   return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.WRITE_BLOB_END]) as ByteArray);
+}
+
+export function encodeWriteBlobEndSlotRequest(seq: number, slotId: number): ByteArray {
+  const payload = new Uint8Array(4);
+  payload[0] = OrcaCmd.WRITE_BLOB_END_SLOT;
+  payload[1] = slotId & 0xff;
+  return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
 }
 
 export function encodeValidateStagedRequest(seq: number): ByteArray {
   return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.VALIDATE_STAGED]) as ByteArray);
 }
 
+export function encodeValidateStagedSlotRequest(seq: number, slotId: number): ByteArray {
+  const payload = new Uint8Array(4);
+  payload[0] = OrcaCmd.VALIDATE_STAGED_SLOT;
+  payload[1] = slotId & 0xff;
+  return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
+}
+
 export function encodeCommitStagedRequest(seq: number): ByteArray {
   return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.COMMIT_STAGED]) as ByteArray);
 }
 
+export function encodeCommitStagedSlotRequest(seq: number, slotId: number): ByteArray {
+  const payload = new Uint8Array(4);
+  payload[0] = OrcaCmd.COMMIT_STAGED_SLOT;
+  payload[1] = slotId & 0xff;
+  return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
+}
+
 export function encodeResetDefaultsRequest(seq: number): ByteArray {
   return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.RESET_DEFAULTS]) as ByteArray);
+}
+
+export function encodeResetDefaultsSlotRequest(seq: number, slotId: number): ByteArray {
+  const payload = new Uint8Array(4);
+  payload[0] = OrcaCmd.RESET_DEFAULTS_SLOT;
+  payload[1] = slotId & 0xff;
+  return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
 }
 
 export function encodeRebootRequest(seq: number): ByteArray {
