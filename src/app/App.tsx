@@ -722,7 +722,7 @@ export default function App() {
               <div className="main-hero">
                 {/* Profile Tabs */}
                 <div className="profile-tabs">
-                  {Array.from({ length: ORCA_CONFIG_SETTINGS_PROFILE_COUNT }, (_, i) => {
+                  {Array.from({ length: 6 }, (_, i) => {
                     const isEditing = editingProfile === i;
                     const label = draft.profileLabels[i]?.trim() || `Profile ${i + 1}`;
 
