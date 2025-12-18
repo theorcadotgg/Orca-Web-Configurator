@@ -259,6 +259,22 @@ body {
   color: white;
 }
 
+.profile-tab-input {
+  /* Match tab button styling */
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  width: 100%;
+  outline: none;
+  padding: 0;
+}
+
+.profile-tab-input:focus {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 /* ----------------------------------------
    Sidebar
    ---------------------------------------- */

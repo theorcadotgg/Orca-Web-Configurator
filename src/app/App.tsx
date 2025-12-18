@@ -105,6 +105,7 @@ export default function App() {
   const [progress, setProgress] = useState('');
   const [lastError, setLastError] = useState('');
   const [configMode, setConfigMode] = useState<SlotMode>('orca');
+  const [editingProfile, setEditingProfile] = useState<number | null>(null);
   const [gp2040LabelPreset, setGp2040LabelPreset] = useState<Gp2040LabelPreset>(() => {
     try {
       const stored = window.localStorage.getItem('orca.gp2040LabelPreset');
@@ -312,6 +313,15 @@ export default function App() {
     if (!draft) return;
     const updated = cloneDraft(draft);
     updated.activeProfile = next;
+    onDraftChange(updated);
+  }
+
+  function renameProfile(profileIndex: number, newName: string) {
+    if (!draft) return;
+    const trimmed = newName.trim();
+    // Allow empty to fall back to default "Profile N"
+    const updated = cloneDraft(draft);
+    updated.profileLabels[profileIndex] = trimmed || `Profile ${profileIndex + 1}`;
     onDraftChange(updated);
   }
 
@@ -597,16 +607,59 @@ export default function App() {
               <div className="main-hero">
                 {/* Profile Tabs */}
                 <div className="profile-tabs">
-                  {Array.from({ length: ORCA_CONFIG_SETTINGS_PROFILE_COUNT }, (_, i) => (
-                    <button
-                      key={i}
-                      className={`profile-tab ${activeProfile === i ? 'active' : ''}`}
-                      onClick={() => setActiveProfile(i)}
-                      disabled={busy}
-                    >
-                      {draft.profileLabels[i]?.trim() || `Profile ${i + 1}`}
-                    </button>
-                  ))}
+                  {Array.from({ length: ORCA_CONFIG_SETTINGS_PROFILE_COUNT }, (_, i) => {
+                    const isEditing = editingProfile === i;
+                    const label = draft.profileLabels[i]?.trim() || `Profile ${i + 1}`;
+
+                    return (
+                      <button
+                        key={i}
+                        className={`profile-tab ${activeProfile === i ? 'active' : ''}`}
+                        onClick={() => !isEditing && setActiveProfile(i)}
+                        onDoubleClick={(e) => {
+                          e.preventDefault();
+                          if (!busy) {
+                            setEditingProfile(i);
+                            // Focus input after state update
+                            setTimeout(() => {
+                              const input = document.getElementById(`profile-input-${i}`) as HTMLInputElement;
+                              if (input) {
+                                input.select();
+                              }
+                            }, 0);
+                          }
+                        }}
+                        disabled={busy}
+                      >
+                        {isEditing ? (
+                          <input
+                            id={`profile-input-${i}`}
+                            type="text"
+                            className="profile-tab-input"
+                            defaultValue={label}
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                renameProfile(i, e.currentTarget.value);
+                                setEditingProfile(null);
+                              } else if (e.key === 'Escape') {
+                                e.preventDefault();
+                                setEditingProfile(null);
+                              }
+                            }}
+                            onBlur={(e) => {
+                              renameProfile(i, e.currentTarget.value);
+                              setEditingProfile(null);
+                            }}
+                          />
+                        ) : (
+                          label
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* GP2040 Label Presets */}
