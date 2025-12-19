@@ -553,10 +553,10 @@ export function ControllerVisualizer({
 
                     const modifierDpadBinding = getDpadBindingsForSource(button.id).find((b) => b.mode === 1);
                     const modifierBadgeText = modifierDpadBinding?.direction ?? '';
-                    const badgeR = 4.2;
-                    const badgeRadialOffset = circle.r - badgeR * 0.2; // closer to edge; slight overhang like a badge
-                    const badgeCx = circle.cx + badgeRadialOffset * Math.SQRT1_2;
-                    const badgeCy = circle.cy - badgeRadialOffset * Math.SQRT1_2;
+                    const badgeR = 5.2;
+                    const badgeRadialOffset = circle.r - badgeR * 0.3; // position badge at top of circle with slight overlap
+                    const badgeCx = circle.cx; // centered horizontally
+                    const badgeCy = circle.cy - badgeRadialOffset; // positioned at top (12 o'clock)
 
                     return (
                         <g key={index} className="interactive-element" onClick={(e) => handleElementClick('digital', index, e)}>
@@ -568,10 +568,23 @@ export function ControllerVisualizer({
                             />
                             {modifierBadgeText && (
                                 <g style={{ pointerEvents: 'none' }}>
-                                    <circle
-                                        cx={badgeCx}
-                                        cy={badgeCy}
-                                        r={badgeR}
+                                    {/* Plus sign background */}
+                                    <path
+                                        d={`
+                                            M ${badgeCx - badgeR * 0.35} ${badgeCy - badgeR}
+                                            L ${badgeCx + badgeR * 0.35} ${badgeCy - badgeR}
+                                            L ${badgeCx + badgeR * 0.35} ${badgeCy - badgeR * 0.35}
+                                            L ${badgeCx + badgeR} ${badgeCy - badgeR * 0.35}
+                                            L ${badgeCx + badgeR} ${badgeCy + badgeR * 0.35}
+                                            L ${badgeCx + badgeR * 0.35} ${badgeCy + badgeR * 0.35}
+                                            L ${badgeCx + badgeR * 0.35} ${badgeCy + badgeR}
+                                            L ${badgeCx - badgeR * 0.35} ${badgeCy + badgeR}
+                                            L ${badgeCx - badgeR * 0.35} ${badgeCy + badgeR * 0.35}
+                                            L ${badgeCx - badgeR} ${badgeCy + badgeR * 0.35}
+                                            L ${badgeCx - badgeR} ${badgeCy - badgeR * 0.35}
+                                            L ${badgeCx - badgeR * 0.35} ${badgeCy - badgeR * 0.35}
+                                            Z
+                                        `}
                                         style={{
                                             fill: 'var(--color-brand)',
                                             stroke: 'rgba(255, 255, 255, 0.25)',
@@ -579,20 +592,24 @@ export function ControllerVisualizer({
                                             filter: 'drop-shadow(0px 1px 1px rgba(0,0,0,0.35))',
                                         }}
                                     />
-                                    <text
-                                        x={badgeCx}
-                                        y={badgeCy}
-                                        textAnchor="middle"
-                                        dominantBaseline="middle"
+                                    {/* Direction indicator circle */}
+                                    <circle
+                                        cx={
+                                            modifierBadgeText === '⬅' ? badgeCx - badgeR * 0.7 :
+                                                modifierBadgeText === '➡' ? badgeCx + badgeR * 0.7 :
+                                                    badgeCx
+                                        }
+                                        cy={
+                                            modifierBadgeText === '⬆' ? badgeCy - badgeR * 0.7 :
+                                                modifierBadgeText === '⬇' ? badgeCy + badgeR * 0.7 :
+                                                    badgeCy
+                                        }
+                                        r={badgeR * 0.23}
                                         style={{
-                                            fontSize: 7.5,
-                                            fontWeight: 900,
                                             fill: 'var(--color-text-primary)',
-                                            userSelect: 'none',
+                                            stroke: 'none',
                                         }}
-                                    >
-                                        {modifierBadgeText}
-                                    </text>
+                                    />
                                 </g>
                             )}
                             <text
