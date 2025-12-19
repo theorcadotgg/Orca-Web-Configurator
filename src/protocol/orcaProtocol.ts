@@ -171,6 +171,10 @@ export function encodeResetDefaultsSlotRequest(seq: number, slotId: number): Byt
   return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
 }
 
+export function encodeFactoryResetRequest(seq: number): ByteArray {
+  return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.FACTORY_RESET]) as ByteArray);
+}
+
 export function encodeRebootRequest(seq: number): ByteArray {
   return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.REBOOT]) as ByteArray);
 }

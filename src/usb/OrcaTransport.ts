@@ -60,5 +60,6 @@ export interface OrcaTransport {
   validateStaged(slot: number): Promise<ValidateStagedResult>;
   commitStaged(slot: number): Promise<{ generation: number }>;
   resetDefaults(slot: number): Promise<{ generation: number }>;
+  factoryReset(): Promise<{ flags: number; primaryGeneration: number; secondaryGeneration: number }>;
   reboot(): Promise<void>;
 }

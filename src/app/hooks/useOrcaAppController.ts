@@ -81,6 +81,7 @@ export type OrcaAppController = {
   validateOnDevice: () => Promise<void>;
   saveToDevice: () => Promise<void>;
   resetDefaultsOnDevice: () => Promise<void>;
+  factoryResetOnDevice: () => Promise<void>;
   rebootNow: () => Promise<void>;
   exportCurrentBlob: () => Promise<void>;
   exportDraftBlob: () => Promise<void>;
@@ -90,6 +91,7 @@ export type OrcaAppController = {
   setAllowUnsafeWrites: (next: boolean) => void;
   setRebootAfterSave: (next: boolean) => void;
   setShowResetConfirm: (next: boolean) => void;
+  setShowFactoryResetConfirm: (next: boolean) => void;
   setEditingProfile: (next: number | null) => void;
 };
 
@@ -454,6 +456,34 @@ export function useOrcaAppController(): OrcaAppController {
     }
   }, [updateSlotState]);
 
+  const factoryResetOnDevice = useCallback(async () => {
+    const { transport, deviceInfo } = stateRef.current;
+    if (!transport || !deviceInfo) return;
+
+    dispatch({ type: 'patch', patch: { lastError: '', progress: 'Factory resetting...', deviceValidation: null } });
+    try {
+      dispatch({ type: 'patch', patch: { busy: true } });
+      await transport.beginSession();
+      await transport.unlockWrites();
+      await transport.factoryReset();
+
+      const slotCount = Math.min(deviceInfo.slotCount, 2);
+      for (let slot = 0; slot < slotCount; slot++) {
+        dispatch({ type: 'patch', patch: { progress: `Reading ${slotDisplayName(slot as SlotId)}...` } });
+        const blob = await transport.readBlob(slot, { blobSize: deviceInfo.blobSize, maxChunk: deviceInfo.maxChunk });
+        const res = tryParseSettingsBlob(blob);
+        if (!res.ok) throw new Error(`${slotDisplayName(slot as SlotId)}: ${res.error}`);
+        updateSlotState(slot as SlotId, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+      }
+
+      dispatch({ type: 'patch', patch: { progress: '' } });
+    } catch (e) {
+      dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e), progress: '' } });
+    } finally {
+      dispatch({ type: 'patch', patch: { busy: false } });
+    }
+  }, [updateSlotState]);
+
   const rebootNow = useCallback(async () => {
     const { transport } = stateRef.current;
     if (!transport) return;
@@ -706,6 +736,10 @@ export function useOrcaAppController(): OrcaAppController {
     dispatch({ type: 'patch', patch: { showResetConfirm: next } });
   }, []);
 
+  const setShowFactoryResetConfirm = useCallback((next: boolean) => {
+    dispatch({ type: 'patch', patch: { showFactoryResetConfirm: next } });
+  }, []);
+
   const setEditingProfile = useCallback((next: number | null) => {
     dispatch({ type: 'patch', patch: { editingProfile: next } });
   }, []);
@@ -754,6 +788,7 @@ export function useOrcaAppController(): OrcaAppController {
     validateOnDevice,
     saveToDevice,
     resetDefaultsOnDevice,
+    factoryResetOnDevice,
     rebootNow,
     exportCurrentBlob,
     exportDraftBlob,
@@ -763,7 +798,7 @@ export function useOrcaAppController(): OrcaAppController {
     setAllowUnsafeWrites,
     setRebootAfterSave,
     setShowResetConfirm,
+    setShowFactoryResetConfirm,
     setEditingProfile,
   };
 }
-

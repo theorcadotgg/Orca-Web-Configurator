@@ -7,7 +7,8 @@ type Props = {
     // Callbacks
     onValidate: () => void;
     onSave: () => void;
-    onReset: () => void;
+    onResetMode: () => void;
+    onFactoryReset: () => void;
     onReboot: () => void;
     onExportProfile: () => void;
     onImportProfile: () => void;
@@ -26,7 +27,8 @@ export function ActionToolbar({
     hasLocalErrors,
     onValidate,
     onSave,
-    onReset,
+    onResetMode,
+    onFactoryReset,
     onReboot,
     onExportProfile,
     onImportProfile,
@@ -62,8 +64,11 @@ export function ActionToolbar({
 
             {/* Secondary actions */}
             <div className="footer-group">
-                <button className="danger" onClick={onReset} disabled={!canWrite || busy}>
-                    Factory Reset
+                <button onClick={onResetMode} disabled={!canWrite || busy}>
+                    Reset Mode Defaults
+                </button>
+                <button className="danger" onClick={onFactoryReset} disabled={!canWrite || busy}>
+                    Factory Reset Device
                 </button>
                 <button onClick={onReboot} disabled={busy}>
                     Reboot

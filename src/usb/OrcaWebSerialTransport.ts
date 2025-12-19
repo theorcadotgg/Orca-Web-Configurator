@@ -11,6 +11,7 @@ import {
   encodeRebootRequest,
   encodeReadBlobRequest,
   encodeReadBlobSlotRequest,
+  encodeFactoryResetRequest,
   encodeResetDefaultsRequest,
   encodeResetDefaultsSlotRequest,
   encodeUnlockWritesRequest,
@@ -391,6 +392,21 @@ export class OrcaWebSerialTransport implements OrcaTransport {
     if (payload.length < 8) throw new Error('Bad RESET_DEFAULTS response length');
     const generation = readU32Le(payload, 4);
     return { generation };
+  }
+
+  async factoryReset(): Promise<{ flags: number; primaryGeneration: number; secondaryGeneration: number }> {
+    const seq = this.seq++;
+    const frame = await this.sendAndRead(encodeFactoryResetRequest(seq));
+    if (frame.msgType === OrcaMsgType.ERROR) {
+      const { cmd, err } = parseErrorPayload(frame.payload);
+      throw new OrcaDeviceError(cmd, err);
+    }
+    const payload = frame.payload;
+    if (payload.length < 12) throw new Error('Bad FACTORY_RESET response length');
+    const flags = payload[1] ?? 0;
+    const primaryGeneration = readU32Le(payload, 4);
+    const secondaryGeneration = readU32Le(payload, 8);
+    return { flags, primaryGeneration, secondaryGeneration };
   }
 
   async reboot(): Promise<void> {

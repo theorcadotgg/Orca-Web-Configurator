@@ -42,6 +42,7 @@ export type OrcaAppState = {
   deviceValidation: DeviceValidationState | null;
   rebootAfterSave: boolean;
   showResetConfirm: boolean;
+  showFactoryResetConfirm: boolean;
 
   editingProfile: number | null;
 };
@@ -67,6 +68,7 @@ export function createInitialOrcaAppState(): OrcaAppState {
     deviceValidation: null,
     rebootAfterSave: false,
     showResetConfirm: false,
+    showFactoryResetConfirm: false,
 
     editingProfile: null,
   };
@@ -95,4 +97,3 @@ export function orcaAppReducer(state: OrcaAppState, action: OrcaAppAction): Orca
     }
   }
 }
-

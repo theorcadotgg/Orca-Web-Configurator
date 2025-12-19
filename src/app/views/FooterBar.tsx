@@ -16,6 +16,7 @@ export function FooterBar() {
     validateOnDevice,
     saveToDevice,
     resetDefaultsOnDevice,
+    factoryResetOnDevice,
     rebootNow,
     exportCurrentProfile,
     exportCurrentBlob,
@@ -24,6 +25,7 @@ export function FooterBar() {
     importProfileFromFile,
     setRebootAfterSave,
     setShowResetConfirm,
+    setShowFactoryResetConfirm,
   } = useOrcaApp();
 
   const importDeviceRef = useRef<HTMLInputElement | null>(null);
@@ -55,7 +57,8 @@ export function FooterBar() {
           hasLocalErrors={localValidation.errors.length > 0}
           onValidate={() => void validateOnDevice()}
           onSave={handleSave}
-          onReset={() => setShowResetConfirm(true)}
+          onResetMode={() => setShowResetConfirm(true)}
+          onFactoryReset={() => setShowFactoryResetConfirm(true)}
           onReboot={() => void rebootNow()}
           onExportProfile={exportCurrentProfile}
           onImportProfile={() => importProfileRef.current?.click()}
@@ -93,7 +96,7 @@ export function FooterBar() {
 
       <ConfirmModal
         isOpen={state.showResetConfirm}
-        title="Factory Reset"
+        title="Reset Mode Defaults"
         message={`Reset ${slotDisplayName(activeSlot)} settings to factory defaults? This will wipe out all custom configurations for this mode.`}
         confirmLabel="Reset"
         cancelLabel="Cancel"
@@ -103,6 +106,20 @@ export function FooterBar() {
           void resetDefaultsOnDevice();
         }}
         onCancel={() => setShowResetConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={state.showFactoryResetConfirm}
+        title="Factory Reset Device"
+        message="Factory reset the controller? This resets both Orca and GP2040 mode settings and clears GP2040-CE saved settings. You will need to recalibrate."
+        confirmLabel="Factory Reset"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={() => {
+          setShowFactoryResetConfirm(false);
+          void factoryResetOnDevice();
+        }}
+        onCancel={() => setShowFactoryResetConfirm(false)}
       />
 
       <ConfirmModal
