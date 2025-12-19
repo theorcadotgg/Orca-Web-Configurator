@@ -58,10 +58,10 @@ const DIGITAL_BUTTONS: ButtonConfig[] = [
 // ANALOG BUTTONS -> Oblong Path Groups (5 oblongs)
 // ============================================================
 const ANALOG_BUTTONS: ButtonConfig[] = [
-    { id: 0, label: 'Joystick X Left', shortLabel: '←', type: 'analog', elementIndex: 2 },
-    { id: 1, label: 'Joystick X Right', shortLabel: '→', type: 'analog', elementIndex: 0 },
-    { id: 2, label: 'Joystick Y Up', shortLabel: '↑', type: 'analog', elementIndex: 1 },
-    { id: 3, label: 'Joystick Y Down', shortLabel: '↓', type: 'analog', elementIndex: 3 },
+    { id: 0, label: 'Control Stick X Left', shortLabel: '←', type: 'analog', elementIndex: 2 },
+    { id: 1, label: 'Control Stick X Right', shortLabel: '→', type: 'analog', elementIndex: 0 },
+    { id: 2, label: 'Control Stick Y Up', shortLabel: '↑', type: 'analog', elementIndex: 1 },
+    { id: 3, label: 'Control Stick Y Down', shortLabel: '↓', type: 'analog', elementIndex: 3 },
     { id: 4, label: 'Trigger R Analog', shortLabel: 'TR', type: 'analog', elementIndex: 4 },
 ];
 
@@ -551,12 +551,12 @@ export function ControllerVisualizer({
                         />
                     );
 
-	                    const modifierDpadBinding = getDpadBindingsForSource(button.id).find((b) => b.mode === 1);
-	                    const modifierBadgeText = modifierDpadBinding?.direction ?? '';
-	                    const badgeR = 4.2;
-	                    const badgeRadialOffset = circle.r - badgeR * 0.2; // closer to edge; slight overhang like a badge
-	                    const badgeCx = circle.cx + badgeRadialOffset * Math.SQRT1_2;
-	                    const badgeCy = circle.cy - badgeRadialOffset * Math.SQRT1_2;
+                    const modifierDpadBinding = getDpadBindingsForSource(button.id).find((b) => b.mode === 1);
+                    const modifierBadgeText = modifierDpadBinding?.direction ?? '';
+                    const badgeR = 4.2;
+                    const badgeRadialOffset = circle.r - badgeR * 0.2; // closer to edge; slight overhang like a badge
+                    const badgeCx = circle.cx + badgeRadialOffset * Math.SQRT1_2;
+                    const badgeCy = circle.cy - badgeRadialOffset * Math.SQRT1_2;
 
                     return (
                         <g key={index} className="interactive-element" onClick={(e) => handleElementClick('digital', index, e)}>
@@ -568,28 +568,28 @@ export function ControllerVisualizer({
                             />
                             {modifierBadgeText && (
                                 <g style={{ pointerEvents: 'none' }}>
-	                                    <circle
-	                                        cx={badgeCx}
-	                                        cy={badgeCy}
-	                                        r={badgeR}
-	                                        style={{
-	                                            fill: 'var(--color-brand)',
-	                                            stroke: 'rgba(255, 255, 255, 0.25)',
-	                                            strokeWidth: 0.8,
-	                                            filter: 'drop-shadow(0px 1px 1px rgba(0,0,0,0.35))',
-	                                        }}
-	                                    />
+                                    <circle
+                                        cx={badgeCx}
+                                        cy={badgeCy}
+                                        r={badgeR}
+                                        style={{
+                                            fill: 'var(--color-brand)',
+                                            stroke: 'rgba(255, 255, 255, 0.25)',
+                                            strokeWidth: 0.8,
+                                            filter: 'drop-shadow(0px 1px 1px rgba(0,0,0,0.35))',
+                                        }}
+                                    />
                                     <text
                                         x={badgeCx}
                                         y={badgeCy}
                                         textAnchor="middle"
-	                                        dominantBaseline="middle"
-	                                        style={{
-	                                            fontSize: 7.5,
-	                                            fontWeight: 900,
-	                                            fill: 'var(--color-text-primary)',
-	                                            userSelect: 'none',
-	                                        }}
+                                        dominantBaseline="middle"
+                                        style={{
+                                            fontSize: 7.5,
+                                            fontWeight: 900,
+                                            fill: 'var(--color-text-primary)',
+                                            userSelect: 'none',
+                                        }}
                                     >
                                         {modifierBadgeText}
                                     </text>
