@@ -1,8 +1,9 @@
-import { useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useOrcaApp } from '../contexts/OrcaAppContext';
 import { ActionToolbar } from '../components/ActionToolbar';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { slotDisplayName } from '../utils/slot';
+import { findMeleeRulesetInvalidProfiles } from '../../validators/settingsValidation';
 
 export function FooterBar() {
   const {
@@ -27,6 +28,22 @@ export function FooterBar() {
 
   const importDeviceRef = useRef<HTMLInputElement | null>(null);
   const importProfileRef = useRef<HTMLInputElement | null>(null);
+  const [showMeleeConfirm, setShowMeleeConfirm] = useState(false);
+
+  const meleeInvalidProfiles = useMemo(() => {
+    if (!draft || state.configMode !== 'orca') return [];
+    return findMeleeRulesetInvalidProfiles(draft);
+  }, [draft, state.configMode]);
+
+  const shouldConfirmMelee = meleeInvalidProfiles.length > 0;
+
+  const handleSave = () => {
+    if (shouldConfirmMelee) {
+      setShowMeleeConfirm(true);
+      return;
+    }
+    void saveToDevice();
+  };
 
   return (
     <>
@@ -37,7 +54,7 @@ export function FooterBar() {
           busy={state.busy}
           hasLocalErrors={localValidation.errors.length > 0}
           onValidate={() => void validateOnDevice()}
-          onSave={() => void saveToDevice()}
+          onSave={handleSave}
           onReset={() => setShowResetConfirm(true)}
           onReboot={() => void rebootNow()}
           onExportProfile={exportCurrentProfile}
@@ -87,7 +104,19 @@ export function FooterBar() {
         }}
         onCancel={() => setShowResetConfirm(false)}
       />
+
+      <ConfirmModal
+        isOpen={showMeleeConfirm}
+        title="Melee Ruleset Warning"
+        message="One of your profiles is not melee legal. Are you sure you want to save?"
+        confirmLabel="Save"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setShowMeleeConfirm(false);
+          void saveToDevice();
+        }}
+        onCancel={() => setShowMeleeConfirm(false)}
+      />
     </>
   );
 }
-

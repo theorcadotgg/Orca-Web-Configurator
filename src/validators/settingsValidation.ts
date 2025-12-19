@@ -4,6 +4,7 @@ import {
   ORCA_CONFIG_SETTINGS_PROFILE_COUNT,
   OrcaSettingsTlv,
 } from '@shared/orca_config_idl_generated';
+import { isMeleeRulesetVerificationValid } from '@shared/orca_ruleset_generated';
 import type { DigitalSourceV1, SettingsDraft, TriggerPolicyV1 } from '../schema/settingsBlob';
 import { isLockedDigitalDestination, isLockedDigitalSource, ORCA_ANALOG_MAPPING_DISABLED, ORCA_DUMMY_FIELD } from '../schema/orcaMappings';
 
@@ -68,6 +69,7 @@ function validateTriggerPolicy(policy: TriggerPolicyV1, label: string): string[]
 export function validateSettingsDraft(draft: SettingsDraft): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
+  const activeProfile = draft.activeProfile ?? 0;
 
   if (draft.activeProfile < 0 || draft.activeProfile >= ORCA_CONFIG_SETTINGS_PROFILE_COUNT) {
     errors.push(`Active profile must be within [0, ${ORCA_CONFIG_SETTINGS_PROFILE_COUNT - 1}]`);
@@ -110,7 +112,7 @@ export function validateSettingsDraft(draft: SettingsDraft): ValidationResult {
         }
       }
 
-      if (profile === draft.activeProfile) {
+      if (profile === activeProfile) {
         const counts = new Map<number, number>();
         for (let dest = 0; dest < mapping.length; dest++) {
           const src = mapping[dest] ?? 0;
@@ -180,7 +182,35 @@ export function validateSettingsDraft(draft: SettingsDraft): ValidationResult {
     }
   }
 
+  if (activeProfile >= 0 && activeProfile < ORCA_CONFIG_SETTINGS_PROFILE_COUNT) {
+    const invalidProfiles = findMeleeRulesetInvalidProfiles(draft);
+    if (invalidProfiles.includes(activeProfile)) {
+      warnings.push('Melee ruleset verification failed.');
+    }
+  }
+
   return { errors, warnings };
+}
+
+export function findMeleeRulesetInvalidProfiles(draft: SettingsDraft): number[] {
+  const invalid: number[] = [];
+  const profileCount = Math.min(
+    draft.digitalMappings.length,
+    draft.dpadLayer.length,
+    ORCA_CONFIG_SETTINGS_PROFILE_COUNT,
+  );
+
+  for (let profile = 0; profile < profileCount; profile++) {
+    const mapping = draft.digitalMappings[profile];
+    const dpadLayer = draft.dpadLayer[profile];
+    if (!mapping || !dpadLayer) continue;
+    if (mapping.length !== ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT) continue;
+    if (!isMeleeRulesetVerificationValid({ digitalMappings: mapping, dpadLayer })) {
+      invalid.push(profile);
+    }
+  }
+
+  return invalid;
 }
 
 const TLV_TYPE_TO_NAME: Map<number, string> = new Map(
