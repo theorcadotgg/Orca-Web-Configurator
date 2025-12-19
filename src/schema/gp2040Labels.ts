@@ -20,10 +20,10 @@ export const GP2040_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
   4: { label: 'R1', shortLabel: 'R1' }, // ORCA_Z_BUTTON
   5: { label: 'L2 (Full)', shortLabel: 'L2' }, // ORCA_L_BUTTON
   6: { label: 'R2 (Full)', shortLabel: 'R2' }, // ORCA_R_BUTTON
-  7: { label: 'RS Left', shortLabel: 'RS←' }, // ORCA_C_LEFT
-  8: { label: 'RS Right', shortLabel: 'RS→' }, // ORCA_C_RIGHT
-  9: { label: 'RS Up', shortLabel: 'RS↑' }, // ORCA_C_UP
-  10: { label: 'RS Down', shortLabel: 'RS↓' }, // ORCA_C_DOWN
+  7: { label: 'RS Left', shortLabel: 'RS⬅' }, // ORCA_C_LEFT
+  8: { label: 'RS Right', shortLabel: 'RS➡' }, // ORCA_C_RIGHT
+  9: { label: 'RS Up', shortLabel: 'RS⬆' }, // ORCA_C_UP
+  10: { label: 'RS Down', shortLabel: 'RS⬇' }, // ORCA_C_DOWN
   11: { label: 'L1', shortLabel: 'L1' }, // ORCA_DPAD
   12: { label: 'L2 (Light)', shortLabel: 'L2' }, // ORCA_LIGHTSHIELD
   13: { label: 'S1', shortLabel: 'S1' }, // ORCA_WISDOM_BUTTON
@@ -32,10 +32,10 @@ export const GP2040_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
 };
 
 export const GP2040_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
-  0: { label: 'LS←', shortLabel: 'LS←' }, // ORCA_JOYSTICK_X_LEFT
-  1: { label: 'LS→', shortLabel: 'LS→' }, // ORCA_JOYSTICK_X_RIGHT
-  2: { label: 'LS↑', shortLabel: 'LS↑' }, // ORCA_JOYSTICK_Y_UP
-  3: { label: 'LS↓', shortLabel: 'LS↓' }, // ORCA_JOYSTICK_Y_DOWN
+  0: { label: 'LS⬅', shortLabel: 'LS⬅' }, // ORCA_JOYSTICK_X_LEFT
+  1: { label: 'LS➡', shortLabel: 'LS➡' }, // ORCA_JOYSTICK_X_RIGHT
+  2: { label: 'LS⬆', shortLabel: 'LS⬆' }, // ORCA_JOYSTICK_Y_UP
+  3: { label: 'LS⬇', shortLabel: 'LS⬇' }, // ORCA_JOYSTICK_Y_DOWN
   4: { label: 'RT', shortLabel: 'RT' }, // ORCA_TRIGGER_R
 };
 
@@ -47,10 +47,10 @@ export const XBOX_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
   4: { label: 'RB', shortLabel: 'RB' }, // ORCA_Z_BUTTON
   5: { label: 'LT (Full)', shortLabel: 'LT' }, // ORCA_L_BUTTON
   6: { label: 'RT (Full)', shortLabel: 'RT' }, // ORCA_R_BUTTON
-  7: { label: 'RS Left', shortLabel: 'RS←' }, // ORCA_C_LEFT
-  8: { label: 'RS Right', shortLabel: 'RS→' }, // ORCA_C_RIGHT
-  9: { label: 'RS Up', shortLabel: 'RS↑' }, // ORCA_C_UP
-  10: { label: 'RS Down', shortLabel: 'RS↓' }, // ORCA_C_DOWN
+  7: { label: 'RS Left', shortLabel: 'RS⬅' }, // ORCA_C_LEFT
+  8: { label: 'RS Right', shortLabel: 'RS➡' }, // ORCA_C_RIGHT
+  9: { label: 'RS Up', shortLabel: 'RS⬆' }, // ORCA_C_UP
+  10: { label: 'RS Down', shortLabel: 'RS⬇' }, // ORCA_C_DOWN
   11: { label: 'LB', shortLabel: 'LB' }, // ORCA_DPAD
   12: { label: 'LT (Light)', shortLabel: 'LT' }, // ORCA_LIGHTSHIELD
   13: { label: 'View', shortLabel: 'View' }, // ORCA_WISDOM_BUTTON
@@ -59,10 +59,10 @@ export const XBOX_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
 };
 
 export const XBOX_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
-  0: { label: 'LS←', shortLabel: 'LS←' }, // ORCA_JOYSTICK_X_LEFT
-  1: { label: 'LS→', shortLabel: 'LS→' }, // ORCA_JOYSTICK_X_RIGHT
-  2: { label: 'LS↑', shortLabel: 'LS↑' }, // ORCA_JOYSTICK_Y_UP
-  3: { label: 'LS↓', shortLabel: 'LS↓' }, // ORCA_JOYSTICK_Y_DOWN
+  0: { label: 'LS⬅', shortLabel: 'LS⬅' }, // ORCA_JOYSTICK_X_LEFT
+  1: { label: 'LS➡', shortLabel: 'LS➡' }, // ORCA_JOYSTICK_X_RIGHT
+  2: { label: 'LS⬆', shortLabel: 'LS⬆' }, // ORCA_JOYSTICK_Y_UP
+  3: { label: 'LS⬇', shortLabel: 'LS⬇' }, // ORCA_JOYSTICK_Y_DOWN
   4: { label: 'RT (Analog)', shortLabel: 'RT' }, // ORCA_TRIGGER_R
 };
 
@@ -74,10 +74,10 @@ export const SWITCH_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
   4: { label: 'R', shortLabel: 'R' }, // ORCA_Z_BUTTON
   5: { label: 'ZL (Full)', shortLabel: 'ZL' }, // ORCA_L_BUTTON
   6: { label: 'ZR (Full)', shortLabel: 'ZR' }, // ORCA_R_BUTTON
-  7: { label: 'RS Left', shortLabel: 'RS←' }, // ORCA_C_LEFT
-  8: { label: 'RS Right', shortLabel: 'RS→' }, // ORCA_C_RIGHT
-  9: { label: 'RS Up', shortLabel: 'RS↑' }, // ORCA_C_UP
-  10: { label: 'RS Down', shortLabel: 'RS↓' }, // ORCA_C_DOWN
+  7: { label: 'RS Left', shortLabel: 'RS⬅' }, // ORCA_C_LEFT
+  8: { label: 'RS Right', shortLabel: 'RS➡' }, // ORCA_C_RIGHT
+  9: { label: 'RS Up', shortLabel: 'RS⬆' }, // ORCA_C_UP
+  10: { label: 'RS Down', shortLabel: 'RS⬇' }, // ORCA_C_DOWN
   11: { label: 'L', shortLabel: 'L' }, // ORCA_DPAD
   12: { label: 'ZL (Light)', shortLabel: 'ZL' }, // ORCA_LIGHTSHIELD
   13: { label: '−', shortLabel: '−' }, // ORCA_WISDOM_BUTTON
@@ -86,10 +86,10 @@ export const SWITCH_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
 };
 
 export const SWITCH_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
-  0: { label: 'LS←', shortLabel: 'LS←' }, // ORCA_JOYSTICK_X_LEFT
-  1: { label: 'LS→', shortLabel: 'LS→' }, // ORCA_JOYSTICK_X_RIGHT
-  2: { label: 'LS↑', shortLabel: 'LS↑' }, // ORCA_JOYSTICK_Y_UP
-  3: { label: 'LS↓', shortLabel: 'LS↓' }, // ORCA_JOYSTICK_Y_DOWN
+  0: { label: 'LS⬅', shortLabel: 'LS⬅' }, // ORCA_JOYSTICK_X_LEFT
+  1: { label: 'LS➡', shortLabel: 'LS➡' }, // ORCA_JOYSTICK_X_RIGHT
+  2: { label: 'LS⬆', shortLabel: 'LS⬆' }, // ORCA_JOYSTICK_Y_UP
+  3: { label: 'LS⬇', shortLabel: 'LS⬇' }, // ORCA_JOYSTICK_Y_DOWN
   4: { label: 'ZR (Analog)', shortLabel: 'ZR' }, // ORCA_TRIGGER_R
 };
 
@@ -101,10 +101,10 @@ export const PLAYSTATION_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = 
   4: { label: 'R1', shortLabel: 'R1' }, // ORCA_Z_BUTTON
   5: { label: 'L2 (Full)', shortLabel: 'L2' }, // ORCA_L_BUTTON
   6: { label: 'R2 (Full)', shortLabel: 'R2' }, // ORCA_R_BUTTON
-  7: { label: 'RS Left', shortLabel: 'RS←' }, // ORCA_C_LEFT
-  8: { label: 'RS Right', shortLabel: 'RS→' }, // ORCA_C_RIGHT
-  9: { label: 'RS Up', shortLabel: 'RS↑' }, // ORCA_C_UP
-  10: { label: 'RS Down', shortLabel: 'RS↓' }, // ORCA_C_DOWN
+  7: { label: 'RS Left', shortLabel: 'RS⬅' }, // ORCA_C_LEFT
+  8: { label: 'RS Right', shortLabel: 'RS➡' }, // ORCA_C_RIGHT
+  9: { label: 'RS Up', shortLabel: 'RS⬆' }, // ORCA_C_UP
+  10: { label: 'RS Down', shortLabel: 'RS⬇' }, // ORCA_C_DOWN
   11: { label: 'L1', shortLabel: 'L1' }, // ORCA_DPAD
   12: { label: 'L2 (Light)', shortLabel: 'L2' }, // ORCA_LIGHTSHIELD
   13: { label: 'Share', shortLabel: 'Share' }, // ORCA_WISDOM_BUTTON
@@ -113,10 +113,10 @@ export const PLAYSTATION_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = 
 };
 
 export const PLAYSTATION_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
-  0: { label: 'LS←', shortLabel: 'LS←' }, // ORCA_JOYSTICK_X_LEFT
-  1: { label: 'LS→', shortLabel: 'LS→' }, // ORCA_JOYSTICK_X_RIGHT
-  2: { label: 'LS↑', shortLabel: 'LS↑' }, // ORCA_JOYSTICK_Y_UP
-  3: { label: 'LS↓', shortLabel: 'LS↓' }, // ORCA_JOYSTICK_Y_DOWN
+  0: { label: 'LS⬅', shortLabel: 'LS⬅' }, // ORCA_JOYSTICK_X_LEFT
+  1: { label: 'LS➡', shortLabel: 'LS➡' }, // ORCA_JOYSTICK_X_RIGHT
+  2: { label: 'LS⬆', shortLabel: 'LS⬆' }, // ORCA_JOYSTICK_Y_UP
+  3: { label: 'LS⬇', shortLabel: 'LS⬇' }, // ORCA_JOYSTICK_Y_DOWN
   4: { label: 'R2 (Analog)', shortLabel: 'R2' }, // ORCA_TRIGGER_R
 };
 

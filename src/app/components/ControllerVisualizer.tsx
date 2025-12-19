@@ -46,10 +46,10 @@ const DIGITAL_BUTTONS: ButtonConfig[] = [
     { id: 4, label: 'Z Button', shortLabel: 'Z', type: 'digital', elementIndex: 10 },
     { id: 5, label: 'L Trigger', shortLabel: 'L', type: 'digital', elementIndex: 2 },
     { id: 6, label: 'R Trigger', shortLabel: 'R', type: 'digital', elementIndex: 0 },
-    { id: 7, label: 'C-Stick Left', shortLabel: 'C←', type: 'digital', elementIndex: 6 },
-    { id: 8, label: 'C-Stick Right', shortLabel: 'C→', type: 'digital', elementIndex: 1 },
-    { id: 9, label: 'C-Stick Up', shortLabel: 'C↑', type: 'digital', elementIndex: 7 },
-    { id: 10, label: 'C-Stick Down', shortLabel: 'C↓', type: 'digital', elementIndex: 5 },
+    { id: 7, label: 'C-Stick Left', shortLabel: 'C⬅', type: 'digital', elementIndex: 6 },
+    { id: 8, label: 'C-Stick Right', shortLabel: 'C➡', type: 'digital', elementIndex: 1 },
+    { id: 9, label: 'C-Stick Up', shortLabel: 'C⬆', type: 'digital', elementIndex: 7 },
+    { id: 10, label: 'C-Stick Down', shortLabel: 'C⬇', type: 'digital', elementIndex: 5 },
     { id: 11, label: 'DPAD Modifier', shortLabel: 'D', type: 'digital', elementIndex: 3 },
     { id: 12, label: 'Lightshield', shortLabel: 'LS', type: 'digital', elementIndex: 4 },
 ];
@@ -58,10 +58,10 @@ const DIGITAL_BUTTONS: ButtonConfig[] = [
 // ANALOG BUTTONS -> Oblong Path Groups (5 oblongs)
 // ============================================================
 const ANALOG_BUTTONS: ButtonConfig[] = [
-    { id: 0, label: 'Control Stick X Left', shortLabel: '←', type: 'analog', elementIndex: 2 },
-    { id: 1, label: 'Control Stick X Right', shortLabel: '→', type: 'analog', elementIndex: 0 },
-    { id: 2, label: 'Control Stick Y Up', shortLabel: '↑', type: 'analog', elementIndex: 1 },
-    { id: 3, label: 'Control Stick Y Down', shortLabel: '↓', type: 'analog', elementIndex: 3 },
+    { id: 0, label: 'Control Stick X Left', shortLabel: '⬅', type: 'analog', elementIndex: 2 },
+    { id: 1, label: 'Control Stick X Right', shortLabel: '➡', type: 'analog', elementIndex: 0 },
+    { id: 2, label: 'Control Stick Y Up', shortLabel: '⬆', type: 'analog', elementIndex: 1 },
+    { id: 3, label: 'Control Stick Y Down', shortLabel: '⬇', type: 'analog', elementIndex: 3 },
     { id: 4, label: 'Trigger R Analog', shortLabel: 'TR', type: 'analog', elementIndex: 4 },
 ];
 
@@ -286,16 +286,16 @@ export function ControllerVisualizer({
         const bindings: { direction: string; mode: number; virtualDest: number }[] = [];
 
         if (dpadLayer.mode_up !== 0 && dpadLayer.up.type === 1 && dpadLayer.up.index === srcId) {
-            bindings.push({ direction: '↑', mode: dpadLayer.mode_up, virtualDest: DPAD_UP_VIRTUAL_DEST });
+            bindings.push({ direction: '⬆', mode: dpadLayer.mode_up, virtualDest: DPAD_UP_VIRTUAL_DEST });
         }
         if (dpadLayer.mode_down !== 0 && dpadLayer.down.type === 1 && dpadLayer.down.index === srcId) {
-            bindings.push({ direction: '↓', mode: dpadLayer.mode_down, virtualDest: DPAD_DOWN_VIRTUAL_DEST });
+            bindings.push({ direction: '⬇', mode: dpadLayer.mode_down, virtualDest: DPAD_DOWN_VIRTUAL_DEST });
         }
         if (dpadLayer.mode_left !== 0 && dpadLayer.left.type === 1 && dpadLayer.left.index === srcId) {
-            bindings.push({ direction: '←', mode: dpadLayer.mode_left, virtualDest: DPAD_LEFT_VIRTUAL_DEST });
+            bindings.push({ direction: '⬅', mode: dpadLayer.mode_left, virtualDest: DPAD_LEFT_VIRTUAL_DEST });
         }
         if (dpadLayer.mode_right !== 0 && dpadLayer.right.type === 1 && dpadLayer.right.index === srcId) {
-            bindings.push({ direction: '→', mode: dpadLayer.mode_right, virtualDest: DPAD_RIGHT_VIRTUAL_DEST });
+            bindings.push({ direction: '➡', mode: dpadLayer.mode_right, virtualDest: DPAD_RIGHT_VIRTUAL_DEST });
         }
 
         return bindings;
