@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { SettingsDraft } from '../../schema/settingsBlob';
+import { cloneDraft } from '../domain/cloneDraft';
 
 type Props = {
     draft: SettingsDraft;
@@ -18,24 +19,6 @@ function to255(v: number): number {
 
 function from255(v: number): number {
     return clamp(v, 0, 255) / 255;
-}
-
-function cloneDraft(draft: SettingsDraft): SettingsDraft {
-    return {
-        ...draft,
-        profileLabels: [...draft.profileLabels],
-        digitalMappings: draft.digitalMappings.map((m) => [...m]),
-        analogMappings: draft.analogMappings.map((m) => [...m]),
-        dpadLayer: draft.dpadLayer.map((layer) => ({
-            ...layer,
-            enable: { ...layer.enable },
-            up: { ...layer.up },
-            down: { ...layer.down },
-            left: { ...layer.left },
-            right: { ...layer.right },
-        })),
-        triggerPolicy: draft.triggerPolicy.map((policy) => ({ ...policy })),
-    };
 }
 
 export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Props) {

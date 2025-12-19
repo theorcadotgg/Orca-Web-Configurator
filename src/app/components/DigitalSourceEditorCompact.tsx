@@ -17,7 +17,7 @@ const SOURCE_TYPE_OPTIONS: { value: number; short: string; disabled?: boolean }[
 ];
 
 /**
- * Compact version of DigitalSourceEditor for sidebar use.
+ * Compact digital/analog source editor for sidebar use.
  * Uses two rows for analog mode to show threshold and hysteresis.
  */
 export function DigitalSourceEditorCompact({ label, value, disabled, onChange, allowAnalog = true }: Props) {

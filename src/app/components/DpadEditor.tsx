@@ -1,6 +1,7 @@
 import type { SettingsDraft } from '../../schema/settingsBlob';
 import { ORCA_DUMMY_FIELD, digitalInputLabel } from '../../schema/orcaMappings';
 import { getGp2040DestinationLabelSet, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
+import { cloneDraft } from '../domain/cloneDraft';
 import { DigitalSourceEditorCompact } from './DigitalSourceEditorCompact';
 
 type Props = {
@@ -16,24 +17,6 @@ const MODE_OPTIONS: { value: number; label: string }[] = [
     { value: 1, label: 'With Modifier' },
     { value: 2, label: 'Always on' },
 ];
-
-function cloneDraft(draft: SettingsDraft): SettingsDraft {
-    return {
-        ...draft,
-        profileLabels: [...draft.profileLabels],
-        digitalMappings: draft.digitalMappings.map((m) => [...m]),
-        analogMappings: draft.analogMappings.map((m) => [...m]),
-        dpadLayer: draft.dpadLayer.map((layer) => ({
-            ...layer,
-            enable: { ...layer.enable },
-            up: { ...layer.up },
-            down: { ...layer.down },
-            left: { ...layer.left },
-            right: { ...layer.right },
-        })),
-        triggerPolicy: draft.triggerPolicy.map((policy) => ({ ...policy })),
-    };
-}
 
 export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp2040LabelPreset }: Props) {
     const activeProfile = draft.activeProfile ?? 0;

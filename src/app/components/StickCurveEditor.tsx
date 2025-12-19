@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SettingsDraft, StickCurveParamsV1 } from '../../schema/settingsBlob';
+import { cloneDraft } from '../domain/cloneDraft';
 
 type Props = {
     draft: SettingsDraft;
@@ -71,31 +72,6 @@ function detectPreset(params: StickCurveParamsV1, mode: 'orca' | 'gp2040'): Pres
     }
 
     return 'custom';
-}
-
-function cloneDraft(draft: SettingsDraft): SettingsDraft {
-    return {
-        ...draft,
-        profileLabels: [...draft.profileLabels],
-        digitalMappings: draft.digitalMappings.map((m) => [...m]),
-        analogMappings: draft.analogMappings.map((m) => [...m]),
-        dpadLayer: draft.dpadLayer.map((layer) => ({
-            ...layer,
-            enable: { ...layer.enable },
-            up: { ...layer.up },
-            down: { ...layer.down },
-            left: { ...layer.left },
-            right: { ...layer.right },
-        })),
-        triggerPolicy: draft.triggerPolicy.map((policy) => ({ ...policy })),
-        stickCurveParams: draft.stickCurveParams.map((p) => ({
-            ...p,
-            range: [...p.range],
-            notch: [...p.notch],
-            dz_lower: [...p.dz_lower],
-            dz_upper: [...p.dz_upper],
-        })),
-    };
 }
 
 export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: Props) {
