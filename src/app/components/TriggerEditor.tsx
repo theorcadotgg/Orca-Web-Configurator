@@ -71,6 +71,9 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
         if (checked && mode === 'orca') {
             // When enabling, sync analog max to current lightshield value
             updatePolicy({ analogRangeMax: from255(digitalLightshield255) });
+        } else if (!checked && mode === 'orca') {
+            // When disabling, restore analog max to default value (200)
+            updatePolicy({ analogRangeMax: from255(200) });
         }
     }
 

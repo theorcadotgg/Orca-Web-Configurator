@@ -50,7 +50,7 @@ const DIGITAL_BUTTONS: ButtonConfig[] = [
     { id: 8, label: 'C-Stick Right', shortLabel: 'C➡', type: 'digital', elementIndex: 1 },
     { id: 9, label: 'C-Stick Up', shortLabel: 'C⬆', type: 'digital', elementIndex: 7 },
     { id: 10, label: 'C-Stick Down', shortLabel: 'C⬇', type: 'digital', elementIndex: 5 },
-    { id: 11, label: 'DPAD Modifier', shortLabel: 'D', type: 'digital', elementIndex: 3 },
+    { id: 11, label: 'DPAD Modifier', shortLabel: '✚', type: 'digital', elementIndex: 3 },
     { id: 12, label: 'Lightshield', shortLabel: 'LS', type: 'digital', elementIndex: 4 },
 ];
 
@@ -612,20 +612,47 @@ export function ControllerVisualizer({
                                     />
                                 </g>
                             )}
-                            <text
-                                x={circle.cx}
-                                y={circle.cy + 3}
-                                textAnchor="middle"
-                                style={{
-                                    fontSize: 9,
-                                    fontWeight: 700,
-                                    fill: 'var(--color-text-primary)',
-                                    pointerEvents: 'none',
-                                    userSelect: 'none',
-                                }}
-                            >
-                                {getShortMappingLabel(button)}
-                            </text>
+                            {/* Render SVG outline for DPAD Modifier, text for others */}
+                            {button.id === 11 ? (
+                                <path
+                                    d={`
+                                        M ${circle.cx - 3.5 * 0.35} ${circle.cy - 3.5}
+                                        L ${circle.cx + 3.5 * 0.35} ${circle.cy - 3.5}
+                                        L ${circle.cx + 3.5 * 0.35} ${circle.cy - 3.5 * 0.35}
+                                        L ${circle.cx + 3.5} ${circle.cy - 3.5 * 0.35}
+                                        L ${circle.cx + 3.5} ${circle.cy + 3.5 * 0.35}
+                                        L ${circle.cx + 3.5 * 0.35} ${circle.cy + 3.5 * 0.35}
+                                        L ${circle.cx + 3.5 * 0.35} ${circle.cy + 3.5}
+                                        L ${circle.cx - 3.5 * 0.35} ${circle.cy + 3.5}
+                                        L ${circle.cx - 3.5 * 0.35} ${circle.cy + 3.5 * 0.35}
+                                        L ${circle.cx - 3.5} ${circle.cy + 3.5 * 0.35}
+                                        L ${circle.cx - 3.5} ${circle.cy - 3.5 * 0.35}
+                                        L ${circle.cx - 3.5 * 0.35} ${circle.cy - 3.5 * 0.35}
+                                        Z
+                                    `}
+                                    style={{
+                                        fill: 'none',
+                                        stroke: 'var(--color-text-primary)',
+                                        strokeWidth: 0.8,
+                                        pointerEvents: 'none',
+                                    }}
+                                />
+                            ) : (
+                                <text
+                                    x={circle.cx}
+                                    y={circle.cy + 3}
+                                    textAnchor="middle"
+                                    style={{
+                                        fontSize: 9,
+                                        fontWeight: 700,
+                                        fill: 'var(--color-text-primary)',
+                                        pointerEvents: 'none',
+                                        userSelect: 'none',
+                                    }}
+                                >
+                                    {getShortMappingLabel(button)}
+                                </text>
+                            )}
                         </g>
                     );
                 })}
