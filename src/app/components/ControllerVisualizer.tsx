@@ -631,8 +631,8 @@ export function ControllerVisualizer({
                                         Z
                                     `}
                                     style={{
-                                        fill: 'none',
-                                        stroke: 'var(--color-text-primary)',
+                                        fill: 'var(--color-brand)',
+                                        // stroke: 'rgba(255, 255, 255, 0.25)',
                                         strokeWidth: 0.8,
                                         pointerEvents: 'none',
                                     }}
