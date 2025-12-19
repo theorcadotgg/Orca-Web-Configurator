@@ -33,7 +33,7 @@ export function ActionToolbar({
     onExportDeviceCurrent,
     onExportDeviceDraft,
     onImportDevice,
-    rebootAfterSave = true,
+    rebootAfterSave = false,
     onRebootAfterSaveChange,
 }: Props) {
     return (

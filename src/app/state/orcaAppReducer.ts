@@ -65,7 +65,7 @@ export function createInitialOrcaAppState(): OrcaAppState {
     slotStates: createEmptySlotStates(),
 
     deviceValidation: null,
-    rebootAfterSave: true,
+    rebootAfterSave: false,
     showResetConfirm: false,
 
     editingProfile: null,
