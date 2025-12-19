@@ -252,6 +252,17 @@ export function clearAllBindingsInDraft(draft: SettingsDraft): SettingsDraft {
     isLockedDigitalDestination(dest) ? dest : ORCA_DUMMY_FIELD
   );
   updated.analogMappings[activeProfile] = analogMapping.map(() => ORCA_ANALOG_MAPPING_DISABLED);
+
+  // Clear DPAD layer values to Dummy (disabled) for all directions
+  const dpadLayer = updated.dpadLayer[activeProfile];
+  if (dpadLayer) {
+    const dummySource = { type: 1, index: ORCA_DUMMY_FIELD, threshold: 0, hysteresis: 0 };
+    dpadLayer.up = dummySource;
+    dpadLayer.down = dummySource;
+    dpadLayer.left = dummySource;
+    dpadLayer.right = dummySource;
+  }
+
   return updated;
 }
 
