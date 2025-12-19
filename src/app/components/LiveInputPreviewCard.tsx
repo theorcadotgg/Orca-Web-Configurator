@@ -25,6 +25,31 @@ function clamp(v: number, lo: number, hi: number): number {
   return v;
 }
 
+/**
+ * Scale stick coordinates to Melee-style 80-pixel unit circle.
+ * If magnitude > 80, project the point onto the circle edge.
+ * Formula from orcagui.html: clamp = 80 / sqrt(x² + y²), then scale each coordinate.
+ */
+function scaleToMeleeUnitCircle(x: number, y: number): { x: number; y: number } {
+  const MELEE_RADIUS = 80;
+  const magnitude = Math.sqrt(x * x + y * y);
+
+  if (magnitude <= MELEE_RADIUS) {
+    // Within the unit circle, normalize to -1 to 1 range
+    return {
+      x: x / MELEE_RADIUS,
+      y: y / MELEE_RADIUS,
+    };
+  }
+
+  // Outside the circle: project onto the edge
+  const clamp = MELEE_RADIUS / magnitude;
+  return {
+    x: (x * clamp) / MELEE_RADIUS,
+    y: (y * clamp) / MELEE_RADIUS,
+  };
+}
+
 function format(v: number): string {
   if (!Number.isFinite(v)) return '—';
   return v.toFixed(3);
@@ -184,46 +209,51 @@ export function LiveInputPreviewCard({ transport, draft, baseBlob, disabled, sty
 
       {!computed ? (
         <div className="text-sm text-muted">Waiting for input…</div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 'var(--spacing-lg)', alignItems: 'start' }}>
-          <div className="col" style={{ gap: 'var(--spacing-sm)' }}>
-            <StickGate x={computed.joystick.x} y={computed.joystick.y} notchStart={notchStart} notchEnd={notchEnd} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <div className="text-xs text-secondary">X: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(computed.joystick.x)}</span></div>
-              <div className="text-xs text-secondary">Y: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(computed.joystick.y)}</span></div>
-              <div className="text-xs text-secondary">Mag: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(computed.joystick.magnitude)}</span></div>
-              <div className="text-xs text-secondary">TR: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(computed.triggers.r)}</span></div>
-            </div>
-          </div>
+      ) : (() => {
+        // Apply Melee-style unit circle scaling for Orca mode
+        const stickCoords = scaleToMeleeUnitCircle(computed.joystick.x * 100, computed.joystick.y * 100);
 
-          <div className="col" style={{ gap: 'var(--spacing-md)' }}>
-            <div className="col" style={{ gap: 8 }}>
-              <div className="text-sm" style={{ fontWeight: 600 }}>Analog</div>
-              {ANALOG_INPUTS.map((a) => (
-                <AnalogBar
-                  key={a.id}
-                  label={analogInputLabel(a.id)}
-                  value={computed.mappedAnalog[a.id] ?? 0}
-                  max={a.id === 4 ? 1 : analogMax}
-                />
-              ))}
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 'var(--spacing-lg)', alignItems: 'start' }}>
+            <div className="col" style={{ gap: 'var(--spacing-sm)' }}>
+              <StickGate x={stickCoords.x} y={stickCoords.y} notchStart={notchStart} notchEnd={notchEnd} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="text-xs text-secondary">X: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(stickCoords.x)}</span></div>
+                <div className="text-xs text-secondary">Y: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(stickCoords.y)}</span></div>
+                <div className="text-xs text-secondary">Mag: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(Math.sqrt(stickCoords.x * stickCoords.x + stickCoords.y * stickCoords.y))}</span></div>
+                <div className="text-xs text-secondary">TR: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(computed.triggers.r)}</span></div>
+              </div>
             </div>
 
-            <div className="col" style={{ gap: 8 }}>
-              <div className="text-sm" style={{ fontWeight: 600 }}>Digital</div>
-              {pressedOutputs.length === 0 ? (
-                <div className="text-sm text-muted">No outputs active</div>
-              ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {pressedOutputs.map((label) => (
-                    <span key={label} className="pill pill-brand">{label}</span>
-                  ))}
-                </div>
-              )}
+            <div className="col" style={{ gap: 'var(--spacing-md)' }}>
+              <div className="col" style={{ gap: 8 }}>
+                <div className="text-sm" style={{ fontWeight: 600 }}>Analog</div>
+                {ANALOG_INPUTS.map((a) => (
+                  <AnalogBar
+                    key={a.id}
+                    label={analogInputLabel(a.id)}
+                    value={computed.mappedAnalog[a.id] ?? 0}
+                    max={a.id === 4 ? 1 : analogMax}
+                  />
+                ))}
+              </div>
+
+              <div className="col" style={{ gap: 8 }}>
+                <div className="text-sm" style={{ fontWeight: 600 }}>Digital</div>
+                {pressedOutputs.length === 0 ? (
+                  <div className="text-sm text-muted">No outputs active</div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {pressedOutputs.map((label) => (
+                      <span key={label} className="pill pill-brand">{label}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
