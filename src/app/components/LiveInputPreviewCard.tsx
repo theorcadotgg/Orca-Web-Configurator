@@ -52,7 +52,9 @@ function scaleToMeleeUnitCircle(x: number, y: number): { x: number; y: number } 
 
 function format(v: number): string {
   if (!Number.isFinite(v)) return '—';
-  return v.toFixed(3);
+  // Round to nearest 0.0125 (1/80 pixel precision)
+  const rounded = Math.round(v / 0.0125) * 0.0125;
+  return rounded.toFixed(4);
 }
 
 function StickGate(props: { x: number; y: number; notchStart: number; notchEnd: number }) {
