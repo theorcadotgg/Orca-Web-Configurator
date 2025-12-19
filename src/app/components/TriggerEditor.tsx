@@ -223,18 +223,18 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                     <span style={{ fontSize: 11, width: 90, flexShrink: 0 }}>Full Press</span>
                     <input
                         type="range"
-                        min={0}
-                        max={255}
-                        value={digitalFullPress255}
+                        min={triggerMin}
+                        max={triggerMax}
+                        value={clamp(digitalFullPress255, triggerMin, triggerMax)}
                         onChange={(e) => updatePolicy({ digitalFullPress: from255(Number(e.target.value)) })}
                         disabled={disabled}
                         style={{ flex: 1, minWidth: 0 }}
                     />
                     <input
                         type="number"
-                        min={0}
-                        max={255}
-                        value={digitalFullPress255}
+                        min={triggerMin}
+                        max={triggerMax}
+                        value={clamp(digitalFullPress255, triggerMin, triggerMax)}
                         onChange={(e) => updatePolicy({ digitalFullPress: from255(Number(e.target.value)) })}
                         disabled={disabled}
                         style={{ width: 48, fontSize: 11, padding: '2px 4px', textAlign: 'center', flexShrink: 0 }}

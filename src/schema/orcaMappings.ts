@@ -86,10 +86,10 @@ export const DPAD_VIRTUAL_DESTINATIONS: DigitalInputDef[] = [
 ];
 
 export const ANALOG_INPUTS: AnalogInputDef[] = [
-  { id: 0, key: 'ORCA_JOYSTICK_X_LEFT', label: 'Joystick X Left' },
-  { id: 1, key: 'ORCA_JOYSTICK_X_RIGHT', label: 'Joystick X Right' },
-  { id: 2, key: 'ORCA_JOYSTICK_Y_UP', label: 'Joystick Y Up' },
-  { id: 3, key: 'ORCA_JOYSTICK_Y_DOWN', label: 'Joystick Y Down' },
+  { id: 0, key: 'ORCA_JOYSTICK_X_LEFT', label: 'Control Stick X Left' },
+  { id: 1, key: 'ORCA_JOYSTICK_X_RIGHT', label: 'Control Stick X Right' },
+  { id: 2, key: 'ORCA_JOYSTICK_Y_UP', label: 'Control Stick Y Up' },
+  { id: 3, key: 'ORCA_JOYSTICK_Y_DOWN', label: 'Control Stick Y Down' },
   { id: 4, key: 'ORCA_TRIGGER_R', label: 'Trigger R (Analog)' },
 ];
 
