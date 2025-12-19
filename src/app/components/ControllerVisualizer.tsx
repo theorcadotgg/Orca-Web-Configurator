@@ -447,7 +447,7 @@ export function ControllerVisualizer({
         <div className="controller-container" ref={containerRef} style={{ width: '100%', position: 'relative' }}>
             {/* Full-width SVG - Cropped to show only controller area */}
             <svg
-                viewBox="0 175 331.2 200"
+                viewBox="-2 175 335.2 200"
                 style={{
                     width: '100%',
                     padding: '20px',
@@ -459,7 +459,7 @@ export function ControllerVisualizer({
                 }}
             >
                 {/* Background outline paths (non-interactive) */}
-                <g style={{ fill: 'none', stroke: 'rgba(30, 143, 201, 0.3)', strokeWidth: 0.8, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
+                <g style={{ fill: 'none', stroke: 'rgba(30, 144, 201, 1)', strokeWidth: 0.8, strokeLinecap: 'round', strokeLinejoin: 'round' }} shapeRendering="geometricPrecision">
                     <path d="M64.0370 184.9952 L267.1630 184.9952" />
                     <path d="M64.0370 369.9952 L267.1630 369.9952" />
                     <path d="M0.1000 329.8407 L0.1000 225.1497" />

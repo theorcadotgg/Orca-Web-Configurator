@@ -486,7 +486,7 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
         if (absCoord < 0.2750) {
             return '⛔️';
         } else if (absCoord <= 0.2875) {
-            return '⛔️';
+            return '⚠️';
         } else if (absCoord <= 0.3000) {
             return '⚠️';
         }
