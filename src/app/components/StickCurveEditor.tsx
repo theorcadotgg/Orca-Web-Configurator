@@ -82,8 +82,11 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
     // Track if user explicitly selected custom mode
     const [forceCustom, setForceCustom] = useState(false);
 
+    // If user explicitly selected custom, override detected preset for UI purposes
+    const effectivePreset = forceCustom ? 'custom' : currentPreset;
+
     // Show sliders if detected as custom OR user explicitly selected custom
-    const showCustomSliders = currentPreset === 'custom' || forceCustom;
+    const showCustomSliders = effectivePreset === 'custom';
 
     // GP2040 supports extended ranges: magnitude up to 154 (1.2 * 128), notch up to 100
     // Orca mode uses specific ranges per ruleset
@@ -167,17 +170,17 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                         alignItems: 'center',
                         gap: 'var(--spacing-xs)',
                         padding: 'var(--spacing-sm) var(--spacing-md)',
-                        background: currentPreset === 'melee' ? 'var(--color-accent-primary)' : 'var(--color-bg-tertiary)',
+                        background: effectivePreset === 'melee' ? 'var(--color-accent-primary)' : 'var(--color-bg-tertiary)',
                         borderRadius: 'var(--radius-md)',
                         cursor: disabled ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s ease',
-                        border: currentPreset === 'melee' ? '1px solid var(--color-accent-primary)' : '1px solid var(--color-border)',
+                        border: effectivePreset === 'melee' ? '1px solid var(--color-accent-primary)' : '1px solid var(--color-border)',
                         opacity: disabled ? 0.5 : 1,
                     }}>
                         <input
                             type="radio"
                             name="stickPreset"
-                            checked={currentPreset === 'melee'}
+                            checked={effectivePreset === 'melee'}
                             onChange={() => applyPreset('melee')}
                             disabled={disabled}
                             style={{ display: 'none' }}
@@ -185,7 +188,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                         <span style={{
                             fontSize: 'var(--font-size-sm)',
                             fontWeight: 500,
-                            color: currentPreset === 'melee' ? 'white' : 'var(--color-text-primary)',
+                            color: effectivePreset === 'melee' ? 'white' : 'var(--color-text-primary)',
                         }}>
                             Melee
                         </span>
@@ -196,17 +199,17 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                         alignItems: 'center',
                         gap: 'var(--spacing-xs)',
                         padding: 'var(--spacing-sm) var(--spacing-md)',
-                        background: currentPreset === 'rivals2' ? 'var(--color-accent-secondary)' : 'var(--color-bg-tertiary)',
+                        background: effectivePreset === 'rivals2' ? 'var(--color-accent-secondary)' : 'var(--color-bg-tertiary)',
                         borderRadius: 'var(--radius-md)',
                         cursor: disabled ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s ease',
-                        border: currentPreset === 'rivals2' ? '1px solid var(--color-accent-secondary)' : '1px solid var(--color-border)',
+                        border: effectivePreset === 'rivals2' ? '1px solid var(--color-accent-secondary)' : '1px solid var(--color-border)',
                         opacity: disabled ? 0.5 : 1,
                     }}>
                         <input
                             type="radio"
                             name="stickPreset"
-                            checked={currentPreset === 'rivals2'}
+                            checked={effectivePreset === 'rivals2'}
                             onChange={() => applyPreset('rivals2')}
                             disabled={disabled}
                             style={{ display: 'none' }}
@@ -214,7 +217,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                         <span style={{
                             fontSize: 'var(--font-size-sm)',
                             fontWeight: 500,
-                            color: currentPreset === 'rivals2' ? 'white' : 'var(--color-text-primary)',
+                            color: effectivePreset === 'rivals2' ? 'white' : 'var(--color-text-primary)',
                         }}>
                             Rivals 2
                         </span>
@@ -253,8 +256,8 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                     </label>
                 </div>
                 <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-                    {currentPreset === 'melee' && 'Optimized for Super Smash Bros. Melee'}
-                    {currentPreset === 'rivals2' && 'Optimized for Rivals of Aether 2'}
+                    {effectivePreset === 'melee' && 'Optimized for Super Smash Bros. Melee'}
+                    {effectivePreset === 'rivals2' && 'Optimized for Rivals of Aether 2'}
                     {showCustomSliders && 'Custom values - adjust sliders below'}
                 </span>
             </div>
@@ -363,8 +366,8 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                 </div>
             )}
 
-            {/* Melee Calculator - Only in Orca mode */}
-            {mode === 'orca' && (
+            {/* Melee Calculator - Only in Orca mode and Custom mode */}
+            {mode === 'orca' && showCustomSliders && (
                 <MeleeCalculator
                     xMag={xMag}
                     upMag={upMag}
