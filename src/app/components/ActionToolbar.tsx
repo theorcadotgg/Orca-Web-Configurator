@@ -88,23 +88,23 @@ export function ActionToolbar({
             <div className="footer-group">
                 <span className="text-xs text-muted">Profile</span>
                 <button onClick={onExportProfile} disabled={busy} title="Export the currently selected profile">
-                    Export
+                    Save
                 </button>
                 <button onClick={onImportProfile} disabled={busy} title="Import into the currently selected profile">
-                    Import…
+                    Load…
                 </button>
 
                 <div className="footer-divider" style={{ height: 16 }} />
 
                 <span className="text-xs text-muted">Device</span>
-                <button onClick={onExportDeviceCurrent} disabled={busy} title="Export the full device configuration for this mode">
-                    Export
+                <button onClick={onExportDeviceCurrent} disabled={busy} title="Export the full device configuration (both modes)">
+                    Save Current
                 </button>
-                <button onClick={onExportDeviceDraft} disabled={busy || !dirty} title="Export unsaved changes for this mode">
-                    Export Draft
+                <button onClick={onExportDeviceDraft} disabled={busy || !dirty} title="Export unsaved changes (both modes)">
+                    Save Draft
                 </button>
-                <button onClick={onImportDevice} disabled={busy} title="Import a full device configuration for this mode">
-                    Import…
+                <button onClick={onImportDevice} disabled={busy} title="Import a full device configuration (both modes)">
+                    Load…
                 </button>
             </div>
         </footer>

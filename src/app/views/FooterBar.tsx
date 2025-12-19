@@ -42,8 +42,8 @@ export function FooterBar() {
           onReboot={() => void rebootNow()}
           onExportProfile={exportCurrentProfile}
           onImportProfile={() => importProfileRef.current?.click()}
-          onExportDeviceCurrent={exportCurrentBlob}
-          onExportDeviceDraft={exportDraftBlob}
+          onExportDeviceCurrent={() => void exportCurrentBlob()}
+          onExportDeviceDraft={() => void exportDraftBlob()}
           onImportDevice={() => importDeviceRef.current?.click()}
           rebootAfterSave={state.rebootAfterSave}
           onRebootAfterSaveChange={setRebootAfterSave}
@@ -53,7 +53,7 @@ export function FooterBar() {
       <input
         ref={importDeviceRef}
         type="file"
-        accept=".bin,application/octet-stream"
+        accept=".json,.bin,application/json,application/octet-stream"
         style={{ display: 'none' }}
         onChange={(e) => {
           const file = e.target.files?.[0];

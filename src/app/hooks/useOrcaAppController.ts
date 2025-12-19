@@ -11,6 +11,7 @@ import {
   serializeProfileFileV1,
   type OrcaProfileFileV1,
 } from '../../schema/profileFile';
+import { parseDeviceFileV1, serializeDeviceFileV1 } from '../../schema/deviceFile';
 import { isGp2040LabelPreset, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
 import { decodeStagedInvalidMask, validateSettingsDraft } from '../../validators/settingsValidation';
 import { OrcaWebSerialTransport } from '../../usb/OrcaWebSerialTransport';
@@ -81,8 +82,8 @@ export type OrcaAppController = {
   saveToDevice: () => Promise<void>;
   resetDefaultsOnDevice: () => Promise<void>;
   rebootNow: () => Promise<void>;
-  exportCurrentBlob: () => void;
-  exportDraftBlob: () => void;
+  exportCurrentBlob: () => Promise<void>;
+  exportDraftBlob: () => Promise<void>;
   exportCurrentProfile: () => void;
   importDeviceBlobFromFile: (file: File) => Promise<void>;
   importProfileFromFile: (file: File) => Promise<void>;
@@ -467,22 +468,118 @@ export function useOrcaAppController(): OrcaAppController {
     }
   }, []);
 
-  const exportCurrentBlob = useCallback(() => {
-    const { configMode, slotStates } = stateRef.current;
-    const slot = modeToSlotId(configMode);
-    const baseBlob = slotStates[slot].baseBlob;
-    if (baseBlob) downloadBytes(`orca-settings-${slotSuffix(slot)}.bin`, baseBlob);
-  }, []);
+  const exportCurrentBlob = useCallback(async () => {
+    const { transport, deviceInfo, slotStates } = stateRef.current;
 
-  const exportDraftBlob = useCallback(() => {
-    const { configMode, slotStates } = stateRef.current;
-    const slot = modeToSlotId(configMode);
-    const baseBlob = slotStates[slot].baseBlob;
-    const draft = slotStates[slot].draft;
-    if (baseBlob && draft) {
-      downloadBytes(`orca-settings-${slotSuffix(slot)}-draft.bin`, buildSettingsBlob(baseBlob, draft));
+    let orcaBlob = slotStates[0].baseBlob;
+    let gp2040Blob = slotStates[1].baseBlob;
+
+    // Load any missing slots from device before exporting
+    if (transport && deviceInfo) {
+      dispatch({ type: 'patch', patch: { lastError: '', progress: '', deviceValidation: null } });
+      try {
+        dispatch({ type: 'patch', patch: { busy: true } });
+
+        // Load Orca slot if not present
+        if (!orcaBlob) {
+          dispatch({ type: 'patch', patch: { progress: 'Reading Orca mode...' } });
+          const blob = await transport.readBlob(0, {
+            blobSize: deviceInfo.blobSize,
+            maxChunk: deviceInfo.maxChunk,
+          });
+          const res = tryParseSettingsBlob(blob);
+          if (!res.ok) throw new Error(`Orca mode: ${res.error}`);
+          updateSlotState(0, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+          orcaBlob = blob;
+        }
+
+        // Load GP2040 slot if not present and device supports it
+        if (!gp2040Blob && deviceInfo.slotCount >= 2) {
+          dispatch({ type: 'patch', patch: { progress: 'Reading GP2040 mode...' } });
+          const blob = await transport.readBlob(1, {
+            blobSize: deviceInfo.blobSize,
+            maxChunk: deviceInfo.maxChunk,
+          });
+          const res = tryParseSettingsBlob(blob);
+          if (!res.ok) throw new Error(`GP2040 mode: ${res.error}`);
+          updateSlotState(1, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+          gp2040Blob = blob;
+        }
+
+        dispatch({ type: 'patch', patch: { progress: '' } });
+      } catch (e) {
+        dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e), progress: '' } });
+        return;
+      } finally {
+        dispatch({ type: 'patch', patch: { busy: false } });
+      }
     }
-  }, []);
+
+    // Now export with loaded blobs
+    const json = serializeDeviceFileV1(orcaBlob, gp2040Blob);
+    const bytes = new TextEncoder().encode(json);
+    downloadBytes('orca-device-current.json', bytes, 'application/json');
+  }, [updateSlotState]);
+
+  const exportDraftBlob = useCallback(async () => {
+    const { transport, deviceInfo, slotStates } = stateRef.current;
+
+    let orcaBlob = slotStates[0].baseBlob;
+    let gp2040Blob = slotStates[1].baseBlob;
+
+    // Load any missing slots from device before exporting
+    if (transport && deviceInfo) {
+      dispatch({ type: 'patch', patch: { lastError: '', progress: '', deviceValidation: null } });
+      try {
+        dispatch({ type: 'patch', patch: { busy: true } });
+
+        // Load Orca slot if not present
+        if (!orcaBlob) {
+          dispatch({ type: 'patch', patch: { progress: 'Reading Orca mode...' } });
+          const blob = await transport.readBlob(0, {
+            blobSize: deviceInfo.blobSize,
+            maxChunk: deviceInfo.maxChunk,
+          });
+          const res = tryParseSettingsBlob(blob);
+          if (!res.ok) throw new Error(`Orca mode: ${res.error}`);
+          updateSlotState(0, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+          orcaBlob = blob;
+        }
+
+        // Load GP2040 slot if not present and device supports it
+        if (!gp2040Blob && deviceInfo.slotCount >= 2) {
+          dispatch({ type: 'patch', patch: { progress: 'Reading GP2040 mode...' } });
+          const blob = await transport.readBlob(1, {
+            blobSize: deviceInfo.blobSize,
+            maxChunk: deviceInfo.maxChunk,
+          });
+          const res = tryParseSettingsBlob(blob);
+          if (!res.ok) throw new Error(`GP2040 mode: ${res.error}`);
+          updateSlotState(1, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+          gp2040Blob = blob;
+        }
+
+        dispatch({ type: 'patch', patch: { progress: '' } });
+      } catch (e) {
+        dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e), progress: '' } });
+        return;
+      } finally {
+        dispatch({ type: 'patch', patch: { busy: false } });
+      }
+    }
+
+    // Now export with loaded blobs (applying drafts)
+    const latestStates = stateRef.current.slotStates;
+    const orcaBlobWithDraft = orcaBlob && latestStates[0].draft
+      ? buildSettingsBlob(orcaBlob, latestStates[0].draft)
+      : orcaBlob;
+    const gp2040BlobWithDraft = gp2040Blob && latestStates[1].draft
+      ? buildSettingsBlob(gp2040Blob, latestStates[1].draft)
+      : gp2040Blob;
+    const json = serializeDeviceFileV1(orcaBlobWithDraft, gp2040BlobWithDraft);
+    const bytes = new TextEncoder().encode(json);
+    downloadBytes('orca-device-draft.json', bytes, 'application/json');
+  }, [updateSlotState]);
 
   const exportCurrentProfile = useCallback(() => {
     const { configMode, slotStates } = stateRef.current;
@@ -527,12 +624,36 @@ export function useOrcaAppController(): OrcaAppController {
     dispatch({ type: 'patch', patch: { lastError: '', progress: '', deviceValidation: null } });
     try {
       dispatch({ type: 'patch', patch: { busy: true } });
-      const ab = await file.arrayBuffer();
-      const blob = new Uint8Array(ab);
-      const res = tryParseSettingsBlob(blob);
-      if (!res.ok) throw new Error(res.error);
-      const slot = modeToSlotId(stateRef.current.configMode);
-      updateSlotState(slot, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: true });
+      const text = await file.text();
+
+      // Try to parse as JSON (new format)
+      try {
+        const { orcaSlot, gp2040Slot } = parseDeviceFileV1(text);
+
+        // Update Orca slot if present
+        if (orcaSlot) {
+          const res = tryParseSettingsBlob(orcaSlot);
+          if (!res.ok) throw new Error(`Orca slot: ${res.error}`);
+          updateSlotState(0, { baseBlob: orcaSlot, parsed: res.value, draft: res.value.draft, dirty: true });
+        }
+
+        // Update GP2040 slot if present
+        if (gp2040Slot) {
+          const res = tryParseSettingsBlob(gp2040Slot);
+          if (!res.ok) throw new Error(`GP2040 slot: ${res.error}`);
+          updateSlotState(1, { baseBlob: gp2040Slot, parsed: res.value, draft: res.value.draft, dirty: true });
+        }
+      } catch (jsonError) {
+        // Not valid JSON, try as legacy binary format
+        const ab = await file.arrayBuffer();
+        const blob = new Uint8Array(ab);
+        const res = tryParseSettingsBlob(blob);
+        if (!res.ok) throw new Error(res.error);
+
+        // Import to current mode only (backward compatibility)
+        const slot = modeToSlotId(stateRef.current.configMode);
+        updateSlotState(slot, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: true });
+      }
     } catch (e) {
       dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e) } });
     } finally {
