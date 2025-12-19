@@ -23,6 +23,7 @@ export function MainPane() {
     connect,
     setActiveProfile,
     renameProfile,
+    markAsDefault,
     setDigitalMapping,
     setAnalogMapping,
     clearAllBindings,
@@ -59,6 +60,7 @@ export function MainPane() {
               {Array.from({ length: ORCA_CONFIG_SETTINGS_PROFILE_COUNT }, (_, i) => {
                 const isEditing = state.editingProfile === i;
                 const label = draft.profileLabels[i]?.trim() || `Profile ${i + 1}`;
+                const isDefault = i === 0;
 
                 return (
                   <button
@@ -101,7 +103,10 @@ export function MainPane() {
                         }}
                       />
                     ) : (
-                      label
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {label}
+                        {isDefault && <span style={{ fontSize: '14px' }}>⭐</span>}
+                      </span>
                     )}
                   </button>
                 );
@@ -109,7 +114,16 @@ export function MainPane() {
             </div>
 
             <div className="row mb-md">
-              <div className="flex-1" />
+              <div className="flex-1 row" style={{ justifyContent: 'flex-start' }}>
+                {activeProfile !== 0 && !state.busy && (
+                  <button
+                    onClick={() => markAsDefault(activeProfile)}
+                    title="Move this profile to the first slot (default)"
+                  >
+                    Mark as Default
+                  </button>
+                )}
+              </div>
               <div className="mode-tabs" style={{ marginLeft: 0 }}>
                 <button
                   className={`mode-tab ${mainView === 'layout' ? 'active' : ''}`}
@@ -178,9 +192,13 @@ export function MainPane() {
                   />
                 </div>
 
-                {remappedCount > 0 && (
+                {remappedCount > 0 ? (
                   <div className="text-center text-sm text-secondary">
                     {remappedCount} button{remappedCount > 1 ? 's' : ''} remapped
+                  </div>
+                ) : (
+                  <div className="text-center text-sm text-secondary">
+                    &nbsp;
                   </div>
                 )}
               </>

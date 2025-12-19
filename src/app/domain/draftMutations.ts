@@ -55,6 +55,40 @@ export function renameProfileInDraft(draft: SettingsDraft, profileIndex: number,
   return updated;
 }
 
+export function moveProfileToFirstSlot(draft: SettingsDraft, profileIndex: number): SettingsDraft {
+  // If already at first slot, no-op
+  if (profileIndex === 0) return draft;
+
+  const updated = cloneDraft(draft);
+
+  // Helper to swap elements at two indices in an array
+  const swap = <T>(arr: T[], i: number, j: number): void => {
+    const temp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = temp;
+  };
+
+  // Swap all profile-related data between profileIndex and 0
+  swap(updated.profileLabels, 0, profileIndex);
+  swap(updated.digitalMappings, 0, profileIndex);
+  swap(updated.analogMappings, 0, profileIndex);
+  swap(updated.dpadLayer, 0, profileIndex);
+  swap(updated.triggerPolicy, 0, profileIndex);
+  swap(updated.stickCurveParams, 0, profileIndex);
+
+  // Update activeProfile to track the moved profile
+  if (updated.activeProfile === profileIndex) {
+    // If we're promoting the currently active profile, it's now at index 0
+    updated.activeProfile = 0;
+  } else if (updated.activeProfile === 0) {
+    // If profile 0 was active, it's now at profileIndex
+    updated.activeProfile = profileIndex;
+  }
+  // Otherwise, activeProfile is unaffected
+
+  return updated;
+}
+
 export function applyImportedProfileToDraft(
   draft: SettingsDraft,
   profileIndex: number,

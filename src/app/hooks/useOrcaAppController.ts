@@ -25,6 +25,7 @@ import {
   getDefaultAnalogMapping,
   getDefaultDigitalMapping,
   getGp2040AnalogTriggerRouting,
+  moveProfileToFirstSlot,
   renameProfileInDraft,
   resetToDefaultBindingsInDraft,
   setActiveProfileInDraft,
@@ -71,6 +72,7 @@ export type OrcaAppController = {
   onDraftChange: (next: SettingsDraft) => void;
   setActiveProfile: (next: number) => void;
   renameProfile: (profileIndex: number, newName: string) => void;
+  markAsDefault: (profileIndex: number) => void;
   setDigitalMapping: (dest: number, src: number) => void;
   setAnalogMapping: (dest: number, src: number, virtualDest?: number) => void;
   clearAllBindings: () => void;
@@ -296,6 +298,14 @@ export function useOrcaAppController(): OrcaAppController {
     const draft = slotStates[slot].draft;
     if (!draft) return;
     onDraftChange(renameProfileInDraft(draft, profileIndex, newName));
+  }, [onDraftChange]);
+
+  const markAsDefault = useCallback((profileIndex: number) => {
+    const { configMode, slotStates } = stateRef.current;
+    const slot = modeToSlotId(configMode);
+    const draft = slotStates[slot].draft;
+    if (!draft) return;
+    onDraftChange(moveProfileToFirstSlot(draft, profileIndex));
   }, [onDraftChange]);
 
   const setDigitalMapping = useCallback((dest: number, src: number) => {
@@ -615,6 +625,7 @@ export function useOrcaAppController(): OrcaAppController {
     onDraftChange,
     setActiveProfile,
     renameProfile,
+    markAsDefault,
     setDigitalMapping,
     setAnalogMapping,
     clearAllBindings,
