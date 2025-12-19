@@ -21,7 +21,7 @@ export type AnalogInputDef = {
 };
 
 function isLockedSystemButton(id: number): boolean {
-  return id === ORCA_CONFIG_LOCKED_BUTTON_WISDOM || id === ORCA_CONFIG_LOCKED_BUTTON_COURAGE || id === ORCA_CONFIG_LOCKED_BUTTON_POWER;
+  return id === ORCA_CONFIG_LOCKED_BUTTON_COURAGE || id === ORCA_CONFIG_LOCKED_BUTTON_POWER;
 }
 
 export const ORCA_DUMMY_FIELD = ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT - 1;
@@ -44,8 +44,8 @@ export const DIGITAL_INPUTS: DigitalInputDef[] = [
   {
     id: ORCA_CONFIG_LOCKED_BUTTON_WISDOM,
     key: 'ORCA_WISDOM_BUTTON',
-    label: 'Wisdom (System)',
-    lockedSystem: true,
+    label: 'Start',
+    lockedSystem: false,
     isDummy: false,
   },
   {

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import type { SettingsDraft } from '../../schema/settingsBlob';
+import { TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP } from '../../schema/triggerPolicyFlags';
 import { cloneDraft } from '../domain/cloneDraft';
 
 type Props = {
@@ -26,8 +26,7 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
     const policy = draft.triggerPolicy[activeProfile] ?? draft.triggerPolicy[0];
     if (!policy) return null;
 
-    // Lightshield-only mode state
-    const [lightshieldOnly, setLightshieldOnly] = useState(false);
+    const lightshieldOnly = (policy.flags & TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP) !== 0;
 
     // Orca mode uses specific ranges per ruleset
     const triggerMin = mode === 'orca' ? 140 : 0;
@@ -53,28 +52,15 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
     // Handler for lightshield slider
     function handleLightshieldChange(value: number) {
         const clampedValue = clamp(value, lightshieldMin, lightshieldMax);
-        if (lightshieldOnly && mode === 'orca') {
-            // Update both lightshield and analog max together
-            updatePolicy({
-                digitalLightshield: from255(clampedValue),
-                analogRangeMax: from255(clampedValue)
-            });
-        } else {
-            // Just update lightshield
-            updatePolicy({ digitalLightshield: from255(clampedValue) });
-        }
+        updatePolicy({ digitalLightshield: from255(clampedValue) });
     }
 
     // Handler for lightshield-only checkbox
     function handleLightshieldOnlyToggle(checked: boolean) {
-        setLightshieldOnly(checked);
-        if (checked && mode === 'orca') {
-            // When enabling, sync analog max to current lightshield value
-            updatePolicy({ analogRangeMax: from255(digitalLightshield255) });
-        } else if (!checked && mode === 'orca') {
-            // When disabling, restore analog max to default value (200)
-            updatePolicy({ analogRangeMax: from255(200) });
-        }
+        const nextFlags = checked
+            ? (policy.flags | TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP)
+            : (policy.flags & ~TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP);
+        updatePolicy({ flags: nextFlags });
     }
 
     return (
@@ -180,7 +166,7 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                         />
                         <span style={{ color: '#FF9800' }}>Lightshield Only</span>
                         <span style={{ color: 'var(--color-text-muted)', fontSize: 10 }}>
-                            (binds max output to lightshield)
+                            (clamps analog above lightshield)
                         </span>
                     </label>
                 </div>

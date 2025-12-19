@@ -12,16 +12,16 @@ import {
   isLockedDigitalDestination,
   isVirtualDpadDestination,
 } from '../../schema/orcaMappings';
+import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT } from '../../schema/triggerPolicyFlags';
 import { cloneDraft } from './cloneDraft';
 
-const TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT = 1 << 0;
 const ORCA_DPAD_DEST = 11;
 const ORCA_LIGHTSHIELD_SRC = 12;
 const ORCA_C_LEFT_SRC = 7;
 const ORCA_C_RIGHT_SRC = 8;
 const ORCA_C_UP_SRC = 9;
 const ORCA_C_DOWN_SRC = 10;
-const GP2040_ANALOG_LT_VIRTUAL_ID = 254;
+const ANALOG_TRIGGER_L_VIRTUAL_ID = 254;
 
 export function getDefaultDigitalMapping(mode: ProfileMode): number[] {
   const base = Array.from({ length: DIGITAL_INPUTS.length }, (_, i) => i);
@@ -236,7 +236,7 @@ export function setAnalogMappingInDraft(
     virtualDest?: number;
   },
 ): SettingsDraft {
-  const { dest, src, defaultAnalogMapping, mode, virtualDest } = params;
+  const { dest, src, defaultAnalogMapping, virtualDest } = params;
   const activeProfile = draft.activeProfile ?? 0;
   const updated = cloneDraft(draft);
 
@@ -260,9 +260,9 @@ export function setAnalogMappingInDraft(
   }
   currentMapping[dest] = src;
 
-  // In GP2040 mode, automatically update trigger policy flag based on virtual destination
-  if (mode === 'gp2040' && dest === 4 && virtualDest !== undefined) {
-    const routeToLt = virtualDest === GP2040_ANALOG_LT_VIRTUAL_ID;
+  // Update trigger policy flag based on virtual trigger destination.
+  if (dest === 4 && virtualDest !== undefined) {
+    const routeToLt = virtualDest === ANALOG_TRIGGER_L_VIRTUAL_ID;
     const policy = updated.triggerPolicy[activeProfile] ?? updated.triggerPolicy[0];
     if (policy) {
       updated.triggerPolicy[activeProfile] = {

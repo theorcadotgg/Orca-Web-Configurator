@@ -52,6 +52,7 @@ const DIGITAL_BUTTONS: ButtonConfig[] = [
     { id: 10, label: 'C-Stick Down', shortLabel: 'C⬇', type: 'digital', elementIndex: 5 },
     { id: 11, label: 'DPAD Modifier', shortLabel: '✚', type: 'digital', elementIndex: 3 },
     { id: 12, label: 'Lightshield', shortLabel: 'LS', type: 'digital', elementIndex: 4 },
+    { id: 13, label: 'Start', shortLabel: 'St', type: 'digital', elementIndex: 14 },
 ];
 
 // ============================================================
@@ -93,8 +94,8 @@ const OBLONGS = [
     { cx: 300, cy: 246 },   // 4 - TR (right side oblong)
 ];
 
-// Virtual destination ID for LT in GP2040 mode (to distinguish from RT which uses ID 4)
-const GP2040_ANALOG_LT_VIRTUAL_ID = 254;
+// Virtual destination ID for analog L trigger (to distinguish from R which uses ID 4)
+const ANALOG_TRIGGER_L_VIRTUAL_ID = 254;
 
 interface Props {
     digitalMapping: number[];
@@ -222,21 +223,31 @@ export function ControllerVisualizer({
 
     const analogDestinationOptions = useMemo(() => {
         const base = [...ANALOG_INPUTS].sort((a, b) => a.id - b.id);
-        if (destinationLabelMode !== 'gp2040') return base;
+        if (destinationLabelMode === 'gp2040') {
+            // In GP2040 mode, replace the trigger option (id=4) with BOTH LT and RT options
+            const result = base.flatMap((opt) => {
+                if (opt.id === 4) {
+                    // Replace with both LT and RT options
+                    return [
+                        { id: ANALOG_TRIGGER_L_VIRTUAL_ID, key: 'GP2040_LT', label: getGp2040TriggerLabels.lt.label },
+                        { id: 4, key: 'GP2040_RT', label: getGp2040TriggerLabels.rt.label },
+                    ];
+                }
+                const overlay = gp2040LabelSet.analog[opt.id];
+                return [overlay ? { ...opt, label: overlay.label } : opt];
+            });
+            return result;
+        }
 
-        // In GP2040 mode, replace the trigger option (id=4) with BOTH LT and RT options
-        const result = base.flatMap((opt) => {
+        return base.flatMap((opt) => {
             if (opt.id === 4) {
-                // Replace with both LT and RT options
                 return [
-                    { id: GP2040_ANALOG_LT_VIRTUAL_ID, key: 'GP2040_LT', label: getGp2040TriggerLabels.lt.label },
-                    { id: 4, key: 'GP2040_RT', label: getGp2040TriggerLabels.rt.label },
+                    { id: ANALOG_TRIGGER_L_VIRTUAL_ID, key: 'ORCA_TRIGGER_L', label: 'Trigger L (Analog)' },
+                    { id: 4, key: 'ORCA_TRIGGER_R', label: 'Trigger R (Analog)' },
                 ];
             }
-            const overlay = gp2040LabelSet.analog[opt.id];
-            return [overlay ? { ...opt, label: overlay.label } : opt];
+            return [opt];
         });
-        return result;
     }, [destinationLabelMode, getGp2040TriggerLabels, gp2040LabelSet]);
 
     // Get button config by type and element index
@@ -323,13 +334,15 @@ export function ControllerVisualizer({
         } else {
             const destId = analogDestBySrc[button.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
             if (destId === ORCA_ANALOG_MAPPING_DISABLED) return 'OFF';
-            if (destinationLabelMode === 'gp2040') {
-                if (destId === 4) {
-                    // Determine if routed to LT or RT based on the routing parameter
+            if (destId === 4) {
+                if (destinationLabelMode === 'gp2040') {
                     return gp2040AnalogTriggerRouting === 'lt'
                         ? getGp2040TriggerLabels.lt.shortLabel
                         : getGp2040TriggerLabels.rt.shortLabel;
                 }
+                return gp2040AnalogTriggerRouting === 'lt' ? 'TL' : 'TR';
+            }
+            if (destinationLabelMode === 'gp2040') {
                 const overlay = gp2040LabelSet.analog[destId];
                 if (overlay) return overlay.shortLabel;
             }
@@ -384,7 +397,7 @@ export function ControllerVisualizer({
                 return;
             }
             // Pass the virtual dest ID if it's the LT option, so App.tsx can handle routing
-            onAnalogMappingChange(value === GP2040_ANALOG_LT_VIRTUAL_ID ? 4 : value, src, value);
+            onAnalogMappingChange(value === ANALOG_TRIGGER_L_VIRTUAL_ID ? 4 : value, src, value);
         }
     }
 
@@ -399,9 +412,8 @@ export function ControllerVisualizer({
             return ORCA_DUMMY_FIELD;
         }
         const destId = analogDestBySrc[selectedButton.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
-        // In GP2040 mode, if mapped to trigger (4) and routed to LT, show the virtual LT ID
-        if (destinationLabelMode === 'gp2040' && destId === 4 && gp2040AnalogTriggerRouting === 'lt') {
-            return GP2040_ANALOG_LT_VIRTUAL_ID;
+        if (destId === 4 && gp2040AnalogTriggerRouting === 'lt') {
+            return ANALOG_TRIGGER_L_VIRTUAL_ID;
         }
         return destId;
     }

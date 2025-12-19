@@ -1,6 +1,7 @@
 import { ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT, ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT, OrcaSettingsTlv } from '@shared/orca_config_idl_generated';
 import { readF32Le, readU16Le, readU32Le } from '../schema/bytes';
 import type { SettingsDraft, StickCurveParamsV1, TriggerPolicyV1 } from '../schema/settingsBlob';
+import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT, TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP } from '../schema/triggerPolicyFlags';
 import type { OrcaInputState } from '../usb/OrcaTransport';
 
 const ORCA_ANALOG_MAPPING_DISABLED = 0xff;
@@ -164,14 +165,29 @@ function computeTriggers(mappedDigitalMask: number, mappedAnalog: number[], poli
   const analogMax = policy?.analogRangeMax ?? (200 / 255);
   const digitalFull = policy?.digitalFullPress ?? (200 / 255);
   const digitalLight = policy?.digitalLightshield ?? (49 / 255);
+  const flags = policy?.flags ?? 0;
+  const analogToLt = (flags & TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT) !== 0;
+  const clampAnalogToLightshield = (flags & TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP) !== 0;
 
   const lPressed = ((mappedDigitalMask >>> ORCA_L_BUTTON) & 1) !== 0;
   const lightshieldPressed = ((mappedDigitalMask >>> ORCA_LIGHTSHIELD) & 1) !== 0;
   const rPressed = ((mappedDigitalMask >>> ORCA_R_BUTTON) & 1) !== 0;
 
-  const l = lPressed ? digitalFull : lightshieldPressed ? digitalLight : 0;
-  let r = clamp01(mappedAnalog[ORCA_TRIGGER_R_ANALOG] ?? 0) * clamp01(analogMax);
-  if (rPressed) r = digitalFull;
+  const digitalL = lPressed ? digitalFull : lightshieldPressed ? digitalLight : 0;
+  const digitalR = rPressed ? digitalFull : 0;
+  let analogTrigger = clamp01(mappedAnalog[ORCA_TRIGGER_R_ANALOG] ?? 0) * clamp01(analogMax);
+  if (clampAnalogToLightshield && analogTrigger > digitalLight) {
+    analogTrigger = digitalLight;
+  }
+
+  let l = analogToLt ? analogTrigger : digitalL;
+  let r = analogToLt ? digitalR : analogTrigger;
+  if (analogToLt) {
+    if (digitalL > 0) l = digitalL;
+  } else if (digitalR > 0) {
+    r = digitalR;
+  }
+
   return { l: clamp01(l), r: clamp01(r) };
 }
 
@@ -208,4 +224,3 @@ export function computeInputPreview(raw: OrcaInputState, draft: SettingsDraft, b
     triggers,
   };
 }
-

@@ -8,6 +8,7 @@ import {
   ORCA_DUMMY_FIELD,
   isLockedDigitalDestination,
 } from '../../schema/orcaMappings';
+import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT } from '../../schema/triggerPolicyFlags';
 import {
   applyImportedProfileToDraft,
   clearAllBindingsInDraft,
@@ -146,7 +147,7 @@ describe('setAnalogMappingInDraft', () => {
       mode: 'gp2040',
       virtualDest: 254,
     });
-    expect(toLt.triggerPolicy[0]?.flags & (1 << 0)).toBe(1);
+    expect(toLt.triggerPolicy[0]?.flags & TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT).toBe(TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT);
 
     const toRt = setAnalogMappingInDraft(toLt, {
       dest: 4,
@@ -155,7 +156,7 @@ describe('setAnalogMappingInDraft', () => {
       mode: 'gp2040',
       virtualDest: 4,
     });
-    expect(toRt.triggerPolicy[0]?.flags & (1 << 0)).toBe(0);
+    expect(toRt.triggerPolicy[0]?.flags & TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT).toBe(0);
   });
 });
 
@@ -207,10 +208,9 @@ describe('applyImportedProfileToDraft', () => {
 describe('getGp2040AnalogTriggerRouting', () => {
   it('derives routing from triggerPolicy flags', () => {
     const draft = makeDraft();
-    draft.triggerPolicy[0] = makeTriggerPolicy(1);
+    draft.triggerPolicy[0] = makeTriggerPolicy(TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT);
     expect(getGp2040AnalogTriggerRouting(draft, 0)).toBe('lt');
     draft.triggerPolicy[0] = makeTriggerPolicy(0);
     expect(getGp2040AnalogTriggerRouting(draft, 0)).toBe('rt');
   });
 });
-
