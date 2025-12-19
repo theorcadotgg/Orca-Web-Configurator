@@ -46,30 +46,31 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
     const digitalFullPress255 = to255(policy.digitalFullPress);
     const digitalLightshield255 = to255(policy.digitalLightshield);
 
-    // Calculate lightshield max based on current trigger value (for Orca mode)
-    const lightshieldMax = mode === 'orca' ? Math.floor(analogRangeMax255 / 2) : 255;
+    // Calculate lightshield max based on trigger max (for Orca mode)
+    // Use triggerMax instead of analogRangeMax255 to avoid circular dependency
+    const lightshieldMax = mode === 'orca' ? Math.floor(triggerMax / 2) : 255;
 
-    // Effect to sync max output with lightshield when lightshield-only is enabled
-    useEffect(() => {
-        if (lightshieldOnly && mode === 'orca') {
-            // Set analogRangeMax to match digitalLightshield (or +1 if needed)
-            const targetValue = digitalLightshield255;
-            if (analogRangeMax255 !== targetValue) {
-                updatePolicy({ analogRangeMax: from255(targetValue) });
-            }
-        }
-    }, [lightshieldOnly, digitalLightshield255]);
-
-    // Handler for lightshield slider when lightshield-only is enabled
+    // Handler for lightshield slider
     function handleLightshieldChange(value: number) {
         const clampedValue = clamp(value, lightshieldMin, lightshieldMax);
-        updatePolicy({ digitalLightshield: from255(clampedValue) });
-        if (lightshieldOnly) {
-            // Also update analog max to match
+        if (lightshieldOnly && mode === 'orca') {
+            // Update both lightshield and analog max together
             updatePolicy({
                 digitalLightshield: from255(clampedValue),
                 analogRangeMax: from255(clampedValue)
             });
+        } else {
+            // Just update lightshield
+            updatePolicy({ digitalLightshield: from255(clampedValue) });
+        }
+    }
+
+    // Handler for lightshield-only checkbox
+    function handleLightshieldOnlyToggle(checked: boolean) {
+        setLightshieldOnly(checked);
+        if (checked && mode === 'orca') {
+            // When enabling, sync analog max to current lightshield value
+            updatePolicy({ analogRangeMax: from255(digitalLightshield255) });
         }
     }
 
@@ -170,7 +171,7 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                         <input
                             type="checkbox"
                             checked={lightshieldOnly}
-                            onChange={(e) => setLightshieldOnly(e.target.checked)}
+                            onChange={(e) => handleLightshieldOnlyToggle(e.target.checked)}
                             disabled={disabled}
                             style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
                         />

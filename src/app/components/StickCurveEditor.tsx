@@ -445,6 +445,53 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
         southBehavior = 'UCF Shield Drop';
     }
 
+    // Wavedash Warning Helper
+    function getWavedashWarning(absYCoord: number): { message: string; color: string; bgColor: string } | null {
+        if (absYCoord < 0.2750) {
+            return {
+                message: "Warning! This value will not hit a wavedash / firefox angle and will recognize as a cardinal input.",
+                color: '#ff4444',
+                bgColor: 'rgba(255, 68, 68, 0.1)'
+            };
+        } else if (absYCoord <= 0.2875) {
+            return {
+                message: "Warning! This value is very likely to miss a wavedash / firefox angle.",
+                color: '#ff6644',
+                bgColor: 'rgba(255, 102, 68, 0.1)'
+            };
+        } else if (absYCoord <= 0.3000) {
+            return {
+                message: "Caution! This value is somewhat likely to miss a wavedash / firefox angle.",
+                color: '#ffaa44',
+                bgColor: 'rgba(255, 170, 68, 0.1)'
+            };
+        } else if (absYCoord <= 0.3125) {
+            return {
+                message: "Optimal Orca Wavedash / Firefox Angle",
+                color: '#44ff88',
+                bgColor: 'rgba(68, 255, 136, 0.1)'
+            };
+        } else if (absYCoord <= 0.3250) {
+            return {
+                message: "Optimal Sheik Wavedash Angle",
+                color: '#44ddff',
+                bgColor: 'rgba(68, 221, 255, 0.1)'
+            };
+        }
+        return null;
+    }
+
+    // Check warnings for both min and max wavedash notches (both X and Y coordinates)
+    const maxWDAbsX = Math.abs(parseFloat(maxWD.xCoord));
+    const maxWDAbsY = Math.abs(parseFloat(maxWD.yCoord));
+    const minWDAbsX = Math.abs(parseFloat(minWD.xCoord));
+    const minWDAbsY = Math.abs(parseFloat(minWD.yCoord));
+
+    const maxWDWarningX = getWavedashWarning(maxWDAbsX);
+    const maxWDWarningY = getWavedashWarning(maxWDAbsY);
+    const minWDWarningX = getWavedashWarning(minWDAbsX);
+    const minWDWarningY = getWavedashWarning(minWDAbsY);
+
     return (
         <div style={{
             marginTop: 'var(--spacing-md)',
@@ -489,6 +536,8 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                     <ResultRow label="Slight Over Notch" value={slightOverDisplay} />
                     <ResultRow label="North Diagonal" value={northDiagDisplay} />
                     <ResultRow label="South Diagonal" value={southDiagDisplay} />
+
+                    {/* South Diagonal Behavior Section */}
                     <div style={{
                         fontSize: 'var(--font-size-xs)',
                         color: 'var(--color-text-muted)',
@@ -505,9 +554,76 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                             {southBehavior}
                         </div>
                     </div>
+
+                    {/* Wavedash Warnings Section */}
+                    {(maxWDWarningX || maxWDWarningY || minWDWarningX || minWDWarningY) && (
+                        <div style={{
+                            fontSize: 'var(--font-size-xs)',
+                            marginTop: 'var(--spacing-sm)',
+                            paddingTop: 'var(--spacing-xs)',
+                            borderTop: '1px solid var(--color-border)',
+                        }}>
+                            <div style={{ fontWeight: 600, marginBottom: 'var(--spacing-xs)', color: 'var(--color-text-secondary)' }}>
+                                Wavedash Warnings:
+                            </div>
+                            {maxWDWarningX && (
+                                <div style={{
+                                    padding: 'var(--spacing-xs)',
+                                    marginBottom: 'var(--spacing-xs)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    backgroundColor: maxWDWarningX.bgColor,
+                                    border: `1px solid ${maxWDWarningX.color}`,
+                                    color: maxWDWarningX.color,
+                                    fontWeight: 500,
+                                }}>
+                                    <strong>Max WD X:</strong> {maxWDWarningX.message}
+                                </div>
+                            )}
+                            {maxWDWarningY && (
+                                <div style={{
+                                    padding: 'var(--spacing-xs)',
+                                    marginBottom: 'var(--spacing-xs)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    backgroundColor: maxWDWarningY.bgColor,
+                                    border: `1px solid ${maxWDWarningY.color}`,
+                                    color: maxWDWarningY.color,
+                                    fontWeight: 500,
+                                }}>
+                                    <strong>Max WD Y:</strong> {maxWDWarningY.message}
+                                </div>
+                            )}
+                            {minWDWarningX && (
+                                <div style={{
+                                    padding: 'var(--spacing-xs)',
+                                    marginBottom: 'var(--spacing-xs)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    backgroundColor: minWDWarningX.bgColor,
+                                    border: `1px solid ${minWDWarningX.color}`,
+                                    color: minWDWarningX.color,
+                                    fontWeight: 500,
+                                }}>
+                                    <strong>Min WD X:</strong> {minWDWarningX.message}
+                                </div>
+                            )}
+                            {minWDWarningY && (
+                                <div style={{
+                                    padding: 'var(--spacing-xs)',
+                                    marginBottom: 'var(--spacing-xs)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    backgroundColor: minWDWarningY.bgColor,
+                                    border: `1px solid ${minWDWarningY.color}`,
+                                    color: minWDWarningY.color,
+                                    fontWeight: 500,
+                                }}>
+                                    <strong>Min WD Y:</strong> {minWDWarningY.message}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }
 
