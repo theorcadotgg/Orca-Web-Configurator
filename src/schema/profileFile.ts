@@ -109,11 +109,23 @@ function parseDpadLayerV1(value: unknown, name: string): DpadLayerV1 {
 
 function parseTriggerPolicyV1(value: unknown, name: string): TriggerPolicyV1 {
   const rec = expectRecord(value, name);
+  const digitalLightLtSrc = Object.prototype.hasOwnProperty.call(rec, 'digitalLightLtSrc')
+    ? expectU8(rec.digitalLightLtSrc, `${name}.digitalLightLtSrc`)
+    : 0;
+  const digitalLightRtSrc = Object.prototype.hasOwnProperty.call(rec, 'digitalLightRtSrc')
+    ? expectU8(rec.digitalLightRtSrc, `${name}.digitalLightRtSrc`)
+    : 0;
+  const digitalLightSrcVersion = Object.prototype.hasOwnProperty.call(rec, 'digitalLightSrcVersion')
+    ? expectU8(rec.digitalLightSrcVersion, `${name}.digitalLightSrcVersion`)
+    : 0;
   return {
     analogRangeMax: expectFiniteNumber(rec.analogRangeMax, `${name}.analogRangeMax`),
     digitalFullPress: expectFiniteNumber(rec.digitalFullPress, `${name}.digitalFullPress`),
     digitalLightshield: expectFiniteNumber(rec.digitalLightshield, `${name}.digitalLightshield`),
     flags: expectU8(rec.flags, `${name}.flags`),
+    digitalLightLtSrc,
+    digitalLightRtSrc,
+    digitalLightSrcVersion,
   };
 }
 

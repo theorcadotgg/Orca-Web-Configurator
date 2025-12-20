@@ -3,7 +3,10 @@ import type { DpadLayerV1, DigitalSourceV1, SettingsDraft, StickCurveParamsV1, T
 import {
   ANALOG_INPUTS,
   DIGITAL_INPUTS,
+  DPAD_MODIFIER_VIRTUAL_DEST,
   DPAD_UP_VIRTUAL_DEST,
+  LT_LIGHT_VIRTUAL_DEST,
+  RT_LIGHT_VIRTUAL_DEST,
   ORCA_ANALOG_MAPPING_DISABLED,
   ORCA_DUMMY_FIELD,
   isLockedDigitalDestination,
@@ -38,7 +41,15 @@ function makeStickParams(): StickCurveParamsV1 {
 }
 
 function makeTriggerPolicy(flags = 0): TriggerPolicyV1 {
-  return { analogRangeMax: 1, digitalFullPress: 1, digitalLightshield: 0.5, flags };
+  return {
+    analogRangeMax: 1,
+    digitalFullPress: 1,
+    digitalLightshield: 0.5,
+    flags,
+    digitalLightLtSrc: 0,
+    digitalLightRtSrc: 0,
+    digitalLightSrcVersion: 0,
+  };
 }
 
 function makeDpadLayer(): DpadLayerV1 {
@@ -79,8 +90,8 @@ describe('getDefaultDigitalMapping', () => {
   it('applies gp2040 overrides', () => {
     const mapping = getDefaultDigitalMapping('gp2040');
     expect(mapping).toHaveLength(DIGITAL_INPUTS.length);
-    expect(mapping[11]).toBe(12);
-    expect(mapping[12]).toBe(ORCA_DUMMY_FIELD);
+    expect(mapping[11]).toBe(ORCA_DUMMY_FIELD);
+    expect(mapping[12]).toBe(12);
   });
 });
 
@@ -124,6 +135,36 @@ describe('setDigitalMappingInDraft', () => {
     const updated = setDigitalMappingInDraft(draft, { dest: 1, src: 0, defaultDigitalMapping });
     expect(updated.dpadLayer[0]?.mode_up).toBe(1);
     expect(updated.dpadLayer[0]?.up.index).toBe(9);
+  });
+
+  it('sets DPAD modifier enable via virtual destination', () => {
+    const draft = makeDraft();
+    const defaultDigitalMapping = getDefaultDigitalMapping('orca');
+    const updated = setDigitalMappingInDraft(draft, { dest: DPAD_MODIFIER_VIRTUAL_DEST, src: 0, defaultDigitalMapping });
+    expect(updated.dpadLayer[0]?.enable.type).toBe(1);
+    expect(updated.dpadLayer[0]?.enable.index).toBe(0);
+    expect(updated.digitalMappings[0]?.[0]).toBe(0);
+  });
+
+  it('sets GP2040 LT light source via virtual destination', () => {
+    const draft = makeDraft();
+    const defaultDigitalMapping = getDefaultDigitalMapping('orca');
+    const updated = setDigitalMappingInDraft(draft, { dest: LT_LIGHT_VIRTUAL_DEST, src: 2, defaultDigitalMapping });
+    expect(updated.triggerPolicy[0]?.digitalLightSrcVersion).toBe(1);
+    expect(updated.triggerPolicy[0]?.digitalLightLtSrc).toBe(2);
+    expect(updated.triggerPolicy[0]?.digitalLightRtSrc).toBe(ORCA_DUMMY_FIELD);
+    expect(updated.digitalMappings[0]?.[2]).toBe(ORCA_DUMMY_FIELD);
+  });
+
+  it('sets GP2040 RT light source via virtual destination and preserves LT', () => {
+    const draft = makeDraft();
+    draft.triggerPolicy[0] = { ...makeTriggerPolicy(), digitalLightSrcVersion: 1, digitalLightLtSrc: 1, digitalLightRtSrc: 2 };
+    const defaultDigitalMapping = getDefaultDigitalMapping('orca');
+    const updated = setDigitalMappingInDraft(draft, { dest: RT_LIGHT_VIRTUAL_DEST, src: 3, defaultDigitalMapping });
+    expect(updated.triggerPolicy[0]?.digitalLightSrcVersion).toBe(1);
+    expect(updated.triggerPolicy[0]?.digitalLightLtSrc).toBe(1);
+    expect(updated.triggerPolicy[0]?.digitalLightRtSrc).toBe(3);
+    expect(updated.digitalMappings[0]?.[3]).toBe(ORCA_DUMMY_FIELD);
   });
 });
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { SettingsDraft } from '../../schema/settingsBlob';
-import { ORCA_DUMMY_FIELD, digitalInputLabel } from '../../schema/orcaMappings';
-import { getGp2040DestinationLabelSet, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
+import { ORCA_DUMMY_FIELD } from '../../schema/orcaMappings';
+import type { Gp2040LabelPreset } from '../../schema/gp2040Labels';
 import { cloneDraft } from '../domain/cloneDraft';
 import { DigitalSourceEditorCompact } from './DigitalSourceEditorCompact';
 
@@ -19,13 +19,13 @@ const MODE_OPTIONS: { value: number; label: string }[] = [
     { value: 2, label: 'Always on' },
 ];
 
-export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp2040LabelPreset }: Props) {
+export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca' }: Props) {
     const activeProfile = draft.activeProfile ?? 0;
     const layer = draft.dpadLayer[activeProfile] ?? draft.dpadLayer[0];
     if (!layer) return null;
 
-    // In GP2040 mode, Orca destination 11 ("ORCA_DPAD") is labeled as the GP2040 shoulder button (L1/LB/L).
-    const ORCA_DPAD_DEST = 11;
+    // GP2040 mode note: the DPAD Layer modifier references raw physical Orca inputs (not the main mapping outputs).
+    const ORCA_DPAD_MODIFIER_INPUT = 11;
     const ORCA_C_LEFT = 7;
     const ORCA_C_RIGHT = 8;
     const ORCA_C_UP = 9;
@@ -34,9 +34,6 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
     const ORCA_ANALOG_X_RIGHT = 1;
     const ORCA_ANALOG_Y_UP = 2;
     const ORCA_ANALOG_Y_DOWN = 3;
-
-    const l1OutputSource = draft.digitalMappings?.[activeProfile]?.[ORCA_DPAD_DEST] ?? ORCA_DPAD_DEST;
-    const l1OutputSourceLabel = l1OutputSource === ORCA_DUMMY_FIELD ? 'OFF' : digitalInputLabel(l1OutputSource);
 
     function areSourcesEqual(
         a: { type: number; index: number; threshold?: number; hysteresis?: number } | undefined,
@@ -93,10 +90,6 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
 
     const isGp2040 = contextMode === 'gp2040';
     const allowAnalogDpadSources = isGp2040;
-    const gp2040LabelSet = isGp2040 ? getGp2040DestinationLabelSet(gp2040LabelPreset) : null;
-    const l1OutputLabel = isGp2040 ? (gp2040LabelSet?.digital?.[ORCA_DPAD_DEST]?.label ?? 'L1') : 'L1';
-    const enableIsLinkedToL1 =
-        layer.enable?.type === 1 && layer.enable?.index === l1OutputSource && l1OutputSource !== ORCA_DUMMY_FIELD;
 
     function setLayer(nextLayer: typeof layer) {
         const updated = cloneDraft(draft);
@@ -123,19 +116,6 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
         }
     }, [layer, activeProfile, draft, onChange]);
 
-    function linkEnableToL1Source() {
-        if (disabled) return;
-        if (l1OutputSource === ORCA_DUMMY_FIELD) return;
-        updateLayer({
-            enable: {
-                type: 1,
-                index: l1OutputSource,
-                threshold: 0,
-                hysteresis: 0,
-            },
-        });
-    }
-
     function applyPreset(preset: 'cstick_held' | 'ls_held' | 'ls_always') {
         if (disabled) return;
         if (!allowAnalogDpadSources && preset !== 'cstick_held') return;
@@ -149,7 +129,7 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
                 mode_down: 1,
                 mode_left: 1,
                 mode_right: 1,
-                enable: digital(ORCA_DPAD_DEST),
+                enable: digital(ORCA_DPAD_MODIFIER_INPUT),
                 up: digital(ORCA_C_UP),
                 down: digital(ORCA_C_DOWN),
                 left: digital(ORCA_C_LEFT),
@@ -164,7 +144,7 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
                 mode_down: 1,
                 mode_left: 1,
                 mode_right: 1,
-                enable: digital(ORCA_DPAD_DEST),
+                enable: digital(ORCA_DPAD_MODIFIER_INPUT),
                 up: analogGe(ORCA_ANALOG_Y_UP),
                 down: analogGe(ORCA_ANALOG_Y_DOWN),
                 left: analogGe(ORCA_ANALOG_X_LEFT),
@@ -178,7 +158,7 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
             mode_down: 2,
             mode_left: 2,
             mode_right: 2,
-            enable: digital(ORCA_DPAD_DEST),
+            enable: digital(ORCA_DPAD_MODIFIER_INPUT),
             up: analogGe(ORCA_ANALOG_Y_UP),
             down: analogGe(ORCA_ANALOG_Y_DOWN),
             left: analogGe(ORCA_ANALOG_X_LEFT),
@@ -188,37 +168,6 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca', gp
 
     return (
         <div className="col" style={{ gap: 8 }}>
-            {isGp2040 && (
-                <div style={{
-                    padding: '8px 10px',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--color-bg-tertiary)',
-                    border: '1px solid var(--color-border)',
-                }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 4 }}>
-                        GP2040 note
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', lineHeight: 1.35 }}>
-                        The output <span style={{ fontWeight: 600 }}>{l1OutputLabel}</span> (configured in the main mapping) is separate from the modifier input below.
-                        The modifier uses the raw physical input, even if that button is Disabled (OFF) in the main mapping.
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8 }}>
-                        <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
-                            <span style={{ fontWeight: 600 }}>{l1OutputLabel}</span> output source: <span style={{ color: 'var(--color-text-primary)', fontWeight: 600 }}>{l1OutputSourceLabel}</span>
-                        </div>
-                        <button
-                            onClick={linkEnableToL1Source}
-                            disabled={disabled || l1OutputSource === ORCA_DUMMY_FIELD || enableIsLinkedToL1}
-                            title={l1OutputSource === ORCA_DUMMY_FIELD ? `${l1OutputLabel} output is Disabled (OFF)` : undefined}
-                            style={{ fontSize: 11, padding: '4px 8px' }}
-                        >
-                            {enableIsLinkedToL1 ? 'Linked' : 'Use as modifier'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
             <div style={{
                 display: 'flex',
                 alignItems: 'center',

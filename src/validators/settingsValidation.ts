@@ -1,6 +1,9 @@
 import {
   ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT,
   ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT,
+  ORCA_CONFIG_LOCKED_BUTTON_COURAGE,
+  ORCA_CONFIG_LOCKED_BUTTON_POWER,
+  ORCA_CONFIG_LOCKED_BUTTON_WISDOM,
   ORCA_CONFIG_SETTINGS_PROFILE_COUNT,
   OrcaSettingsTlv,
 } from '@shared/orca_config_idl_generated';
@@ -62,6 +65,26 @@ function validateTriggerPolicy(policy: TriggerPolicyV1, label: string): string[]
   }
   if (isFiniteNumber(policy.digitalFullPress) && isFiniteNumber(policy.digitalLightshield) && policy.digitalLightshield > policy.digitalFullPress) {
     errors.push(`${label}: lightshield threshold must be <= full press threshold`);
+  }
+
+  // GP2040-only: light-trigger sources (stored in v1 reserved bytes).
+  const isForbiddenDigitalSource = (id: number) =>
+    id === ORCA_CONFIG_LOCKED_BUTTON_WISDOM || id === ORCA_CONFIG_LOCKED_BUTTON_COURAGE || id === ORCA_CONFIG_LOCKED_BUTTON_POWER;
+  if (policy.digitalLightSrcVersion !== 0 && policy.digitalLightSrcVersion !== 1) {
+    errors.push(`${label}: digital light source version must be 0 (legacy) or 1`);
+  }
+  if (policy.digitalLightSrcVersion === 1) {
+    const sources = [
+      { which: 'LT', id: policy.digitalLightLtSrc },
+      { which: 'RT', id: policy.digitalLightRtSrc },
+    ];
+    for (const src of sources) {
+      if (src.id < 0 || src.id >= ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT) {
+        errors.push(`${label}: ${src.which} light source out of range`);
+      } else if (src.id !== ORCA_DUMMY_FIELD && isForbiddenDigitalSource(src.id)) {
+        errors.push(`${label}: ${src.which} light source cannot use locked/system buttons`);
+      }
+    }
   }
   return errors;
 }

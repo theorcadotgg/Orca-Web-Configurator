@@ -24,11 +24,11 @@ export const GP2040_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
   8: { label: 'RS Right', shortLabel: 'RS➡' }, // ORCA_C_RIGHT
   9: { label: 'RS Up', shortLabel: 'RS⬆' }, // ORCA_C_UP
   10: { label: 'RS Down', shortLabel: 'RS⬇' }, // ORCA_C_DOWN
-  11: { label: 'L1', shortLabel: 'L1' }, // ORCA_DPAD
-  12: { label: 'L2 (Light)', shortLabel: 'L2' }, // ORCA_LIGHTSHIELD
+  11: { label: 'A1', shortLabel: 'A1' }, // ORCA_DPAD (bindable A1/Home; defaults OFF)
+  12: { label: 'L1', shortLabel: 'L1' }, // ORCA_LIGHTSHIELD
   13: { label: 'S1', shortLabel: 'S1' }, // ORCA_WISDOM_BUTTON
-  14: { label: 'S2', shortLabel: 'S2' }, // ORCA_COURAGE_BUTTON
-  15: { label: 'A1', shortLabel: 'A1' }, // ORCA_POWER_BUTTON
+  14: { label: 'System', shortLabel: 'SYS' }, // ORCA_COURAGE_BUTTON (reserved/locked)
+  15: { label: 'S2', shortLabel: 'S2' }, // ORCA_POWER_BUTTON
 };
 
 export const GP2040_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
@@ -51,11 +51,11 @@ export const XBOX_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
   8: { label: 'RS Right', shortLabel: 'RS➡' }, // ORCA_C_RIGHT
   9: { label: 'RS Up', shortLabel: 'RS⬆' }, // ORCA_C_UP
   10: { label: 'RS Down', shortLabel: 'RS⬇' }, // ORCA_C_DOWN
-  11: { label: 'LB', shortLabel: 'LB' }, // ORCA_DPAD
-  12: { label: 'LT (Light)', shortLabel: 'LT' }, // ORCA_LIGHTSHIELD
+  11: { label: 'Guide', shortLabel: 'Guide' }, // ORCA_DPAD (bindable A1/Home; defaults OFF)
+  12: { label: 'LB', shortLabel: 'LB' }, // ORCA_LIGHTSHIELD
   13: { label: 'View', shortLabel: 'View' }, // ORCA_WISDOM_BUTTON
-  14: { label: 'Menu', shortLabel: 'Menu' }, // ORCA_COURAGE_BUTTON
-  15: { label: 'Guide', shortLabel: 'Guide' }, // ORCA_POWER_BUTTON
+  14: { label: 'System', shortLabel: 'SYS' }, // ORCA_COURAGE_BUTTON (reserved/locked)
+  15: { label: 'Menu', shortLabel: 'Menu' }, // ORCA_POWER_BUTTON
 };
 
 export const XBOX_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
@@ -78,11 +78,11 @@ export const SWITCH_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
   8: { label: 'RS Right', shortLabel: 'RS➡' }, // ORCA_C_RIGHT
   9: { label: 'RS Up', shortLabel: 'RS⬆' }, // ORCA_C_UP
   10: { label: 'RS Down', shortLabel: 'RS⬇' }, // ORCA_C_DOWN
-  11: { label: 'L', shortLabel: 'L' }, // ORCA_DPAD
-  12: { label: 'ZL (Light)', shortLabel: 'ZL' }, // ORCA_LIGHTSHIELD
+  11: { label: 'Home', shortLabel: 'Home' }, // ORCA_DPAD (bindable A1/Home; defaults OFF)
+  12: { label: 'L', shortLabel: 'L' }, // ORCA_LIGHTSHIELD
   13: { label: '−', shortLabel: '−' }, // ORCA_WISDOM_BUTTON
-  14: { label: '+', shortLabel: '+' }, // ORCA_COURAGE_BUTTON
-  15: { label: 'Home', shortLabel: 'Home' }, // ORCA_POWER_BUTTON
+  14: { label: 'System', shortLabel: 'SYS' }, // ORCA_COURAGE_BUTTON (reserved/locked)
+  15: { label: '+', shortLabel: '+' }, // ORCA_POWER_BUTTON
 };
 
 export const SWITCH_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
@@ -105,11 +105,11 @@ export const PLAYSTATION_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = 
   8: { label: 'RS Right', shortLabel: 'RS➡' }, // ORCA_C_RIGHT
   9: { label: 'RS Up', shortLabel: 'RS⬆' }, // ORCA_C_UP
   10: { label: 'RS Down', shortLabel: 'RS⬇' }, // ORCA_C_DOWN
-  11: { label: 'L1', shortLabel: 'L1' }, // ORCA_DPAD
-  12: { label: 'L2 (Light)', shortLabel: 'L2' }, // ORCA_LIGHTSHIELD
+  11: { label: 'PS', shortLabel: 'PS' }, // ORCA_DPAD (bindable A1/Home; defaults OFF)
+  12: { label: 'L1', shortLabel: 'L1' }, // ORCA_LIGHTSHIELD
   13: { label: 'Share', shortLabel: 'Share' }, // ORCA_WISDOM_BUTTON
-  14: { label: 'Options', shortLabel: 'Opt' }, // ORCA_COURAGE_BUTTON
-  15: { label: 'PS', shortLabel: 'PS' }, // ORCA_POWER_BUTTON
+  14: { label: 'System', shortLabel: 'SYS' }, // ORCA_COURAGE_BUTTON (reserved/locked)
+  15: { label: 'Options', shortLabel: 'Opt' }, // ORCA_POWER_BUTTON
 };
 
 export const PLAYSTATION_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {

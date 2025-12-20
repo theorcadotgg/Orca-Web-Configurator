@@ -66,6 +66,9 @@ export const DIGITAL_INPUTS: DigitalInputDef[] = [
 ].map((d) => ({ ...d, lockedSystem: d.lockedSystem || isLockedSystemButton(d.id) }));
 
 // Virtual DPAD destination IDs (not real firmware destinations, handled specially in UI)
+export const LT_LIGHT_VIRTUAL_DEST = 249;
+export const RT_LIGHT_VIRTUAL_DEST = 250;
+export const DPAD_MODIFIER_VIRTUAL_DEST = 251;
 export const DPAD_UP_VIRTUAL_DEST = 252;
 export const DPAD_DOWN_VIRTUAL_DEST = 253;
 export const DPAD_LEFT_VIRTUAL_DEST = 254;

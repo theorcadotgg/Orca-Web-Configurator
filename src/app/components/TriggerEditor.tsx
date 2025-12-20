@@ -52,14 +52,15 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
     // So we display: notch_stored * analogMax * 255 (to show final Dolphin output)
     // And store: display_value / analogMax / 255 * 128
 
-    // Min: 49 (matching lightshield), Max: half of analog max output
-    const triggerNotchMin255 = mode === 'orca' ? 49 : 0;
-    const triggerNotchMax255 = mode === 'orca' ? Math.floor(analogRangeMax255 / 2) : 255;
+    // "Light press" output:
+    // - Orca mode: derived from trigger notch calibration (displayed as final Dolphin output).
+    // - GP2040 mode: directly uses TriggerPolicy.digitalLightshield (0..255).
+    const lightPressMin255 = mode === 'orca' ? 49 : 0;
+    const lightPressMax255 = mode === 'orca' ? Math.floor(analogRangeMax255 / 2) : digitalFullPress255;
 
-    // Current trigger notch value: stored normalized, displayed as final Dolphin output
-    // notch_stored (0-1) * analogMax (0-1) * 255 = Dolphin output
     const triggerNotchStored = curveParams.notch[TRIGGER_NOTCH_INDEX] ?? 0;
     const triggerNotchDisplay255 = Math.round(triggerNotchStored * analogMaxNormalized * 255);
+    const lightPressDisplay255 = mode === 'orca' ? triggerNotchDisplay255 : to255(policy.digitalLightshield);
 
     function updatePolicy(patch: Partial<typeof policy>) {
         const updated = cloneDraft(draft);
@@ -71,12 +72,15 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
 
     // Handler: convert Dolphin output value back to stored notch value
     // display = stored * analogMax * 255  =>  stored = display / 255 / analogMax
-    function updateTriggerNotch(displayValue255: number) {
-        const clamped255 = clamp(displayValue255, triggerNotchMin255, triggerNotchMax255);
-        // Reverse the analogMax scaling to get the stored value
-        const storedNormalized = analogMaxNormalized > 0
-            ? clamped255 / 255 / analogMaxNormalized
-            : 0;
+    function updateLightPress(displayValue255: number) {
+        const clamped255 = clamp(displayValue255, lightPressMin255, lightPressMax255);
+        if (mode !== 'orca') {
+            updatePolicy({ digitalLightshield: from255(clamped255) });
+            return;
+        }
+
+        // Orca mode: reverse the analogMax scaling to get the stored notch value.
+        const storedNormalized = analogMaxNormalized > 0 ? clamped255 / 255 / analogMaxNormalized : 0;
         const updated = cloneDraft(draft);
         const params = updated.stickCurveParams[activeProfile] ?? updated.stickCurveParams[0];
         if (!params) return;
@@ -210,19 +214,19 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                     <span style={{ fontSize: 11, width: 90, flexShrink: 0, color: '#FF9800' }}>Light Press</span>
                     <input
                         type="range"
-                        min={triggerNotchMin255}
-                        max={triggerNotchMax255}
-                        value={clamp(triggerNotchDisplay255, triggerNotchMin255, triggerNotchMax255)}
-                        onChange={(e) => updateTriggerNotch(Number(e.target.value))}
+                        min={lightPressMin255}
+                        max={lightPressMax255}
+                        value={clamp(lightPressDisplay255, lightPressMin255, lightPressMax255)}
+                        onChange={(e) => updateLightPress(Number(e.target.value))}
                         disabled={disabled}
                         style={{ flex: 1, minWidth: 0 }}
                     />
                     <input
                         type="number"
-                        min={triggerNotchMin255}
-                        max={triggerNotchMax255}
-                        value={clamp(triggerNotchDisplay255, triggerNotchMin255, triggerNotchMax255)}
-                        onChange={(e) => updateTriggerNotch(Number(e.target.value))}
+                        min={lightPressMin255}
+                        max={lightPressMax255}
+                        value={clamp(lightPressDisplay255, lightPressMin255, lightPressMax255)}
+                        onChange={(e) => updateLightPress(Number(e.target.value))}
                         disabled={disabled}
                         style={{ width: 48, fontSize: 11, padding: '2px 4px', textAlign: 'center', flexShrink: 0 }}
                     />

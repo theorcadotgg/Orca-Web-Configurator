@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { ORCA_CONFIG_LOCKED_BUTTON_WISDOM } from '@shared/orca_config_idl_generated';
 import {
     DIGITAL_INPUTS,
     ANALOG_INPUTS,
@@ -7,6 +8,9 @@ import {
     isLockedDigitalDestination,
     ORCA_DUMMY_FIELD,
     ORCA_ANALOG_MAPPING_DISABLED,
+    LT_LIGHT_VIRTUAL_DEST,
+    RT_LIGHT_VIRTUAL_DEST,
+    DPAD_MODIFIER_VIRTUAL_DEST,
     DPAD_UP_VIRTUAL_DEST,
     DPAD_DOWN_VIRTUAL_DEST,
     DPAD_LEFT_VIRTUAL_DEST,
@@ -14,6 +18,7 @@ import {
     DPAD_VIRTUAL_DESTINATIONS,
 } from '../../schema/orcaMappings';
 import { getGp2040DestinationLabelSet, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
+import type { TriggerPolicyV1 } from '../../schema/settingsBlob';
 
 /**
  * =====================================================
@@ -106,11 +111,13 @@ interface Props {
     destinationLabelMode?: 'orca' | 'gp2040';
     gp2040LabelPreset?: Gp2040LabelPreset;
     gp2040AnalogTriggerRouting?: 'lt' | 'rt'; // Read-only, derived from trigger policy
+    triggerPolicy?: TriggerPolicyV1;
     dpadLayer?: {
         mode_up: number;
         mode_down: number;
         mode_left: number;
         mode_right: number;
+        enable: { type: number; index: number; threshold: number; hysteresis: number };
         up: { type: number; index: number; threshold: number; hysteresis: number };
         down: { type: number; index: number; threshold: number; hysteresis: number };
         left: { type: number; index: number; threshold: number; hysteresis: number };
@@ -131,6 +138,7 @@ export function ControllerVisualizer({
     destinationLabelMode = 'orca',
     gp2040LabelPreset,
     gp2040AnalogTriggerRouting = 'rt',
+    triggerPolicy,
     dpadLayer,
     onDigitalMappingChange,
     onAnalogMappingChange,
@@ -144,6 +152,7 @@ export function ControllerVisualizer({
     const digitalButtons = DIGITAL_BUTTONS;
     const analogButtons = ANALOG_BUTTONS;
     const gp2040LabelSet = useMemo(() => getGp2040DestinationLabelSet(gp2040LabelPreset), [gp2040LabelPreset]);
+    const DEFAULT_DPAD_MODIFIER_SRC = 11;
 
     // Helper to get trigger labels based on preset
     const getGp2040TriggerLabels = useMemo(() => {
@@ -169,6 +178,35 @@ export function ControllerVisualizer({
             return analogMapping[dest] ?? defId;
         });
     }, [analogMapping, defaultAnalogMapping]);
+
+    // GP2040-only: light-trigger sources are evaluated on raw physical inputs (independent of the main mapping).
+    const gp2040LtLightSrc = useMemo(() => {
+        if (!triggerPolicy) return ORCA_DUMMY_FIELD;
+        if (triggerPolicy.digitalLightSrcVersion === 1) return triggerPolicy.digitalLightLtSrc;
+        // Legacy (reserved bytes unset): LT light defaults to Lightshield.
+        return 12;
+    }, [triggerPolicy]);
+
+    const gp2040RtLightSrc = useMemo(() => {
+        if (!triggerPolicy) return ORCA_DUMMY_FIELD;
+        if (triggerPolicy.digitalLightSrcVersion === 1) return triggerPolicy.digitalLightRtSrc;
+        // Legacy: RT light defaults off.
+        return ORCA_DUMMY_FIELD;
+    }, [triggerPolicy]);
+
+    // In Orca mode, DPAD modifier enable is evaluated on mapped inputs (so the physical source is "dest→src").
+    // In GP2040 mode, the modifier enable is evaluated on raw physical inputs.
+    const dpadModifierDigitalSrc = useMemo(() => {
+        const enable = dpadLayer?.enable;
+        if (!enable || enable.type !== 1) return undefined;
+        const enableIndex = enable.index;
+        if (enableIndex === ORCA_DUMMY_FIELD) return undefined;
+        if (destinationLabelMode === 'gp2040') return enableIndex;
+        if (enableIndex < 0 || enableIndex >= effectiveDigitalMapping.length) return undefined;
+        const src = effectiveDigitalMapping[enableIndex];
+        if (src === ORCA_DUMMY_FIELD) return undefined;
+        return src;
+    }, [destinationLabelMode, dpadLayer, effectiveDigitalMapping]);
 
     const digitalDestBySrc = useMemo(() => {
         const out: Array<number | undefined> = Array.from({ length: DIGITAL_INPUTS.length }, () => undefined);
@@ -212,14 +250,22 @@ export function ControllerVisualizer({
 
     const digitalDestinationOptions = useMemo(() => {
         const base = DIGITAL_INPUTS.filter((d) => !isLockedDigitalDestination(d.id) && !d.isDummy).sort((a, b) => a.id - b.id);
-        // Add DPAD virtual destinations
-        const withDpad = [...base, ...DPAD_VIRTUAL_DESTINATIONS];
-        if (destinationLabelMode !== 'gp2040') return withDpad;
-        return withDpad.map((opt) => {
+        // Add DPAD + GP2040-specific virtual destinations.
+        const triggerLabelBase = (label: string) => label.replace(/\s*\(Analog\)\s*$/, '');
+        const gp2040Virtual = destinationLabelMode === 'gp2040'
+            ? [
+                { id: LT_LIGHT_VIRTUAL_DEST, key: 'GP2040_LT_LIGHT', label: `${triggerLabelBase(getGp2040TriggerLabels.lt.label)} (Light)`, lockedSystem: false, isDummy: false },
+                { id: RT_LIGHT_VIRTUAL_DEST, key: 'GP2040_RT_LIGHT', label: `${triggerLabelBase(getGp2040TriggerLabels.rt.label)} (Light)`, lockedSystem: false, isDummy: false },
+            ]
+            : [];
+
+        const withVirtual = [...base, ...DPAD_VIRTUAL_DESTINATIONS, ...gp2040Virtual];
+        if (destinationLabelMode !== 'gp2040') return withVirtual;
+        return withVirtual.map((opt) => {
             const overlay = gp2040LabelSet.digital[opt.id];
             return overlay ? { ...opt, label: overlay.label } : opt;
         });
-    }, [destinationLabelMode, gp2040LabelSet]);
+    }, [destinationLabelMode, getGp2040TriggerLabels, gp2040LabelSet]);
 
     const analogDestinationOptions = useMemo(() => {
         const base = [...ANALOG_INPUTS].sort((a, b) => a.id - b.id);
@@ -325,7 +371,13 @@ export function ControllerVisualizer({
                 return `D${dpadBindings[0].direction}`;
             }
 
-            if (destId === ORCA_DUMMY_FIELD) return 'OFF';
+            if (destId === ORCA_DUMMY_FIELD) {
+                if (destinationLabelMode === 'gp2040') {
+                    if (gp2040LtLightSrc === button.id) return `${getGp2040TriggerLabels.lt.shortLabel}*`;
+                    if (gp2040RtLightSrc === button.id) return `${getGp2040TriggerLabels.rt.shortLabel}*`;
+                }
+                return 'OFF';
+            }
             if (destinationLabelMode === 'gp2040') {
                 const overlay = gp2040LabelSet.digital[destId];
                 if (overlay) return overlay.shortLabel;
@@ -384,6 +436,18 @@ export function ControllerVisualizer({
                     const dpadBindings = getDpadBindingsForSource(src);
                     if (dpadBindings.length > 0) {
                         onDigitalMappingChange(dpadBindings[0].virtualDest, ORCA_DUMMY_FIELD);
+                        return;
+                    }
+                    // GP2040-only: allow clearing light trigger sources when the button has no normal output mapping.
+                    if (destinationLabelMode === 'gp2040') {
+                        if (gp2040LtLightSrc === src) {
+                            onDigitalMappingChange(LT_LIGHT_VIRTUAL_DEST, ORCA_DUMMY_FIELD);
+                            return;
+                        }
+                        if (gp2040RtLightSrc === src) {
+                            onDigitalMappingChange(RT_LIGHT_VIRTUAL_DEST, ORCA_DUMMY_FIELD);
+                            return;
+                        }
                     }
                 }
                 return;
@@ -409,6 +473,10 @@ export function ControllerVisualizer({
             if (currentDest !== undefined) return currentDest;
             const dpadBindings = getDpadBindingsForSource(src);
             if (dpadBindings.length > 0) return dpadBindings[0].virtualDest;
+            if (destinationLabelMode === 'gp2040') {
+                if (gp2040LtLightSrc === src) return LT_LIGHT_VIRTUAL_DEST;
+                if (gp2040RtLightSrc === src) return RT_LIGHT_VIRTUAL_DEST;
+            }
             return ORCA_DUMMY_FIELD;
         }
         const destId = analogDestBySrc[selectedButton.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
@@ -624,8 +692,8 @@ export function ControllerVisualizer({
                                     />
                                 </g>
                             )}
-                            {/* Render SVG outline for buttons bound to DPAD Modifier output, text for others */}
-                            {(digitalDestBySrc[button.id] ?? ORCA_DUMMY_FIELD) === 11 ? (
+                            {/* Render SVG outline for the current DPAD modifier source */}
+                            {dpadModifierDigitalSrc === button.id ? (
                                 <path
                                     d={`
                                         M ${circle.cx - 3.5 * 0.35} ${circle.cy - 3.5}
@@ -714,11 +782,6 @@ export function ControllerVisualizer({
                                     Orca role: {selectedButton.type === 'digital' ? digitalInputLabel(selectedButton.id) : analogInputLabel(selectedButton.id)}
                                 </div>
                             )}
-                            {destinationLabelMode === 'gp2040' && selectedButton.type === 'digital' && selectedButton.id === 11 && (
-                                <div style={{ marginTop: 2, fontSize: 11, color: 'var(--color-text-muted)' }}>
-                                    DPAD Layer enable is configured separately (sidebar).
-                                </div>
-                            )}
                         </div>
                         <span className="pill pill-neutral" style={{
                             background: selectedButton.type === 'analog' ? 'rgba(100, 160, 200, 0.2)' : undefined,
@@ -773,7 +836,17 @@ export function ControllerVisualizer({
                                 <>
                                     <option value={ORCA_DUMMY_FIELD}>Disabled (OFF)</option>
                                     {digitalDestinationOptions.map((opt) => (
-                                        <option key={opt.id} value={opt.id}>{opt.label}</option>
+                                        <option
+                                            key={opt.id}
+                                            value={opt.id}
+                                            disabled={
+                                                destinationLabelMode === 'gp2040' &&
+                                                (opt.id === LT_LIGHT_VIRTUAL_DEST || opt.id === RT_LIGHT_VIRTUAL_DEST) &&
+                                                selectedButton.id === ORCA_CONFIG_LOCKED_BUTTON_WISDOM
+                                            }
+                                        >
+                                            {opt.label}
+                                        </option>
                                     ))}
                                 </>
                             ) : (
@@ -786,7 +859,40 @@ export function ControllerVisualizer({
                             )}
                         </select>
 
+                        {destinationLabelMode === 'gp2040' && selectedButton.type === 'digital' && dpadLayer?.enable && (
+                            <div style={{
+                                marginTop: 'var(--spacing-sm)',
+                                paddingTop: 'var(--spacing-sm)',
+                                borderTop: '1px solid var(--color-border)',
+                            }}>
+                                <label style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>
+                                    DPAD modifier:
+                                </label>
+                                <div style={{ marginTop: 4, fontSize: 11, color: 'var(--color-text-muted)' }}>
+                                    Current: {dpadLayer.enable.type === 1 ? digitalInputLabel(dpadLayer.enable.index) : 'Custom source'}
+                                </div>
 
+                                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                    <button
+                                        type="button"
+                                        disabled={disabled || dpadModifierDigitalSrc === selectedButton.id}
+                                        onClick={() => onDigitalMappingChange(DPAD_MODIFIER_VIRTUAL_DEST, selectedButton.id)}
+                                        style={{ flex: 1, fontSize: 'var(--font-size-sm)', padding: 'var(--spacing-xs) var(--spacing-sm)' }}
+                                    >
+                                        {dpadModifierDigitalSrc === selectedButton.id ? 'Assigned' : 'Use this button'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={disabled || dpadModifierDigitalSrc === DEFAULT_DPAD_MODIFIER_SRC}
+                                        onClick={() => onDigitalMappingChange(DPAD_MODIFIER_VIRTUAL_DEST, DEFAULT_DPAD_MODIFIER_SRC)}
+                                        style={{ fontSize: 'var(--font-size-sm)', padding: 'var(--spacing-xs) var(--spacing-sm)' }}
+                                        title="Reset modifier to default"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {isModified(selectedButton) && (
                             <button onClick={() => handleMappingChange(getDefaultMappingValue())} style={{ marginTop: 'var(--spacing-xs)' }}>

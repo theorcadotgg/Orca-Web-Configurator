@@ -184,6 +184,7 @@ export function MainPane() {
                     destinationLabelMode={state.configMode}
                     gp2040LabelPreset={gp2040LabelPreset}
                     gp2040AnalogTriggerRouting={gp2040AnalogTriggerOutput}
+                    triggerPolicy={draft.triggerPolicy[activeProfile]}
                     dpadLayer={draft.dpadLayer[activeProfile]}
                     onDigitalMappingChange={setDigitalMapping}
                     onAnalogMappingChange={setAnalogMapping}

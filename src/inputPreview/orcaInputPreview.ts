@@ -15,6 +15,9 @@ const ORCA_TRIGGER_R_ANALOG = 4;
 const ORCA_L_BUTTON = 5;
 const ORCA_R_BUTTON = 6;
 const ORCA_LIGHTSHIELD = 12;
+const ORCA_DUMMY_FIELD = ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT - 1;
+
+const TRIGGER_POLICY_LIGHT_SRC_VERSION = 1;
 
 type TlvInfo = {
   type: number;
@@ -161,7 +164,12 @@ function applyDigitalMapping(digitalMask: number, mapping: number[] | undefined)
   return out >>> 0;
 }
 
-function computeTriggers(mappedDigitalMask: number, mappedAnalog: number[], policy: TriggerPolicyV1 | undefined): { l: number; r: number } {
+function computeTriggers(
+  rawDigitalMask: number,
+  mappedDigitalMask: number,
+  mappedAnalog: number[],
+  policy: TriggerPolicyV1 | undefined,
+): { l: number; r: number } {
   const analogMax = policy?.analogRangeMax ?? (200 / 255);
   const digitalFull = policy?.digitalFullPress ?? (200 / 255);
   const digitalLight = policy?.digitalLightshield ?? (49 / 255);
@@ -170,22 +178,35 @@ function computeTriggers(mappedDigitalMask: number, mappedAnalog: number[], poli
   const clampAnalogToLightshield = (flags & TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP) !== 0;
 
   const lPressed = ((mappedDigitalMask >>> ORCA_L_BUTTON) & 1) !== 0;
-  const lightshieldPressed = ((mappedDigitalMask >>> ORCA_LIGHTSHIELD) & 1) !== 0;
   const rPressed = ((mappedDigitalMask >>> ORCA_R_BUTTON) & 1) !== 0;
 
-  const digitalL = lPressed ? digitalFull : lightshieldPressed ? digitalLight : 0;
-  const digitalR = rPressed ? digitalFull : 0;
+  // GP2040-only: light trigger sources are evaluated on raw physical inputs (independent of the main mapping).
+  const lightSrcVersion = policy?.digitalLightSrcVersion ?? 0;
+  let ltLightSrc = ORCA_LIGHTSHIELD;
+  let rtLightSrc = ORCA_DUMMY_FIELD;
+  if (lightSrcVersion === TRIGGER_POLICY_LIGHT_SRC_VERSION) {
+    ltLightSrc = policy?.digitalLightLtSrc ?? ORCA_DUMMY_FIELD;
+    rtLightSrc = policy?.digitalLightRtSrc ?? ORCA_DUMMY_FIELD;
+  }
+  if (ltLightSrc < 0 || ltLightSrc >= ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT) ltLightSrc = ORCA_DUMMY_FIELD;
+  if (rtLightSrc < 0 || rtLightSrc >= ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT) rtLightSrc = ORCA_DUMMY_FIELD;
+
+  const ltLightPressed = ((rawDigitalMask >>> ltLightSrc) & 1) !== 0;
+  const rtLightPressed = ((rawDigitalMask >>> rtLightSrc) & 1) !== 0;
+
+  const digitalL = lPressed ? digitalFull : ltLightPressed ? digitalLight : 0;
+  const digitalR = rPressed ? digitalFull : rtLightPressed ? digitalLight : 0;
   let analogTrigger = clamp01(mappedAnalog[ORCA_TRIGGER_R_ANALOG] ?? 0) * clamp01(analogMax);
   if (clampAnalogToLightshield && analogTrigger > digitalLight) {
     analogTrigger = digitalLight;
   }
 
-  let l = analogToLt ? analogTrigger : digitalL;
-  let r = analogToLt ? digitalR : analogTrigger;
+  let l = digitalL;
+  let r = digitalR;
   if (analogToLt) {
-    if (digitalL > 0) l = digitalL;
-  } else if (digitalR > 0) {
-    r = digitalR;
+    if (!lPressed) l = Math.max(l, analogTrigger);
+  } else {
+    if (!rPressed) r = Math.max(r, analogTrigger);
   }
 
   return { l: clamp01(l), r: clamp01(r) };
@@ -212,7 +233,7 @@ export function computeInputPreview(raw: OrcaInputState, draft: SettingsDraft, b
   const magnitude = Math.sqrt(x * x + y * y);
 
   const policy = draft.triggerPolicy[profile] ?? draft.triggerPolicy[0];
-  const triggers = computeTriggers(mappedDigitalMask, mappedAnalog, policy);
+  const triggers = computeTriggers(raw.digitalMask, mappedDigitalMask, mappedAnalog, policy);
 
   return {
     raw,

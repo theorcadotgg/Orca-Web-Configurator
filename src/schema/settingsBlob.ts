@@ -66,6 +66,9 @@ export type TriggerPolicyV1 = {
   digitalFullPress: number;
   digitalLightshield: number;
   flags: number;
+  digitalLightLtSrc: number;
+  digitalLightRtSrc: number;
+  digitalLightSrcVersion: number;
 };
 
 export type StickCurveParamsV1 = {
@@ -182,7 +185,10 @@ function parseTriggerPolicyV1(data: Uint8Array): TriggerPolicyV1 {
   const digitalFullPress = readF32Le(data, 4);
   const digitalLightshield = readF32Le(data, 8);
   const flags = data[12] ?? 0;
-  return { analogRangeMax, digitalFullPress, digitalLightshield, flags };
+  const digitalLightLtSrc = data[13] ?? 0;
+  const digitalLightRtSrc = data[14] ?? 0;
+  const digitalLightSrcVersion = data[15] ?? 0;
+  return { analogRangeMax, digitalFullPress, digitalLightshield, flags, digitalLightLtSrc, digitalLightRtSrc, digitalLightSrcVersion };
 }
 
 function encodeTriggerPolicyV1(policy: TriggerPolicyV1): Uint8Array {
@@ -191,6 +197,9 @@ function encodeTriggerPolicyV1(policy: TriggerPolicyV1): Uint8Array {
   writeF32Le(out, 4, policy.digitalFullPress);
   writeF32Le(out, 8, policy.digitalLightshield);
   out[12] = policy.flags & 0xff;
+  out[13] = policy.digitalLightLtSrc & 0xff;
+  out[14] = policy.digitalLightRtSrc & 0xff;
+  out[15] = policy.digitalLightSrcVersion & 0xff;
   return out;
 }
 

@@ -3,10 +3,13 @@ import type { OrcaProfileFileV1, ProfileMode } from '../../schema/profileFile';
 import {
   ANALOG_INPUTS,
   DIGITAL_INPUTS,
+  DPAD_MODIFIER_VIRTUAL_DEST,
   DPAD_DOWN_VIRTUAL_DEST,
   DPAD_LEFT_VIRTUAL_DEST,
   DPAD_RIGHT_VIRTUAL_DEST,
   DPAD_UP_VIRTUAL_DEST,
+  LT_LIGHT_VIRTUAL_DEST,
+  RT_LIGHT_VIRTUAL_DEST,
   ORCA_ANALOG_MAPPING_DISABLED,
   ORCA_DUMMY_FIELD,
   isLockedDigitalDestination,
@@ -15,8 +18,7 @@ import {
 import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT } from '../../schema/triggerPolicyFlags';
 import { cloneDraft } from './cloneDraft';
 
-const ORCA_DPAD_DEST = 11;
-const ORCA_LIGHTSHIELD_SRC = 12;
+const ORCA_A1_HOME_DEST = 11;
 const ORCA_C_LEFT_SRC = 7;
 const ORCA_C_RIGHT_SRC = 8;
 const ORCA_C_UP_SRC = 9;
@@ -26,8 +28,8 @@ const ANALOG_TRIGGER_L_VIRTUAL_ID = 254;
 export function getDefaultDigitalMapping(mode: ProfileMode): number[] {
   const base = Array.from({ length: DIGITAL_INPUTS.length }, (_, i) => i);
   if (mode === 'gp2040') {
-    base[ORCA_DPAD_DEST] = ORCA_LIGHTSHIELD_SRC;
-    base[ORCA_LIGHTSHIELD_SRC] = ORCA_DUMMY_FIELD;
+    // GP2040 mode: A1/Home is bindable but defaults OFF.
+    base[ORCA_A1_HOME_DEST] = ORCA_DUMMY_FIELD;
   }
   return base;
 }
@@ -115,6 +117,73 @@ export function setDigitalMappingInDraft(
   const digital = (index: number) => ({ type: 1, index, threshold: 0, hysteresis: 0 });
   const defaultCStickMode = 1;
 
+  // Virtual DPAD modifier destination (handled via DPAD Layer enable).
+  if (dest === DPAD_MODIFIER_VIRTUAL_DEST) {
+    const layer = updated.dpadLayer[activeProfile] ?? updated.dpadLayer[0];
+    if (!layer) return updated;
+    layer.enable = digital(src);
+    updated.dpadLayer[activeProfile] = layer;
+    return updated;
+  }
+
+  // Virtual GP2040 light-trigger destinations (handled via TriggerPolicy).
+  if (dest === LT_LIGHT_VIRTUAL_DEST || dest === RT_LIGHT_VIRTUAL_DEST) {
+    // If this source was being used for any DPAD direction, restore those directions to the default C-stick bindings.
+    {
+      const layer = updated.dpadLayer[activeProfile] ?? updated.dpadLayer[0];
+      if (layer && src !== ORCA_DUMMY_FIELD) {
+        const isSrc = (s: { type: number; index: number } | undefined) => s?.type === 1 && s.index === src;
+        if (isSrc(layer.up)) {
+          layer.mode_up = defaultCStickMode;
+          layer.up = digital(ORCA_C_UP_SRC);
+        }
+        if (isSrc(layer.down)) {
+          layer.mode_down = defaultCStickMode;
+          layer.down = digital(ORCA_C_DOWN_SRC);
+        }
+        if (isSrc(layer.left)) {
+          layer.mode_left = defaultCStickMode;
+          layer.left = digital(ORCA_C_LEFT_SRC);
+        }
+        if (isSrc(layer.right)) {
+          layer.mode_right = defaultCStickMode;
+          layer.right = digital(ORCA_C_RIGHT_SRC);
+        }
+        updated.dpadLayer[activeProfile] = layer;
+      }
+    }
+
+    const policy = updated.triggerPolicy[activeProfile] ?? updated.triggerPolicy[0];
+    if (!policy) return updated;
+
+    const base =
+      policy.digitalLightSrcVersion === 1
+        ? policy
+        : { ...policy, digitalLightLtSrc: ORCA_DUMMY_FIELD, digitalLightRtSrc: ORCA_DUMMY_FIELD };
+
+    updated.triggerPolicy[activeProfile] = {
+      ...base,
+      digitalLightSrcVersion: 1,
+      digitalLightLtSrc: dest === LT_LIGHT_VIRTUAL_DEST ? src : base.digitalLightLtSrc,
+      digitalLightRtSrc: dest === RT_LIGHT_VIRTUAL_DEST ? src : base.digitalLightRtSrc,
+    };
+
+    // Repurpose behavior: disable the source button's normal output mapping.
+    if (src !== ORCA_DUMMY_FIELD) {
+      updated.digitalMappings[activeProfile] = [...(updated.digitalMappings[activeProfile] ?? [])];
+      const currentMapping = updated.digitalMappings[activeProfile]!;
+      for (let i = 0; i < currentMapping.length; i++) {
+        const mappedSrc = currentMapping[i] ?? defaultDigitalMapping[i] ?? i;
+        if (mappedSrc === src && !isLockedDigitalDestination(i)) {
+          currentMapping[i] = ORCA_DUMMY_FIELD;
+          break;
+        }
+      }
+    }
+
+    return updated;
+  }
+
   // Check if this is a DPAD virtual destination - handle it specially
   if (isVirtualDpadDestination(dest)) {
     const layer = updated.dpadLayer[activeProfile] ?? updated.dpadLayer[0];
@@ -200,6 +269,26 @@ export function setDigitalMappingInDraft(
         layer.right = digital(ORCA_C_RIGHT_SRC);
       }
       updated.dpadLayer[activeProfile] = layer;
+    }
+  }
+
+  // If this source was being used for GP2040 light triggers, clear it.
+  {
+    const policy = updated.triggerPolicy[activeProfile] ?? updated.triggerPolicy[0];
+    if (policy && src !== ORCA_DUMMY_FIELD && policy.digitalLightSrcVersion === 1) {
+      const next = { ...policy };
+      let changed = false;
+      if (next.digitalLightLtSrc === src) {
+        next.digitalLightLtSrc = ORCA_DUMMY_FIELD;
+        changed = true;
+      }
+      if (next.digitalLightRtSrc === src) {
+        next.digitalLightRtSrc = ORCA_DUMMY_FIELD;
+        changed = true;
+      }
+      if (changed) {
+        updated.triggerPolicy[activeProfile] = next;
+      }
     }
   }
 
