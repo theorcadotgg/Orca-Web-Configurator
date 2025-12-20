@@ -55,8 +55,9 @@ export function MainPane() {
             </button>
           </div>
         ) : draft ? (
-          <div className="main-hero">
-            <div className="profile-tabs">
+          <div className="main-hero" style={{ overflow: 'hidden' }}>
+            {/* Profile tabs - fixed height, won't shrink */}
+            <div className="profile-tabs" style={{ flexShrink: 0 }}>
               {Array.from({ length: ORCA_CONFIG_SETTINGS_PROFILE_COUNT - 2 }, (_, i) => {
                 const isEditing = state.editingProfile === i;
                 const label = draft.profileLabels[i]?.trim() || `Profile ${i + 1}`;
@@ -113,8 +114,18 @@ export function MainPane() {
               })}
             </div>
 
-            <div className="row mb-md">
-              <div className="flex-1 row" style={{ justifyContent: 'flex-start' }}>
+            {/* Controls row - fixed height, won't shrink, stays above visualizer */}
+            <div
+              className="row mb-md"
+              style={{
+                position: 'relative',
+                zIndex: 10,
+                flexShrink: 0,
+                flexWrap: 'wrap',
+                gap: 'var(--spacing-sm)',
+              }}
+            >
+              <div className="flex-1 row" style={{ justifyContent: 'flex-start', minWidth: 0 }}>
                 {activeProfile !== 0 && !state.busy && (
                   <button
                     onClick={() => markAsDefault(activeProfile)}
@@ -124,7 +135,7 @@ export function MainPane() {
                   </button>
                 )}
               </div>
-              <div className="mode-tabs" style={{ marginLeft: 0 }}>
+              <div className="mode-tabs" style={{ marginLeft: 0, flexShrink: 0 }}>
                 <button
                   className={`mode-tab ${mainView === 'layout' ? 'active' : ''}`}
                   onClick={() => setMainView('layout')}
@@ -140,10 +151,10 @@ export function MainPane() {
                   Inputs
                 </button>
               </div>
-              <div className="flex-1 row" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <div className="flex-1 row" style={{ justifyContent: 'flex-end', flexWrap: 'wrap', minWidth: 0 }}>
                 {state.configMode === 'gp2040' && (
                   <>
-                    <span className="text-sm text-secondary">Button labels</span>
+                    <span className="text-sm text-secondary" style={{ whiteSpace: 'nowrap' }}>Button labels</span>
                     <select
                       value={gp2040LabelPreset}
                       onChange={(e) => {
@@ -151,7 +162,7 @@ export function MainPane() {
                         if (isGp2040LabelPreset(value)) setGp2040LabelPreset(value);
                       }}
                       disabled={state.busy}
-                      style={{ minWidth: 220 }}
+                      style={{ minWidth: 180, maxWidth: 220 }}
                     >
                       <option value="gp2040">GP2040 (B1/B2/B3/B4)</option>
                       <option value="xbox">Xbox (A/B/X/Y)</option>
@@ -163,16 +174,27 @@ export function MainPane() {
               </div>
             </div>
 
+            {/* Main content area - flexes to fill remaining space */}
             {mainView === 'layout' ? (
-              <>
+              <div
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: 0,
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Controller visualizer container - fills remaining space */}
                 <div
                   style={{
                     flex: 1,
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'stretch',
                     justifyContent: 'center',
                     minHeight: 0,
-                    padding: 'var(--spacing-md) 0',
+                    overflow: 'hidden',
+                    padding: 'var(--spacing-sm)',
                   }}
                 >
                   <ControllerVisualizer
@@ -193,24 +215,28 @@ export function MainPane() {
                   />
                 </div>
 
-                {remappedCount > 0 ? (
-                  <div className="text-center text-sm text-secondary">
-                    {remappedCount} button{remappedCount > 1 ? 's' : ''} remapped
-                  </div>
-                ) : (
-                  <div className="text-center text-sm text-secondary">
-                    &nbsp;
-                  </div>
-                )}
-              </>
+                {/* Status footer - fixed height, won't shrink */}
+                <div
+                  className="text-center text-sm text-secondary"
+                  style={{ flexShrink: 0, padding: 'var(--spacing-xs) 0' }}
+                >
+                  {remappedCount > 0 ? (
+                    <>{remappedCount} button{remappedCount > 1 ? 's' : ''} remapped</>
+                  ) : (
+                    <>&nbsp;</>
+                  )}
+                </div>
+              </div>
             ) : mainView === 'inputs' && baseBlob ? (
-              <LiveInputPreviewCard
-                transport={state.transport}
-                draft={draft}
-                baseBlob={baseBlob}
-                disabled={state.busy}
-                style={{ marginTop: 0 }}
-              />
+              <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                <LiveInputPreviewCard
+                  transport={state.transport}
+                  draft={draft}
+                  baseBlob={baseBlob}
+                  disabled={state.busy}
+                  style={{ marginTop: 0 }}
+                />
+              </div>
             ) : (
               <div className="text-sm text-muted">No settings loaded</div>
             )}

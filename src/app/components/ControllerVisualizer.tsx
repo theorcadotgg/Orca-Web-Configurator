@@ -524,133 +524,135 @@ export function ControllerVisualizer({
     };
 
     return (
-        <div className="controller-container" ref={containerRef} style={{ width: '100%', position: 'relative' }}>
-            {/* Full-width SVG - Cropped to show only controller area */}
-            <svg
-                viewBox="-2 175 335.2 200"
-                style={{
-                    width: '100%',
-                    padding: '20px',
-                    height: 'auto',
-                    display: 'block',
-                    background: 'var(--color-bg-tertiary)',
-                    borderRadius: 'var(--radius-lg)',
-                    border: '1px solid var(--color-border)',
-                }}
-            >
-                {/* Background outline paths (non-interactive) */}
-                <g style={{ fill: 'none', stroke: 'rgba(30, 144, 201, 1)', strokeWidth: 0.8, strokeLinecap: 'round', strokeLinejoin: 'round' }} shapeRendering="geometricPrecision">
-                    <path d="M64.0370 184.9952 L267.1630 184.9952" />
-                    <path d="M64.0370 369.9952 L267.1630 369.9952" />
-                    <path d="M0.1000 329.8407 L0.1000 225.1497" />
-                    <path d="M331.1000 329.8407 L331.1000 225.1497" />
-                    <path d="M56.0488 187.1320 L5.1074 216.4852" />
-                    <path d="M326.0926 216.4852 L275.1512 187.1320" />
-                    <path d="M56.0488 367.8584 L5.1074 338.5052" />
-                    <path d="M275.1512 367.8584 L326.0926 338.5052" />
-                    <path d="M64.0370 184.9952 A15.9998 15.9998 0.0 0 0 56.0488 187.1320" />
-                    <path d="M275.1512 187.1320 A15.9999 15.9999 0.0 0 0 267.1630 184.9952" />
-                    <path d="M56.0488 367.8584 A15.9999 15.9999 0.0 0 0 64.0370 369.9952" />
-                    <path d="M267.1630 369.9952 A15.9998 15.9998 0.0 0 0 275.1512 367.8584" />
-                    <path d="M5.1074 216.4852 A10.0001 10.0001 0.0 0 0 0.1000 225.1497" />
-                    <path d="M331.1000 225.1497 A10.0000 10.0000 0.0 0 0 326.0926 216.4852" />
-                    <path d="M0.1000 329.8407 A10.0002 10.0002 0.0 0 0 5.1074 338.5052" />
-                    <path d="M326.0926 338.5052 A10.0000 10.0000 0.0 0 0 331.1000 329.8407" />
-                </g>
-
-                {/* Analog Oblong 0 - JX Left (rightmost upper oblong) */}
-                <g
-                    className="interactive-element"
-                    style={oblongStyle(0)}
-                    onClick={(e) => handleElementClick('analog', 0, e)}
+        <div className="controller-container" ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+            {/* SVG container - flexes to fill available space */}
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <svg
+                    viewBox="-2 175 335.2 200"
+                    style={{
+                        width: '100%',
+                        maxHeight: '100%',
+                        padding: '20px',
+                        height: 'auto',
+                        display: 'block',
+                        background: 'var(--color-bg-tertiary)',
+                        borderRadius: 'var(--radius-lg)',
+                        border: '1px solid var(--color-border)',
+                    }}
                 >
-                    <path d="M124.6254 228.8973 A12 12 0 1 0 101.1499 223.9075 L94.7046 254.23 A12 12 0 1 0 118.1802 259.2199 Z" />
-                    <text x="110" y="244" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
-                        {getShortMappingLabel(getButtonForElement('analog', 0)!)}
-                    </text>
-                </g>
+                    {/* Background outline paths (non-interactive) */}
+                    <g style={{ fill: 'none', stroke: 'rgba(30, 144, 201, 1)', strokeWidth: 0.8, strokeLinecap: 'round', strokeLinejoin: 'round' }} shapeRendering="geometricPrecision">
+                        <path d="M64.0370 184.9952 L267.1630 184.9952" />
+                        <path d="M64.0370 369.9952 L267.1630 369.9952" />
+                        <path d="M0.1000 329.8407 L0.1000 225.1497" />
+                        <path d="M331.1000 329.8407 L331.1000 225.1497" />
+                        <path d="M56.0488 187.1320 L5.1074 216.4852" />
+                        <path d="M326.0926 216.4852 L275.1512 187.1320" />
+                        <path d="M56.0488 367.8584 L5.1074 338.5052" />
+                        <path d="M275.1512 367.8584 L326.0926 338.5052" />
+                        <path d="M64.0370 184.9952 A15.9998 15.9998 0.0 0 0 56.0488 187.1320" />
+                        <path d="M275.1512 187.1320 A15.9999 15.9999 0.0 0 0 267.1630 184.9952" />
+                        <path d="M56.0488 367.8584 A15.9999 15.9999 0.0 0 0 64.0370 369.9952" />
+                        <path d="M267.1630 369.9952 A15.9998 15.9998 0.0 0 0 275.1512 367.8584" />
+                        <path d="M5.1074 216.4852 A10.0001 10.0001 0.0 0 0 0.1000 225.1497" />
+                        <path d="M331.1000 225.1497 A10.0000 10.0000 0.0 0 0 326.0926 216.4852" />
+                        <path d="M0.1000 329.8407 A10.0002 10.0002 0.0 0 0 5.1074 338.5052" />
+                        <path d="M326.0926 338.5052 A10.0000 10.0000 0.0 0 0 331.1000 329.8407" />
+                    </g>
 
-                {/* Analog Oblong 1 - JX Right (middle upper oblong) */}
-                <g
-                    className="interactive-element"
-                    style={oblongStyle(1)}
-                    onClick={(e) => handleElementClick('analog', 1, e)}
-                >
-                    <path d="M98.7154 213.6873 A12 12 0 1 0 75.2399 208.6975 L68.7946 239.02 A12 12 0 1 0 92.2702 244.0099 Z" />
-                    <text x="84" y="228" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
-                        {getShortMappingLabel(getButtonForElement('analog', 1)!)}
-                    </text>
-                </g>
+                    {/* Analog Oblong 0 - JX Left (rightmost upper oblong) */}
+                    <g
+                        className="interactive-element"
+                        style={oblongStyle(0)}
+                        onClick={(e) => handleElementClick('analog', 0, e)}
+                    >
+                        <path d="M124.6254 228.8973 A12 12 0 1 0 101.1499 223.9075 L94.7046 254.23 A12 12 0 1 0 118.1802 259.2199 Z" />
+                        <text x="110" y="244" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
+                            {getShortMappingLabel(getButtonForElement('analog', 0)!)}
+                        </text>
+                    </g>
 
-                {/* Analog Oblong 2 - JY Up (leftmost upper oblong) */}
-                <g
-                    className="interactive-element"
-                    style={oblongStyle(2)}
-                    onClick={(e) => handleElementClick('analog', 2, e)}
-                >
-                    <path d="M68.8654 217.0673 A12 12 0 1 0 45.3899 212.0775 L38.9446 242.4 A12 12 0 1 0 62.4202 247.3899 Z" />
-                    <text x="54" y="230" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
-                        {getShortMappingLabel(getButtonForElement('analog', 2)!)}
-                    </text>
-                </g>
+                    {/* Analog Oblong 1 - JX Right (middle upper oblong) */}
+                    <g
+                        className="interactive-element"
+                        style={oblongStyle(1)}
+                        onClick={(e) => handleElementClick('analog', 1, e)}
+                    >
+                        <path d="M98.7154 213.6873 A12 12 0 1 0 75.2399 208.6975 L68.7946 239.02 A12 12 0 1 0 92.2702 244.0099 Z" />
+                        <text x="84" y="228" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
+                            {getShortMappingLabel(getButtonForElement('analog', 1)!)}
+                        </text>
+                    </g>
 
-                {/* Analog Oblong 3 - JY Down (lower left oblong - different orientation) */}
-                <g
-                    className="interactive-element"
-                    style={oblongStyle(3)}
-                    onClick={(e) => handleElementClick('analog', 3, e)}
-                >
-                    <path d="M141.611 311.0539 A12 12 0 0 0 121.7141 297.6333 L104.3791 323.3334 A12 12 0 0 0 124.276 336.7541 Z" />
-                    <text x="123" y="318" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
-                        {getShortMappingLabel(getButtonForElement('analog', 3)!)}
-                    </text>
-                </g>
+                    {/* Analog Oblong 2 - JY Up (leftmost upper oblong) */}
+                    <g
+                        className="interactive-element"
+                        style={oblongStyle(2)}
+                        onClick={(e) => handleElementClick('analog', 2, e)}
+                    >
+                        <path d="M68.8654 217.0673 A12 12 0 1 0 45.3899 212.0775 L38.9446 242.4 A12 12 0 1 0 62.4202 247.3899 Z" />
+                        <text x="54" y="230" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
+                            {getShortMappingLabel(getButtonForElement('analog', 2)!)}
+                        </text>
+                    </g>
 
-                {/* Analog Oblong 4 - TR (right side oblong) */}
-                <g
-                    className="interactive-element"
-                    style={oblongStyle(4)}
-                    onClick={(e) => handleElementClick('analog', 4, e)}
-                >
-                    <path d="M309.868 229.2229 A12 12 0 1 0 286.2326 233.3905 L291.6156 263.9195 A12 12 0 1 0 315.251 259.752 Z" />
-                    <text x="300" y="248" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
-                        {getShortMappingLabel(getButtonForElement('analog', 4)!)}
-                    </text>
-                </g>
+                    {/* Analog Oblong 3 - JY Down (lower left oblong - different orientation) */}
+                    <g
+                        className="interactive-element"
+                        style={oblongStyle(3)}
+                        onClick={(e) => handleElementClick('analog', 3, e)}
+                    >
+                        <path d="M141.611 311.0539 A12 12 0 0 0 121.7141 297.6333 L104.3791 323.3334 A12 12 0 0 0 124.276 336.7541 Z" />
+                        <text x="123" y="318" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
+                            {getShortMappingLabel(getButtonForElement('analog', 3)!)}
+                        </text>
+                    </g>
 
-                {/* Digital Button Circles */}
-                {CIRCLES.map((circle, index) => {
-                    const button = getButtonForElement('digital', index);
-                    if (!button) return (
-                        <circle
-                            key={index}
-                            cx={circle.cx}
-                            cy={circle.cy}
-                            r={circle.r}
-                            style={{ fill: 'none', stroke: 'rgba(0, 212, 255, 0.2)', strokeWidth: 0.5 }}
-                        />
-                    );
+                    {/* Analog Oblong 4 - TR (right side oblong) */}
+                    <g
+                        className="interactive-element"
+                        style={oblongStyle(4)}
+                        onClick={(e) => handleElementClick('analog', 4, e)}
+                    >
+                        <path d="M309.868 229.2229 A12 12 0 1 0 286.2326 233.3905 L291.6156 263.9195 A12 12 0 1 0 315.251 259.752 Z" />
+                        <text x="300" y="248" textAnchor="middle" style={{ fontSize: 9, fontWeight: 700, fill: 'var(--color-text-primary)', stroke: 'none', pointerEvents: 'none' }}>
+                            {getShortMappingLabel(getButtonForElement('analog', 4)!)}
+                        </text>
+                    </g>
 
-                    const modifierDpadBinding = getDpadBindingsForSource(button.id).find((b) => b.mode === 1);
-                    const modifierBadgeText = modifierDpadBinding?.direction ?? '';
-                    const badgeR = 5.2;
-                    const badgeRadialOffset = circle.r - badgeR * 0.3; // position badge at top of circle with slight overlap
-                    const badgeCx = circle.cx; // centered horizontally
-                    const badgeCy = circle.cy - badgeRadialOffset; // positioned at top (12 o'clock)
-
-                    return (
-                        <g key={index} className="interactive-element" onClick={(e) => handleElementClick('digital', index, e)}>
+                    {/* Digital Button Circles */}
+                    {CIRCLES.map((circle, index) => {
+                        const button = getButtonForElement('digital', index);
+                        if (!button) return (
                             <circle
+                                key={index}
                                 cx={circle.cx}
                                 cy={circle.cy}
                                 r={circle.r}
-                                style={circleStyle(index)}
+                                style={{ fill: 'none', stroke: 'rgba(0, 212, 255, 0.2)', strokeWidth: 0.5 }}
                             />
-                            {modifierBadgeText && (
-                                <g style={{ pointerEvents: 'none' }}>
-                                    {/* Plus sign background */}
-                                    <path
-                                        d={`
+                        );
+
+                        const modifierDpadBinding = getDpadBindingsForSource(button.id).find((b) => b.mode === 1);
+                        const modifierBadgeText = modifierDpadBinding?.direction ?? '';
+                        const badgeR = 5.2;
+                        const badgeRadialOffset = circle.r - badgeR * 0.3; // position badge at top of circle with slight overlap
+                        const badgeCx = circle.cx; // centered horizontally
+                        const badgeCy = circle.cy - badgeRadialOffset; // positioned at top (12 o'clock)
+
+                        return (
+                            <g key={index} className="interactive-element" onClick={(e) => handleElementClick('digital', index, e)}>
+                                <circle
+                                    cx={circle.cx}
+                                    cy={circle.cy}
+                                    r={circle.r}
+                                    style={circleStyle(index)}
+                                />
+                                {modifierBadgeText && (
+                                    <g style={{ pointerEvents: 'none' }}>
+                                        {/* Plus sign background */}
+                                        <path
+                                            d={`
                                             M ${badgeCx - badgeR * 0.35} ${badgeCy - badgeR}
                                             L ${badgeCx + badgeR * 0.35} ${badgeCy - badgeR}
                                             L ${badgeCx + badgeR * 0.35} ${badgeCy - badgeR * 0.35}
@@ -665,37 +667,37 @@ export function ControllerVisualizer({
                                             L ${badgeCx - badgeR * 0.35} ${badgeCy - badgeR * 0.35}
                                             Z
                                         `}
-                                        style={{
-                                            fill: 'var(--color-brand)',
-                                            stroke: 'rgba(255, 255, 255, 0.25)',
-                                            strokeWidth: 0.8,
-                                            filter: 'drop-shadow(0px 1px 1px rgba(0,0,0,0.35))',
-                                        }}
-                                    />
-                                    {/* Direction indicator circle */}
-                                    <circle
-                                        cx={
-                                            modifierBadgeText === '⬅' ? badgeCx - badgeR * 0.7 :
-                                                modifierBadgeText === '➡' ? badgeCx + badgeR * 0.7 :
-                                                    badgeCx
-                                        }
-                                        cy={
-                                            modifierBadgeText === '⬆' ? badgeCy - badgeR * 0.7 :
-                                                modifierBadgeText === '⬇' ? badgeCy + badgeR * 0.7 :
-                                                    badgeCy
-                                        }
-                                        r={badgeR * 0.23}
-                                        style={{
-                                            fill: 'var(--color-text-primary)',
-                                            stroke: 'none',
-                                        }}
-                                    />
-                                </g>
-                            )}
-                            {/* Render SVG outline for the current DPAD modifier source */}
-                            {dpadModifierDigitalSrc === button.id ? (
-                                <path
-                                    d={`
+                                            style={{
+                                                fill: 'var(--color-brand)',
+                                                stroke: 'rgba(255, 255, 255, 0.25)',
+                                                strokeWidth: 0.8,
+                                                filter: 'drop-shadow(0px 1px 1px rgba(0,0,0,0.35))',
+                                            }}
+                                        />
+                                        {/* Direction indicator circle */}
+                                        <circle
+                                            cx={
+                                                modifierBadgeText === '⬅' ? badgeCx - badgeR * 0.7 :
+                                                    modifierBadgeText === '➡' ? badgeCx + badgeR * 0.7 :
+                                                        badgeCx
+                                            }
+                                            cy={
+                                                modifierBadgeText === '⬆' ? badgeCy - badgeR * 0.7 :
+                                                    modifierBadgeText === '⬇' ? badgeCy + badgeR * 0.7 :
+                                                        badgeCy
+                                            }
+                                            r={badgeR * 0.23}
+                                            style={{
+                                                fill: 'var(--color-text-primary)',
+                                                stroke: 'none',
+                                            }}
+                                        />
+                                    </g>
+                                )}
+                                {/* Render SVG outline for the current DPAD modifier source */}
+                                {dpadModifierDigitalSrc === button.id ? (
+                                    <path
+                                        d={`
                                         M ${circle.cx - 3.5 * 0.35} ${circle.cy - 3.5}
                                         L ${circle.cx + 3.5 * 0.35} ${circle.cy - 3.5}
                                         L ${circle.cx + 3.5 * 0.35} ${circle.cy - 3.5 * 0.35}
@@ -710,33 +712,34 @@ export function ControllerVisualizer({
                                         L ${circle.cx - 3.5 * 0.35} ${circle.cy - 3.5 * 0.35}
                                         Z
                                     `}
-                                    style={{
-                                        fill: 'var(--color-brand)',
-                                        // stroke: 'rgba(255, 255, 255, 0.25)',
-                                        strokeWidth: 0.8,
-                                        pointerEvents: 'none',
-                                    }}
-                                />
-                            ) : (
-                                <text
-                                    x={circle.cx}
-                                    y={circle.cy + 3}
-                                    textAnchor="middle"
-                                    style={{
-                                        fontSize: 9,
-                                        fontWeight: 700,
-                                        fill: 'var(--color-text-primary)',
-                                        pointerEvents: 'none',
-                                        userSelect: 'none',
-                                    }}
-                                >
-                                    {getShortMappingLabel(button)}
-                                </text>
-                            )}
-                        </g>
-                    );
-                })}
-            </svg>
+                                        style={{
+                                            fill: 'var(--color-brand)',
+                                            // stroke: 'rgba(255, 255, 255, 0.25)',
+                                            strokeWidth: 0.8,
+                                            pointerEvents: 'none',
+                                        }}
+                                    />
+                                ) : (
+                                    <text
+                                        x={circle.cx}
+                                        y={circle.cy + 3}
+                                        textAnchor="middle"
+                                        style={{
+                                            fontSize: 9,
+                                            fontWeight: 700,
+                                            fill: 'var(--color-text-primary)',
+                                            pointerEvents: 'none',
+                                            userSelect: 'none',
+                                        }}
+                                    >
+                                        {getShortMappingLabel(button)}
+                                    </text>
+                                )}
+                            </g>
+                        );
+                    })}
+                </svg>
+            </div>
 
             {/* Mapping Panel */}
             {selectedButton && panelPosition && (
@@ -903,8 +906,8 @@ export function ControllerVisualizer({
                 </div>
             )}
 
-            {/* Legend and Clear Button */}
-            <div className="row" style={{ marginTop: 'var(--spacing-md)', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Legend and Clear Button - always visible at bottom */}
+            <div className="row" style={{ marginTop: 'var(--spacing-md)', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
                 <div className="row" style={{ gap: 'var(--spacing-lg)' }}>
                     <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
                         <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #1E8FC9', background: 'rgba(30, 143, 201, 0.15)' }} />
