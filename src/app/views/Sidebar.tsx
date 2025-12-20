@@ -59,14 +59,14 @@ export function Sidebar() {
 
       <CollapsiblePanel title="Trigger Configuration">
         {draft ? (
-          <>
-            {activeSlot === 1 && (
-              <div className="text-xs text-muted" style={{ marginBottom: 'var(--spacing-sm)' }}>
-                Stored per mode and profile. GP2040 analog trigger routing is configured in the main mapping.
-              </div>
-            )}
-            <TriggerEditor draft={draft} disabled={state.busy} onChange={onDraftChange} mode={state.configMode} />
-          </>
+              <>
+                {activeSlot === 1 && (
+                  <div className="text-xs text-muted" style={{ marginBottom: 'var(--spacing-sm)' }}>
+                Stored per mode and profile. GP2040 analog trigger routing and light-trigger bindings are configured in the main mapping.
+                  </div>
+                )}
+                <TriggerEditor draft={draft} disabled={state.busy} onChange={onDraftChange} mode={state.configMode} />
+              </>
         ) : (
           <div className="text-sm text-muted">Connect to configure</div>
         )}
@@ -124,4 +124,3 @@ export function Sidebar() {
     </aside>
   );
 }
-

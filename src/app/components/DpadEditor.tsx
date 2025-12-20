@@ -122,6 +122,7 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca' }: 
 
         const digital = (index: number) => ({ type: 1, index, threshold: 0, hysteresis: 0 });
         const analogGe = (index: number, threshold = 0.6, hysteresis = 0.05) => ({ type: 2, index, threshold, hysteresis });
+        const enable = layer.enable ?? digital(ORCA_DPAD_MODIFIER_INPUT);
 
         if (preset === 'cstick_held') {
             setLayer({
@@ -129,7 +130,7 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca' }: 
                 mode_down: 1,
                 mode_left: 1,
                 mode_right: 1,
-                enable: digital(ORCA_DPAD_MODIFIER_INPUT),
+                enable,
                 up: digital(ORCA_C_UP),
                 down: digital(ORCA_C_DOWN),
                 left: digital(ORCA_C_LEFT),
@@ -144,7 +145,7 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca' }: 
                 mode_down: 1,
                 mode_left: 1,
                 mode_right: 1,
-                enable: digital(ORCA_DPAD_MODIFIER_INPUT),
+                enable,
                 up: analogGe(ORCA_ANALOG_Y_UP),
                 down: analogGe(ORCA_ANALOG_Y_DOWN),
                 left: analogGe(ORCA_ANALOG_X_LEFT),
@@ -158,7 +159,7 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca' }: 
             mode_down: 2,
             mode_left: 2,
             mode_right: 2,
-            enable: digital(ORCA_DPAD_MODIFIER_INPUT),
+            enable,
             up: analogGe(ORCA_ANALOG_Y_UP),
             down: analogGe(ORCA_ANALOG_Y_DOWN),
             left: analogGe(ORCA_ANALOG_X_LEFT),
@@ -273,12 +274,14 @@ export function DpadEditor({ draft, disabled, onChange, contextMode = 'orca' }: 
             </div>
 
             {/* Source Editors - vertical stack, full width */}
-            <DigitalSourceEditorCompact
-                label={contextMode === 'gp2040' ? 'Modifier' : 'Enable'}
-                value={layer.enable}
-                disabled={disabled}
-                onChange={(next) => updateLayer({ enable: next })}
-            />
+            {!isGp2040 && (
+                <DigitalSourceEditorCompact
+                    label="Enable"
+                    value={layer.enable}
+                    disabled={disabled}
+                    onChange={(next) => updateLayer({ enable: next })}
+                />
+            )}
             <DigitalSourceEditorCompact
                 label="Up"
                 value={layer.up}
