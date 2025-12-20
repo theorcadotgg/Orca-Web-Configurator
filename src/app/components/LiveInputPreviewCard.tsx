@@ -27,26 +27,35 @@ function clamp(v: number, lo: number, hi: number): number {
 
 /**
  * Scale stick coordinates to Melee-style 80-pixel unit circle.
- * If magnitude > 80, project the point onto the circle edge.
- * Formula from orcagui.html: clamp = 80 / sqrt(x² + y²), then scale each coordinate.
+ * The input x/y come from firmware in 128-unit space (range 0..1 maps to 0..128).
+ * Melee uses 80-unit space with integer truncation for clamping.
+ * Formula from orcagui.html: clamp = 80 / sqrt(x² + y²), then Math.trunc(coord * clamp) / 80.
  */
 function scaleToMeleeUnitCircle(x: number, y: number): { x: number; y: number } {
   const MELEE_RADIUS = 80;
-  const magnitude = Math.sqrt(x * x + y * y);
+
+  // Convert from firmware 128-unit space to Melee integer format
+  // Multiply by 128 to get the raw integer value the firmware uses
+  const xInt = Math.round(x * 128);
+  const yInt = Math.round(y * 128);
+
+  const magnitude = Math.sqrt(xInt * xInt + yInt * yInt);
 
   if (magnitude <= MELEE_RADIUS) {
-    // Within the unit circle, normalize to -1 to 1 range
+    // Within the unit circle, just divide by 80 for normalized output
+    // Use Math.trunc to match Melee's integer quantization
     return {
-      x: x / MELEE_RADIUS,
-      y: y / MELEE_RADIUS,
+      x: Math.trunc(xInt) / MELEE_RADIUS,
+      y: Math.trunc(yInt) / MELEE_RADIUS,
     };
   }
 
-  // Outside the circle: project onto the edge
-  const clamp = MELEE_RADIUS / magnitude;
+  // Outside the circle: project onto the edge using Melee's exact formula
+  // clamp = 80 / magnitude, then Math.trunc(coord * clamp) / 80
+  const clampFactor = MELEE_RADIUS / magnitude;
   return {
-    x: (x * clamp) / MELEE_RADIUS,
-    y: (y * clamp) / MELEE_RADIUS,
+    x: Math.trunc(xInt * clampFactor) / MELEE_RADIUS,
+    y: Math.trunc(yInt * clampFactor) / MELEE_RADIUS,
   };
 }
 
@@ -213,7 +222,8 @@ export function LiveInputPreviewCard({ transport, draft, baseBlob, disabled, sty
         <div className="text-sm text-muted">Waiting for input…</div>
       ) : (() => {
         // Apply Melee-style unit circle scaling for Orca mode
-        const stickCoords = scaleToMeleeUnitCircle(computed.joystick.x * 100, computed.joystick.y * 100);
+        // Function expects firmware 0-1 range values and converts to Melee 80-unit space internally
+        const stickCoords = scaleToMeleeUnitCircle(computed.joystick.x, computed.joystick.y);
 
         return (
           <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 'var(--spacing-lg)', alignItems: 'start' }}>
