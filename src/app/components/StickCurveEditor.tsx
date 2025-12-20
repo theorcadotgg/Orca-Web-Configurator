@@ -122,7 +122,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
         ];
         updated.stickCurveParams[activeProfile]!.notch = [
             notchNorm, notchNorm, notchNorm, notchNorm,
-            updated.stickCurveParams[activeProfile]!.notch[4] ?? 0.234,
+            updated.stickCurveParams[activeProfile]!.notch[4] ?? 0.382,
         ];
         onChange(updated);
 
