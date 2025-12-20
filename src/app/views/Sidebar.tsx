@@ -49,6 +49,29 @@ export function Sidebar() {
         )}
       </div>
 
+      <CollapsiblePanel title="Stick Configuration">
+        {draft ? (
+          <StickCurveEditor draft={draft} disabled={state.busy} onChange={onDraftChange} mode={state.configMode} />
+        ) : (
+          <div className="text-sm text-muted">Connect to configure</div>
+        )}
+      </CollapsiblePanel>
+
+      <CollapsiblePanel title="Trigger Policy">
+        {draft ? (
+          <>
+            {activeSlot === 1 && (
+              <div className="text-xs text-muted" style={{ marginBottom: 'var(--spacing-sm)' }}>
+                Stored per mode and profile. GP2040 analog trigger routing is configured in the main mapping.
+              </div>
+            )}
+            <TriggerEditor draft={draft} disabled={state.busy} onChange={onDraftChange} mode={state.configMode} />
+          </>
+        ) : (
+          <div className="text-sm text-muted">Connect to configure</div>
+        )}
+      </CollapsiblePanel>
+
       <CollapsiblePanel
         title="DPAD Layer"
         badge={
@@ -77,29 +100,6 @@ export function Sidebar() {
         )}
       </CollapsiblePanel>
 
-      <CollapsiblePanel title="Stick Configuration">
-        {draft ? (
-          <StickCurveEditor draft={draft} disabled={state.busy} onChange={onDraftChange} mode={state.configMode} />
-        ) : (
-          <div className="text-sm text-muted">Connect to configure</div>
-        )}
-      </CollapsiblePanel>
-
-      <CollapsiblePanel title="Trigger Policy">
-        {draft ? (
-          <>
-            {activeSlot === 1 && (
-              <div className="text-xs text-muted" style={{ marginBottom: 'var(--spacing-sm)' }}>
-                Stored per mode and profile. GP2040 analog trigger routing is configured in the main mapping.
-              </div>
-            )}
-            <TriggerEditor draft={draft} disabled={state.busy} onChange={onDraftChange} mode={state.configMode} />
-          </>
-        ) : (
-          <div className="text-sm text-muted">Connect to configure</div>
-        )}
-      </CollapsiblePanel>
-
       <CollapsiblePanel
         title="Validation"
         badge={
@@ -120,26 +120,6 @@ export function Sidebar() {
           deviceErrors={deviceErrors}
           deviceRepaired={deviceRepaired}
         />
-      </CollapsiblePanel>
-
-      <CollapsiblePanel title="Settings">
-        <div className="col">
-          <label className="text-sm">
-            <input
-              type="checkbox"
-              checked={state.allowUnsafeWrites}
-              onChange={(e) => setAllowUnsafeWrites(e.target.checked)}
-              disabled={state.busy}
-            />
-            Allow schema mismatch writes
-          </label>
-          {compatibility === 'minor_mismatch' && (
-            <div className="text-xs text-muted">Schema differs from device. Enable to write anyway.</div>
-          )}
-          {compatibility === 'major_mismatch' && (
-            <div className="message message-error">Major version mismatch. Update firmware.</div>
-          )}
-        </div>
       </CollapsiblePanel>
     </aside>
   );
