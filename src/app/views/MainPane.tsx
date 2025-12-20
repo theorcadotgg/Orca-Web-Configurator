@@ -57,7 +57,7 @@ export function MainPane() {
         ) : draft ? (
           <div className="main-hero">
             <div className="profile-tabs">
-              {Array.from({ length: ORCA_CONFIG_SETTINGS_PROFILE_COUNT }, (_, i) => {
+              {Array.from({ length: ORCA_CONFIG_SETTINGS_PROFILE_COUNT - 2 }, (_, i) => {
                 const isEditing = state.editingProfile === i;
                 const label = draft.profileLabels[i]?.trim() || `Profile ${i + 1}`;
                 const isDefault = i === 0;

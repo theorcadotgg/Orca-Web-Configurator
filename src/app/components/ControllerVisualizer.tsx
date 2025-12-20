@@ -624,8 +624,8 @@ export function ControllerVisualizer({
                                     />
                                 </g>
                             )}
-                            {/* Render SVG outline for DPAD Modifier, text for others */}
-                            {button.id === 11 ? (
+                            {/* Render SVG outline for buttons bound to DPAD Modifier output, text for others */}
+                            {(digitalDestBySrc[button.id] ?? ORCA_DUMMY_FIELD) === 11 ? (
                                 <path
                                     d={`
                                         M ${circle.cx - 3.5 * 0.35} ${circle.cy - 3.5}
