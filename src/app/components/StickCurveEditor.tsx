@@ -14,8 +14,8 @@ type Props = {
 // GP2040 uses different Rivals 2 values and supports higher ranges
 const PRESETS = {
     melee: {
-        magnitude: 99,  // 99/128 ≈ 0.7734
-        notch: 33,      // 33/128 ≈ 0.2578
+        magnitude: 105,  // 105/128 ≈ 0.7734
+        notch: 35,      // 35/128 ≈ 0.2578
     },
     rivals2: {
         orca: {
@@ -472,6 +472,7 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                 bgColor: 'rgba(68, 255, 136, 0.1)'
             };
         } else if (absYCoord <= 0.3250) {
+            // Optimal Sheik angle - only show for Max WD Y (checked at call site)
             return {
                 message: "Optimal Sheik Wavedash Angle",
                 color: '#44ddff',
@@ -504,13 +505,22 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
     const slightOverAbsY = Math.abs(parseFloat(slightOver.yCoord));
 
     const maxWDWarningX = getWavedashWarning(maxWDAbsX);
+    // Filter out Sheik message for X coordinate (only valid for Max WD Y)
+    const maxWDWarningXFiltered = maxWDWarningX?.message === "Optimal Sheik Wavedash Angle" ? null : maxWDWarningX;
     const maxWDWarningY = getWavedashWarning(maxWDAbsY);
     const minWDWarningX = getWavedashWarning(minWDAbsX);
+    // Filter out Sheik message for non-Max WD Y coordinates
+    const minWDWarningXFiltered = minWDWarningX?.message === "Optimal Sheik Wavedash Angle" ? null : minWDWarningX;
     const minWDWarningY = getWavedashWarning(minWDAbsY);
+    const minWDWarningYFiltered = minWDWarningY?.message === "Optimal Sheik Wavedash Angle" ? null : minWDWarningY;
     const slightUpWarningX = getWavedashWarning(slightUpAbsX);
+    const slightUpWarningXFiltered = slightUpWarningX?.message === "Optimal Sheik Wavedash Angle" ? null : slightUpWarningX;
     const slightUpWarningY = getWavedashWarning(slightUpAbsY);
+    const slightUpWarningYFiltered = slightUpWarningY?.message === "Optimal Sheik Wavedash Angle" ? null : slightUpWarningY;
     const slightOverWarningX = getWavedashWarning(slightOverAbsX);
+    const slightOverWarningXFiltered = slightOverWarningX?.message === "Optimal Sheik Wavedash Angle" ? null : slightOverWarningX;
     const slightOverWarningY = getWavedashWarning(slightOverAbsY);
+    const slightOverWarningYFiltered = slightOverWarningY?.message === "Optimal Sheik Wavedash Angle" ? null : slightOverWarningY;
 
     // Get emoji indicators for display
     const maxWDEmojiX = getWarningEmoji(maxWDAbsX);
@@ -592,8 +602,8 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                     </div>
 
                     {/* Wavedash Warnings Section */}
-                    {(maxWDWarningX || maxWDWarningY || minWDWarningX || minWDWarningY ||
-                        slightUpWarningX || slightUpWarningY || slightOverWarningX || slightOverWarningY) && (
+                    {(maxWDWarningXFiltered || maxWDWarningY || minWDWarningXFiltered || minWDWarningYFiltered ||
+                        slightUpWarningXFiltered || slightUpWarningYFiltered || slightOverWarningXFiltered || slightOverWarningYFiltered) && (
                             <div style={{
                                 fontSize: 'var(--font-size-xs)',
                                 marginTop: 'var(--spacing-sm)',
@@ -603,17 +613,17 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                                 <div style={{ fontWeight: 600, marginBottom: 'var(--spacing-xs)', color: 'var(--color-text-secondary)' }}>
                                     Notch Warnings:
                                 </div>
-                                {maxWDWarningX && (
+                                {maxWDWarningXFiltered && (
                                     <div style={{
                                         padding: 'var(--spacing-xs)',
                                         marginBottom: 'var(--spacing-xs)',
                                         borderRadius: 'var(--radius-sm)',
-                                        backgroundColor: maxWDWarningX.bgColor,
-                                        border: `1px solid ${maxWDWarningX.color}`,
-                                        color: maxWDWarningX.color,
+                                        backgroundColor: maxWDWarningXFiltered.bgColor,
+                                        border: `1px solid ${maxWDWarningXFiltered.color}`,
+                                        color: maxWDWarningXFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Max WD X:</strong> {maxWDWarningX.message}
+                                        <strong>Max WD X:</strong> {maxWDWarningXFiltered.message}
                                     </div>
                                 )}
                                 {maxWDWarningY && (
@@ -629,82 +639,82 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                                         <strong>Max WD Y:</strong> {maxWDWarningY.message}
                                     </div>
                                 )}
-                                {minWDWarningX && (
+                                {minWDWarningXFiltered && (
                                     <div style={{
                                         padding: 'var(--spacing-xs)',
                                         marginBottom: 'var(--spacing-xs)',
                                         borderRadius: 'var(--radius-sm)',
-                                        backgroundColor: minWDWarningX.bgColor,
-                                        border: `1px solid ${minWDWarningX.color}`,
-                                        color: minWDWarningX.color,
+                                        backgroundColor: minWDWarningXFiltered.bgColor,
+                                        border: `1px solid ${minWDWarningXFiltered.color}`,
+                                        color: minWDWarningXFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Min WD X:</strong> {minWDWarningX.message}
+                                        <strong>Min WD X:</strong> {minWDWarningXFiltered.message}
                                     </div>
                                 )}
-                                {minWDWarningY && (
+                                {minWDWarningYFiltered && (
                                     <div style={{
                                         padding: 'var(--spacing-xs)',
                                         marginBottom: 'var(--spacing-xs)',
                                         borderRadius: 'var(--radius-sm)',
-                                        backgroundColor: minWDWarningY.bgColor,
-                                        border: `1px solid ${minWDWarningY.color}`,
-                                        color: minWDWarningY.color,
+                                        backgroundColor: minWDWarningYFiltered.bgColor,
+                                        border: `1px solid ${minWDWarningYFiltered.color}`,
+                                        color: minWDWarningYFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Min WD Y:</strong> {minWDWarningY.message}
+                                        <strong>Min WD Y:</strong> {minWDWarningYFiltered.message}
                                     </div>
                                 )}
-                                {slightUpWarningX && (
+                                {slightUpWarningXFiltered && (
                                     <div style={{
                                         padding: 'var(--spacing-xs)',
                                         marginBottom: 'var(--spacing-xs)',
                                         borderRadius: 'var(--radius-sm)',
-                                        backgroundColor: slightUpWarningX.bgColor,
-                                        border: `1px solid ${slightUpWarningX.color}`,
-                                        color: slightUpWarningX.color,
+                                        backgroundColor: slightUpWarningXFiltered.bgColor,
+                                        border: `1px solid ${slightUpWarningXFiltered.color}`,
+                                        color: slightUpWarningXFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Slight Up X:</strong> {slightUpWarningX.message}
+                                        <strong>Slight Up X:</strong> {slightUpWarningXFiltered.message}
                                     </div>
                                 )}
-                                {slightUpWarningY && (
+                                {slightUpWarningYFiltered && (
                                     <div style={{
                                         padding: 'var(--spacing-xs)',
                                         marginBottom: 'var(--spacing-xs)',
                                         borderRadius: 'var(--radius-sm)',
-                                        backgroundColor: slightUpWarningY.bgColor,
-                                        border: `1px solid ${slightUpWarningY.color}`,
-                                        color: slightUpWarningY.color,
+                                        backgroundColor: slightUpWarningYFiltered.bgColor,
+                                        border: `1px solid ${slightUpWarningYFiltered.color}`,
+                                        color: slightUpWarningYFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Slight Up Y:</strong> {slightUpWarningY.message}
+                                        <strong>Slight Up Y:</strong> {slightUpWarningYFiltered.message}
                                     </div>
                                 )}
-                                {slightOverWarningX && (
+                                {slightOverWarningXFiltered && (
                                     <div style={{
                                         padding: 'var(--spacing-xs)',
                                         marginBottom: 'var(--spacing-xs)',
                                         borderRadius: 'var(--radius-sm)',
-                                        backgroundColor: slightOverWarningX.bgColor,
-                                        border: `1px solid ${slightOverWarningX.color}`,
-                                        color: slightOverWarningX.color,
+                                        backgroundColor: slightOverWarningXFiltered.bgColor,
+                                        border: `1px solid ${slightOverWarningXFiltered.color}`,
+                                        color: slightOverWarningXFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Slight Over X:</strong> {slightOverWarningX.message}
+                                        <strong>Slight Over X:</strong> {slightOverWarningXFiltered.message}
                                     </div>
                                 )}
-                                {slightOverWarningY && (
+                                {slightOverWarningYFiltered && (
                                     <div style={{
                                         padding: 'var(--spacing-xs)',
                                         marginBottom: 'var(--spacing-xs)',
                                         borderRadius: 'var(--radius-sm)',
-                                        backgroundColor: slightOverWarningY.bgColor,
-                                        border: `1px solid ${slightOverWarningY.color}`,
-                                        color: slightOverWarningY.color,
+                                        backgroundColor: slightOverWarningYFiltered.bgColor,
+                                        border: `1px solid ${slightOverWarningYFiltered.color}`,
+                                        color: slightOverWarningYFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Slight Over Y:</strong> {slightOverWarningY.message}
+                                        <strong>Slight Over Y:</strong> {slightOverWarningYFiltered.message}
                                     </div>
                                 )}
                             </div>
