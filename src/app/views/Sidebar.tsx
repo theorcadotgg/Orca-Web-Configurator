@@ -57,7 +57,7 @@ export function Sidebar() {
         )}
       </CollapsiblePanel>
 
-      <CollapsiblePanel title="Trigger Policy">
+      <CollapsiblePanel title="Trigger Configuration">
         {draft ? (
           <>
             {activeSlot === 1 && (

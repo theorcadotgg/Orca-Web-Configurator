@@ -9,8 +9,19 @@ type Props = {
     mode?: 'orca' | 'gp2040';
 };
 
+// Index for ORCA_TRIGGER_R in the notch array
+const TRIGGER_NOTCH_INDEX = 4;
+
 function clamp(n: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, n));
+}
+
+function to128(v: number): number {
+    return clamp(Math.round(v * 128), 0, 128);
+}
+
+function from128(v: number): number {
+    return clamp(v, 0, 128) / 128;
 }
 
 function to255(v: number): number {
@@ -24,14 +35,31 @@ function from255(v: number): number {
 export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Props) {
     const activeProfile = draft.activeProfile ?? 0;
     const policy = draft.triggerPolicy[activeProfile] ?? draft.triggerPolicy[0];
-    if (!policy) return null;
+    const curveParams = draft.stickCurveParams[activeProfile] ?? draft.stickCurveParams[0];
+    if (!policy || !curveParams) return null;
 
     const lightshieldOnly = (policy.flags & TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP) !== 0;
 
     // Orca mode uses specific ranges per ruleset
     const triggerMin = mode === 'orca' ? 140 : 0;
     const triggerMax = mode === 'orca' ? 220 : 255;
-    const lightshieldMin = mode === 'orca' ? 49 : 0;
+
+    const analogRangeMax255 = to255(policy.analogRangeMax);
+    const digitalFullPress255 = to255(policy.digitalFullPress);
+    const analogMaxNormalized = policy.analogRangeMax; // 0-1 normalized
+
+    // Trigger notch: stored value gets multiplied by analogMax in firmware
+    // So we display: notch_stored * analogMax * 255 (to show final Dolphin output)
+    // And store: display_value / analogMax / 255 * 128
+
+    // Min: 49 (matching lightshield), Max: half of analog max output
+    const triggerNotchMin255 = mode === 'orca' ? 49 : 0;
+    const triggerNotchMax255 = mode === 'orca' ? Math.floor(analogRangeMax255 / 2) : 255;
+
+    // Current trigger notch value: stored normalized, displayed as final Dolphin output
+    // notch_stored (0-1) * analogMax (0-1) * 255 = Dolphin output
+    const triggerNotchStored = curveParams.notch[TRIGGER_NOTCH_INDEX] ?? 0;
+    const triggerNotchDisplay255 = Math.round(triggerNotchStored * analogMaxNormalized * 255);
 
     function updatePolicy(patch: Partial<typeof policy>) {
         const updated = cloneDraft(draft);
@@ -41,18 +69,21 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
         onChange(updated);
     }
 
-    const analogRangeMax255 = to255(policy.analogRangeMax);
-    const digitalFullPress255 = to255(policy.digitalFullPress);
-    const digitalLightshield255 = to255(policy.digitalLightshield);
-
-    // Calculate lightshield max based on trigger max (for Orca mode)
-    // Use triggerMax instead of analogRangeMax255 to avoid circular dependency
-    const lightshieldMax = mode === 'orca' ? Math.floor(triggerMax / 2) : 255;
-
-    // Handler for lightshield slider
-    function handleLightshieldChange(value: number) {
-        const clampedValue = clamp(value, lightshieldMin, lightshieldMax);
-        updatePolicy({ digitalLightshield: from255(clampedValue) });
+    // Handler: convert Dolphin output value back to stored notch value
+    // display = stored * analogMax * 255  =>  stored = display / 255 / analogMax
+    function updateTriggerNotch(displayValue255: number) {
+        const clamped255 = clamp(displayValue255, triggerNotchMin255, triggerNotchMax255);
+        // Reverse the analogMax scaling to get the stored value
+        const storedNormalized = analogMaxNormalized > 0
+            ? clamped255 / 255 / analogMaxNormalized
+            : 0;
+        const updated = cloneDraft(draft);
+        const params = updated.stickCurveParams[activeProfile] ?? updated.stickCurveParams[0];
+        if (!params) return;
+        const notch = [...params.notch];
+        notch[TRIGGER_NOTCH_INDEX] = clamp(storedNormalized, 0, 1);
+        updated.stickCurveParams[activeProfile] = { ...params, notch };
+        onChange(updated);
     }
 
     // Handler for lightshield-only checkbox
@@ -90,12 +121,12 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                             opacity: 0.6,
                             transition: 'height 0.15s ease'
                         }} />
-                        {/* Lightshield threshold line */}
+                        {/* Trigger notch threshold line */}
                         <div style={{
                             position: 'absolute',
                             left: 0,
                             right: 0,
-                            bottom: `${(digitalLightshield255 / 255) * 100}%`,
+                            bottom: `${(triggerNotchDisplay255 / 255) * 100}%`,
                             height: 2,
                             background: '#FF9800',
                             zIndex: 1
@@ -126,12 +157,12 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                             opacity: 0.6,
                             transition: 'height 0.15s ease'
                         }} />
-                        {/* Lightshield threshold line */}
+                        {/* Trigger notch threshold line */}
                         <div style={{
                             position: 'absolute',
                             left: 0,
                             right: 0,
-                            bottom: `${(digitalLightshield255 / 255) * 100}%`,
+                            bottom: `${(triggerNotchDisplay255 / 255) * 100}%`,
                             height: 2,
                             background: '#FF9800',
                             zIndex: 1
@@ -142,8 +173,8 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
 
             {/* Legend - single line */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16, fontSize: 10, color: 'var(--color-text-muted)' }}>
-                <span>■ Full Press</span>
-                <span style={{ color: '#FF9800' }}>━ Lightshield</span>
+                <span>■ Digital Full Press</span>
+                <span style={{ color: '#FF9800' }}>━ Trigger Notch</span>
             </div>
 
             {/* Lightshield Only Checkbox - Orca mode only */}
@@ -166,7 +197,7 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                         />
                         <span style={{ color: '#FF9800' }}>Lightshield Only</span>
                         <span style={{ color: 'var(--color-text-muted)', fontSize: 10 }}>
-                            (clamps analog above lightshield)
+                            (clamps analog at trigger notch)
                         </span>
                     </label>
                 </div>
@@ -174,9 +205,32 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
 
             {/* Sliders - compact single-line format */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Trigger Notch */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 11, width: 90, flexShrink: 0, color: '#FF9800' }}>Light Press</span>
+                    <input
+                        type="range"
+                        min={triggerNotchMin255}
+                        max={triggerNotchMax255}
+                        value={clamp(triggerNotchDisplay255, triggerNotchMin255, triggerNotchMax255)}
+                        onChange={(e) => updateTriggerNotch(Number(e.target.value))}
+                        disabled={disabled}
+                        style={{ flex: 1, minWidth: 0 }}
+                    />
+                    <input
+                        type="number"
+                        min={triggerNotchMin255}
+                        max={triggerNotchMax255}
+                        value={clamp(triggerNotchDisplay255, triggerNotchMin255, triggerNotchMax255)}
+                        onChange={(e) => updateTriggerNotch(Number(e.target.value))}
+                        disabled={disabled}
+                        style={{ width: 48, fontSize: 11, padding: '2px 4px', textAlign: 'center', flexShrink: 0 }}
+                    />
+                </div>
+
                 {/* Analog Max */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, width: 90, flexShrink: 0 }}>Analog Max</span>
+                    <span style={{ fontSize: 11, width: 90, flexShrink: 0 }}>Analog Full Press</span>
                     <input
                         type="range"
                         min={triggerMin}
@@ -210,7 +264,7 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
 
                 {/* Digital Full Press */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, width: 90, flexShrink: 0 }}>Full Press</span>
+                    <span style={{ fontSize: 11, width: 90, flexShrink: 0 }}>Digital Press</span>
                     <input
                         type="range"
                         min={triggerMin}
@@ -226,29 +280,6 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                         max={triggerMax}
                         value={clamp(digitalFullPress255, triggerMin, triggerMax)}
                         onChange={(e) => updatePolicy({ digitalFullPress: from255(Number(e.target.value)) })}
-                        disabled={disabled}
-                        style={{ width: 48, fontSize: 11, padding: '2px 4px', textAlign: 'center', flexShrink: 0 }}
-                    />
-                </div>
-
-                {/* Digital Lightshield */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, width: 90, flexShrink: 0, color: '#FF9800' }}>Lightshield</span>
-                    <input
-                        type="range"
-                        min={lightshieldMin}
-                        max={lightshieldMax}
-                        value={clamp(digitalLightshield255, lightshieldMin, lightshieldMax)}
-                        onChange={(e) => handleLightshieldChange(Number(e.target.value))}
-                        disabled={disabled}
-                        style={{ flex: 1, minWidth: 0 }}
-                    />
-                    <input
-                        type="number"
-                        min={lightshieldMin}
-                        max={lightshieldMax}
-                        value={clamp(digitalLightshield255, lightshieldMin, lightshieldMax)}
-                        onChange={(e) => handleLightshieldChange(Number(e.target.value))}
                         disabled={disabled}
                         style={{ width: 48, fontSize: 11, padding: '2px 4px', textAlign: 'center', flexShrink: 0 }}
                     />
