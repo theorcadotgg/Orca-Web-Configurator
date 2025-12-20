@@ -317,7 +317,7 @@ export function parseSettingsBlob(blob: Uint8Array): ParsedSettings {
     const layer = parseDpadLayerV1(readTlvData(blob, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, i));
     // v1.4 -> v1.5 compatibility: v1.4 stored a single DPAD mode at byte 0 (bytes 1..3 reserved).
     // If reading a v1.4 blob, mirror the legacy mode across directions for display/editing.
-    if (versionMinor < 5 && layer.mode_down === 0 && layer.mode_left === 0 && layer.mode_right === 0) {
+    if (versionMajor === 1 && versionMinor < 5 && layer.mode_down === 0 && layer.mode_left === 0 && layer.mode_right === 0) {
       layer.mode_down = layer.mode_up;
       layer.mode_left = layer.mode_up;
       layer.mode_right = layer.mode_up;
