@@ -578,8 +578,8 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                     <ResultRow label="Walk Speed on X Notch" value={walkSpeed} />
                     <ResultRow label="Max Wavedash Notch" value={maxWDPrefix + maxWDDisplay} />
                     <ResultRow label="Min Wavedash Notch" value={minWDPrefix + minWDDisplay} />
-                    <ResultRow label="Slight Up Notch" value={slightUpPrefix + slightUpDisplay} />
-                    <ResultRow label="Slight Over Notch" value={slightOverPrefix + slightOverDisplay} />
+                    <ResultRow label="Over + Slight Up Notch" value={slightUpPrefix + slightUpDisplay} />
+                    <ResultRow label="Up + Slight Over Notch" value={slightOverPrefix + slightOverDisplay} />
                     <ResultRow label="North Diagonal" value={northDiagDisplay} />
                     <ResultRow label="South Diagonal" value={southDiagDisplay} />
 
@@ -675,7 +675,7 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                                         color: slightUpWarningXFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Slight Up X:</strong> {slightUpWarningXFiltered.message}
+                                        <strong>Over + Slight Up X:</strong> {slightUpWarningXFiltered.message}
                                     </div>
                                 )}
                                 {slightUpWarningYFiltered && (
@@ -688,7 +688,7 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                                         color: slightUpWarningYFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Slight Up Y:</strong> {slightUpWarningYFiltered.message}
+                                        <strong>Over + Slight Up Y:</strong> {slightUpWarningYFiltered.message}
                                     </div>
                                 )}
                                 {slightOverWarningXFiltered && (
@@ -701,7 +701,7 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                                         color: slightOverWarningXFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Slight Over X:</strong> {slightOverWarningXFiltered.message}
+                                        <strong>Up + Slight Over X:</strong> {slightOverWarningXFiltered.message}
                                     </div>
                                 )}
                                 {slightOverWarningYFiltered && (
@@ -714,7 +714,7 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                                         color: slightOverWarningYFiltered.color,
                                         fontWeight: 500,
                                     }}>
-                                        <strong>Slight Over Y:</strong> {slightOverWarningYFiltered.message}
+                                        <strong>Up + Slight Over Y:</strong> {slightOverWarningYFiltered.message}
                                     </div>
                                 )}
                             </div>
