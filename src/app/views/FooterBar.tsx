@@ -115,7 +115,7 @@ export function FooterBar() {
       <ConfirmModal
         isOpen={showCalibrationConfirm}
         title="Controller Calibration"
-        message="Start controller calibration? Move sticks/triggers through their full range, then press the 3 button to finish. The configurator will stay connected."
+        message="Start controller calibration? Fully press all analog (long) buttons, then press button 3 (bottom right in the center triangle) to finish. The configurator will stay connected."
         confirmLabel="Start Calibration"
         cancelLabel="Cancel"
         onConfirm={() => {

@@ -13,7 +13,7 @@ export function CalibrationRunningModal({ isOpen }: Props) {
         </h3>
         <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           <p style={{ marginTop: 0, marginBottom: 'var(--spacing-sm)' }}>
-            Move sticks and triggers through their full range.
+            Fully press all analog (long) buttons a few times.
           </p>
           <p style={{ marginTop: 0, marginBottom: 'var(--spacing-sm)' }}>
             Press <strong>3</strong> to finish and return to the configurator.
