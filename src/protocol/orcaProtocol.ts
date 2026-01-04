@@ -183,6 +183,10 @@ export function encodeGetInputStateRequest(seq: number): ByteArray {
   return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.GET_INPUT_STATE]) as ByteArray);
 }
 
+export function encodeRunCalibrationRequest(seq: number): ByteArray {
+  return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.RUN_CALIBRATION]) as ByteArray);
+}
+
 export function parseErrorPayload(payload: Uint8Array): { cmd: number; err: number } {
   return { cmd: payload[0] ?? 0, err: payload[1] ?? OrcaErr.INTERNAL_ERROR };
 }

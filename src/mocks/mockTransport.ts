@@ -84,6 +84,32 @@ export class MockOrcaTransport implements OrcaTransport {
     };
   }
 
+  async runCalibration(): Promise<{ generation: number }> {
+    if (!this.sessionActive) throw new Error('No active session');
+    if (!this.writesUnlocked) throw new Error('Writes not unlocked');
+
+    const baseGen0 =
+      this.flashBlobs[0][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET]! |
+      (this.flashBlobs[0][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 1]! << 8) |
+      (this.flashBlobs[0][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 2]! << 16) |
+      (this.flashBlobs[0][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 3]! << 24);
+    const baseGen1 =
+      this.flashBlobs[1][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET]! |
+      (this.flashBlobs[1][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 1]! << 8) |
+      (this.flashBlobs[1][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 2]! << 16) |
+      (this.flashBlobs[1][ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET + 3]! << 24);
+
+    const next0 = this.flashBlobs[0].slice();
+    const next1 = this.flashBlobs[1].slice();
+    const generation = (baseGen0 + 1) >>> 0;
+    writeU32Le(next0, ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET, generation);
+    writeU32Le(next1, ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET, (baseGen1 + 1) >>> 0);
+    this.flashBlobs = [next0, next1];
+    this.writesUnlocked = false;
+
+    return { generation };
+  }
+
   async readBlobChunk(slot: number, offset: number, length: number): Promise<Uint8Array> {
     this.assertSlot(slot);
     return this.flashBlobs[slot].slice(offset, offset + length);

@@ -40,6 +40,7 @@ export interface OrcaTransport {
   unlockWrites(): Promise<void>;
 
   getInputState(): Promise<OrcaInputState>;
+  runCalibration(): Promise<{ generation: number }>;
 
   readBlobChunk(slot: number, offset: number, length: number): Promise<Uint8Array>;
   readBlob(slot: number, options?: {

@@ -80,6 +80,7 @@ export type OrcaAppController = {
   resetToDefaultBindings: () => void;
   validateOnDevice: () => Promise<void>;
   saveToDevice: () => Promise<void>;
+  runCalibrationOnDevice: () => Promise<void>;
   resetDefaultsOnDevice: () => Promise<void>;
   factoryResetOnDevice: () => Promise<void>;
   rebootNow: () => Promise<void>;
@@ -178,6 +179,7 @@ export function useOrcaAppController(): OrcaAppController {
         deviceInfo: null,
         slotStates: createEmptySlotStates(),
         deviceValidation: null,
+        calibrationInProgress: false,
         progress: '',
         ...patch,
       },
@@ -430,6 +432,62 @@ export function useOrcaAppController(): OrcaAppController {
       dispatch({ type: 'patch', patch: { progress: '' } });
     } finally {
       dispatch({ type: 'patch', patch: { busy: false } });
+    }
+  }, [resetConnection, updateSlotState]);
+
+  const runCalibrationOnDevice = useCallback(async () => {
+    const { transport, deviceInfo, slotStates } = stateRef.current;
+    if (!transport || !deviceInfo) return;
+
+    const slotStatesSnapshot = slotStates;
+
+    dispatch({
+      type: 'patch',
+      patch: {
+        lastError: '',
+        progress: 'Calibrating...',
+        deviceValidation: null,
+        calibrationInProgress: true,
+      },
+    });
+
+    try {
+      dispatch({ type: 'patch', patch: { busy: true } });
+      await transport.beginSession();
+      await transport.unlockWrites();
+      await transport.runCalibration();
+
+      dispatch({ type: 'patch', patch: { calibrationInProgress: false } });
+
+      const slotCount = Math.min(deviceInfo.slotCount, 2);
+      for (let slot = 0; slot < slotCount; slot++) {
+        const prior = slotStatesSnapshot[slot as SlotId];
+        if (!prior.baseBlob || !prior.draft) continue;
+
+        dispatch({ type: 'patch', patch: { progress: `Reading ${slotDisplayName(slot as SlotId)}...` } });
+        const blob = await transport.readBlob(slot, { blobSize: deviceInfo.blobSize, maxChunk: deviceInfo.maxChunk });
+
+        if (prior.dirty) {
+          updateSlotState(slot as SlotId, { baseBlob: blob });
+          continue;
+        }
+
+        const res = tryParseSettingsBlob(blob);
+        if (!res.ok) throw new Error(res.error);
+        updateSlotState(slot as SlotId, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+      }
+
+      dispatch({ type: 'patch', patch: { progress: '' } });
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      if (errorMsg.includes('disconnected') || errorMsg.includes('closed') || errorMsg.includes('not open')) {
+        resetConnection({ lastError: 'Device disconnected. Please reconnect.' });
+      } else {
+        dispatch({ type: 'patch', patch: { lastError: errorMsg } });
+      }
+      dispatch({ type: 'patch', patch: { progress: '' } });
+    } finally {
+      dispatch({ type: 'patch', patch: { busy: false, calibrationInProgress: false } });
     }
   }, [resetConnection, updateSlotState]);
 
@@ -787,6 +845,7 @@ export function useOrcaAppController(): OrcaAppController {
     resetToDefaultBindings,
     validateOnDevice,
     saveToDevice,
+    runCalibrationOnDevice,
     resetDefaultsOnDevice,
     factoryResetOnDevice,
     rebootNow,

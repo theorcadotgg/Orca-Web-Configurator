@@ -33,6 +33,7 @@ export type OrcaAppState = {
   allowUnsafeWrites: boolean;
 
   busy: boolean;
+  calibrationInProgress: boolean;
   progress: string;
   lastError: string;
 
@@ -59,6 +60,7 @@ export function createInitialOrcaAppState(): OrcaAppState {
     allowUnsafeWrites: false,
 
     busy: false,
+    calibrationInProgress: false,
     progress: '',
     lastError: '',
 

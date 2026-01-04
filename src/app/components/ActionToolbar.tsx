@@ -7,6 +7,7 @@ type Props = {
     // Callbacks
     onValidate: () => void;
     onSave: () => void;
+    onCalibrate: () => void;
     onResetMode: () => void;
     onFactoryReset: () => void;
     onReboot: () => void;
@@ -27,6 +28,7 @@ export function ActionToolbar({
     hasLocalErrors,
     onValidate,
     onSave,
+    onCalibrate,
     onResetMode,
     onFactoryReset,
     onReboot,
@@ -64,6 +66,9 @@ export function ActionToolbar({
 
             {/* Secondary actions */}
             <div className="footer-group">
+                <button onClick={onCalibrate} disabled={!canWrite || busy}>
+                    Calibrate
+                </button>
                 <button onClick={onResetMode} disabled={!canWrite || busy}>
                     Reset Mode Defaults
                 </button>

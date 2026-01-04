@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useOrcaApp } from '../contexts/OrcaAppContext';
 import { ActionToolbar } from '../components/ActionToolbar';
+import { CalibrationRunningModal } from '../components/CalibrationRunningModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { slotDisplayName } from '../utils/slot';
 import { findMeleeRulesetInvalidProfiles } from '../../validators/settingsValidation';
@@ -15,6 +16,7 @@ export function FooterBar() {
     localValidation,
     validateOnDevice,
     saveToDevice,
+    runCalibrationOnDevice,
     resetDefaultsOnDevice,
     factoryResetOnDevice,
     rebootNow,
@@ -31,6 +33,7 @@ export function FooterBar() {
   const importDeviceRef = useRef<HTMLInputElement | null>(null);
   const importProfileRef = useRef<HTMLInputElement | null>(null);
   const [showMeleeConfirm, setShowMeleeConfirm] = useState(false);
+  const [showCalibrationConfirm, setShowCalibrationConfirm] = useState(false);
 
   const meleeInvalidProfiles = useMemo(() => {
     if (!draft || state.configMode !== 'orca') return [];
@@ -57,6 +60,7 @@ export function FooterBar() {
           hasLocalErrors={localValidation.errors.length > 0}
           onValidate={() => void validateOnDevice()}
           onSave={handleSave}
+          onCalibrate={() => setShowCalibrationConfirm(true)}
           onResetMode={() => setShowResetConfirm(true)}
           onFactoryReset={() => setShowFactoryResetConfirm(true)}
           onReboot={() => void rebootNow()}
@@ -107,6 +111,21 @@ export function FooterBar() {
         }}
         onCancel={() => setShowResetConfirm(false)}
       />
+
+      <ConfirmModal
+        isOpen={showCalibrationConfirm}
+        title="Controller Calibration"
+        message="Start controller calibration? Move sticks/triggers through their full range, then press the 3 button to finish. The configurator will stay connected."
+        confirmLabel="Start Calibration"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setShowCalibrationConfirm(false);
+          void runCalibrationOnDevice();
+        }}
+        onCancel={() => setShowCalibrationConfirm(false)}
+      />
+
+      <CalibrationRunningModal isOpen={state.calibrationInProgress} />
 
       <ConfirmModal
         isOpen={state.showFactoryResetConfirm}

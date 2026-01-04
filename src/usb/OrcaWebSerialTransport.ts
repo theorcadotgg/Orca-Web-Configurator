@@ -14,6 +14,7 @@ import {
   encodeFactoryResetRequest,
   encodeResetDefaultsRequest,
   encodeResetDefaultsSlotRequest,
+  encodeRunCalibrationRequest,
   encodeUnlockWritesRequest,
   encodeValidateStagedRequest,
   encodeValidateStagedSlotRequest,
@@ -247,6 +248,21 @@ export class OrcaWebSerialTransport implements OrcaTransport {
       analog.push(q / 65535);
     }
     return { digitalMask, analog };
+  }
+
+  async runCalibration(): Promise<{ generation: number }> {
+    const seq = this.seq++;
+    const frame = await this.sendAndRead(encodeRunCalibrationRequest(seq));
+
+    if (frame.msgType === OrcaMsgType.ERROR) {
+      const { cmd, err } = parseErrorPayload(frame.payload);
+      throw new OrcaDeviceError(cmd, err);
+    }
+
+    const payload = frame.payload;
+    if (payload.length < 8) throw new Error('Bad RUN_CALIBRATION response length');
+    const generation = readU32Le(payload, 4);
+    return { generation };
   }
 
   async readBlobChunk(slot: number, offset: number, length: number): Promise<Uint8Array> {
