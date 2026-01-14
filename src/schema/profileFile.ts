@@ -147,6 +147,7 @@ function parseStickCurveParamsV1(value: unknown, name: string): StickCurveParams
     dz_upper: expectNumberArrayLen(rec.dz_upper, `${name}.dz_upper`, 5),
     notch_start_input: expectFiniteNumber(rec.notch_start_input, `${name}.notch_start_input`),
     notch_end_input: expectFiniteNumber(rec.notch_end_input, `${name}.notch_end_input`),
+    flags: expectFiniteNumber(rec.flags ?? 0, `${name}.flags`),
   };
 }
 

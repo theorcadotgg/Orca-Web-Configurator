@@ -37,6 +37,7 @@ function makeStickParams(): StickCurveParamsV1 {
     dz_upper: [1, 1, 1, 1, 1],
     notch_start_input: 0,
     notch_end_input: 1,
+    flags: 0,
   };
 }
 
