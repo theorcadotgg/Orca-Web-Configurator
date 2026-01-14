@@ -48,8 +48,16 @@ export function MainPane() {
             }}
           >
             <h2 style={{ margin: 0, fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-              Connect your Orca controller
+              Connect your Orca while holding
             </h2>
+            <svg width="60" height="52" viewBox="0 0 60 52" style={{ marginTop: '-8px' }}>
+              {/* Top circle - filled */}
+              <circle cx="30" cy="12" r="10" fill="var(--color-text-secondary)" stroke="var(--color-text-secondary)" strokeWidth="2" />
+              {/* Bottom-left circle - filled */}
+              <circle cx="12" cy="40" r="10" fill="var(--color-text-secondary)" stroke="var(--color-text-secondary)" strokeWidth="2" />
+              {/* Bottom-right circle - not filled */}
+              <circle cx="48" cy="40" r="10" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2" />
+            </svg>
             <button className="primary" onClick={() => void connect()} disabled={state.busy}>
               {state.busy ? 'Connecting...' : 'Connect'}
             </button>

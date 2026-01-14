@@ -79,7 +79,11 @@ export type StickCurveParamsV1 = {
   dz_upper: number[];   // [5] - deadzone upper
   notch_start_input: number;
   notch_end_input: number;
+  flags: number;        // bit 0: circle coords enabled
 };
+
+// StickCurveParamsV1 flags
+export const STICK_CURVE_FLAG_CIRCLE_COORDS = 1 << 0;
 
 export type SettingsDraft = {
   activeProfile: number;
@@ -230,8 +234,9 @@ function parseStickCurveParamsV1(data: Uint8Array): StickCurveParamsV1 {
   }
   const notch_start_input = readF32Le(data, 4 + 80);
   const notch_end_input = readF32Le(data, 4 + 84);
+  const flags = readU32Le(data, 4 + 88);
 
-  return { size, range, notch, dz_lower, dz_upper, notch_start_input, notch_end_input };
+  return { size, range, notch, dz_lower, dz_upper, notch_start_input, notch_end_input, flags };
 }
 
 function encodeStickCurveParamsV1(params: StickCurveParamsV1): Uint8Array {
@@ -252,6 +257,7 @@ function encodeStickCurveParamsV1(params: StickCurveParamsV1): Uint8Array {
   }
   writeF32Le(out, 4 + 80, params.notch_start_input);
   writeF32Le(out, 4 + 84, params.notch_end_input);
+  writeU32Le(out, 4 + 88, params.flags ?? 0);
 
   return out;
 }

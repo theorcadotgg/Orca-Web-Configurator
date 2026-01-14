@@ -59,9 +59,10 @@ function dpadNoOutputOverlap(mapping: number[], layer: DpadLayerV1, outputDests:
 export const MELEE_RULESET_VERIFICATION_ID = 'melee_ruleset_verification';
 export const MELEE_RULESET_VERIFICATION_ACTIVATION_INPUTS = [15, 13, 14] as const;
 export const MELEE_RULESET_VERIFICATION_OUTPUT_BUTTONS = [5, 8, 0, 11] as const;
-const MELEE_RULESET_VERIFICATION_OUTPUT_DESTINATIONS = [0, 1, 2, 3, 4, 5, 6, 15] as const;
+const MELEE_RULESET_VERIFICATION_OUTPUT_DESTINATIONS_0 = [0, 1, 2, 3, 4, 5, 6, 15] as const;
+const MELEE_RULESET_VERIFICATION_OUTPUT_DESTINATIONS_1 = [1, 2, 3, 4, 5, 6, 15] as const;
 
 export function isMeleeRulesetVerificationValid(ctx: OrcaRulesetContext): boolean {
   if (!ctx || !ctx.digitalMappings || !ctx.dpadLayer) return false;
-  return (((ctx.digitalMappings[0] === 0 && ctx.digitalMappings[7] === 7 && ctx.digitalMappings[8] === 8 && ctx.digitalMappings[9] === 9 && ctx.digitalMappings[10] === 10) || (ctx.digitalMappings[0] === 10 && ctx.digitalMappings[10] === 0 && ctx.digitalMappings[7] === 7 && ctx.digitalMappings[8] === 8 && ctx.digitalMappings[9] === 9)) && dpadSourcesDigital(ctx.dpadLayer, true) && dpadNoOutputOverlap(ctx.digitalMappings, ctx.dpadLayer, MELEE_RULESET_VERIFICATION_OUTPUT_DESTINATIONS));
+  return ((((ctx.digitalMappings[0] === 0 && ctx.digitalMappings[7] === 7 && ctx.digitalMappings[8] === 8 && ctx.digitalMappings[9] === 9 && ctx.digitalMappings[10] === 10) && dpadNoOutputOverlap(ctx.digitalMappings, ctx.dpadLayer, MELEE_RULESET_VERIFICATION_OUTPUT_DESTINATIONS_0)) || ((ctx.digitalMappings[0] === 10 && ctx.digitalMappings[10] === 0 && ctx.digitalMappings[7] === 7 && ctx.digitalMappings[8] === 8 && ctx.digitalMappings[9] === 9) && dpadNoOutputOverlap(ctx.digitalMappings, ctx.dpadLayer, MELEE_RULESET_VERIFICATION_OUTPUT_DESTINATIONS_1))) && dpadSourcesDigital(ctx.dpadLayer, true));
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SettingsDraft, StickCurveParamsV1 } from '../../schema/settingsBlob';
+import { STICK_CURVE_FLAG_CIRCLE_COORDS } from '../../schema/settingsBlob';
 import { cloneDraft } from '../domain/cloneDraft';
 
 type Props = {
@@ -260,6 +261,70 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                     {effectivePreset === 'rivals2' && 'Optimized for Rivals of Aether 2'}
                     {showCustomSliders && 'Custom values - adjust sliders below'}
                 </span>
+            </div>
+
+            {/* Circle Coordinates Toggle */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: 'var(--spacing-sm) var(--spacing-md)',
+                background: 'var(--color-bg-tertiary)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)',
+            }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+                    <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                        Circle Coordinates
+                    </span>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+                        Maps square input to circular output (for analog buttons)
+                    </span>
+                </div>
+                <label style={{
+                    position: 'relative',
+                    display: 'inline-block',
+                    width: 44,
+                    height: 24,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    opacity: disabled ? 0.5 : 1,
+                }}>
+                    <input
+                        type="checkbox"
+                        checked={!!((params.flags ?? 0) & STICK_CURVE_FLAG_CIRCLE_COORDS)}
+                        disabled={disabled}
+                        onChange={(e) => {
+                            const newFlags = e.target.checked
+                                ? ((params.flags ?? 0) | STICK_CURVE_FLAG_CIRCLE_COORDS)
+                                : ((params.flags ?? 0) & ~STICK_CURVE_FLAG_CIRCLE_COORDS);
+                            updateParams({ flags: newFlags });
+                        }}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: ((params.flags ?? 0) & STICK_CURVE_FLAG_CIRCLE_COORDS) ? 'var(--color-accent-primary)' : 'var(--color-bg-secondary)',
+                        borderRadius: 12,
+                        transition: 'background-color 0.2s ease',
+                        border: '1px solid var(--color-border)',
+                    }}>
+                        <span style={{
+                            position: 'absolute',
+                            content: '""',
+                            height: 18,
+                            width: 18,
+                            left: ((params.flags ?? 0) & STICK_CURVE_FLAG_CIRCLE_COORDS) ? 22 : 2,
+                            bottom: 2,
+                            backgroundColor: 'white',
+                            borderRadius: '50%',
+                            transition: 'left 0.2s ease',
+                        }} />
+                    </span>
+                </label>
             </div>
 
             {/* Custom Controls - Only visible when custom mode is selected */}
@@ -611,7 +676,7 @@ function MeleeCalculator({ xMag, upMag, downMag, xNotch, upNotch, downNotch }: M
                                 borderTop: '1px solid var(--color-border)',
                             }}>
                                 <div style={{ fontWeight: 600, marginBottom: 'var(--spacing-xs)', color: 'var(--color-text-secondary)' }}>
-                                    Notch Warnings:
+                                    Notch Behavior:
                                 </div>
                                 {maxWDWarningXFiltered && (
                                     <div style={{

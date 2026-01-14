@@ -1,6 +1,7 @@
 import { ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT, ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT, OrcaSettingsTlv } from '@shared/orca_config_idl_generated';
 import { readF32Le, readU16Le, readU32Le } from '../schema/bytes';
 import type { SettingsDraft, StickCurveParamsV1, TriggerPolicyV1 } from '../schema/settingsBlob';
+import { STICK_CURVE_FLAG_CIRCLE_COORDS } from '../schema/settingsBlob';
 import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT, TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP } from '../schema/triggerPolicyFlags';
 import type { OrcaInputState } from '../usb/OrcaTransport';
 
@@ -60,6 +61,36 @@ function clamp01(v: number): number {
 function scale(i: number, min: number, max: number, newMin: number, newMax: number): number {
   if (min === max) return (newMin + newMax) / 2;
   return ((i - min) * (newMax - newMin)) / (max - min) + newMin;
+}
+
+/**
+ * Apply polar/arc-based coordinate transformation.
+ * Magnitude = max(|x|, |y|), angle preserved from atan2(y, x).
+ * This creates an arc when blending between axes.
+ * Expects input in [0, 1] range with 0.5 as center.
+ */
+function applyCircleCoordinates(x: number, y: number): { x: number; y: number } {
+  // Convert from [0, 1] to [-1, 1] (center at 0)
+  const xCentered = (x - 0.5) * 2.0;
+  const yCentered = (y - 0.5) * 2.0;
+
+  // Get magnitude as max of absolute values (how far the furthest axis is pressed)
+  const absX = Math.abs(xCentered);
+  const absY = Math.abs(yCentered);
+  const magnitude = Math.max(absX, absY);
+
+  // Get the angle from the ratio of x and y
+  const angle = Math.atan2(yCentered, xCentered);
+
+  // Convert back to cartesian using the magnitude and angle
+  const xTransformed = magnitude * Math.cos(angle);
+  const yTransformed = magnitude * Math.sin(angle);
+
+  // Convert back to [0, 1]
+  return {
+    x: (xTransformed / 2.0) + 0.5,
+    y: (yTransformed / 2.0) + 0.5,
+  };
 }
 
 function readTlvData(blob: Uint8Array, tlv: TlvInfo): Uint8Array | null {
@@ -226,10 +257,24 @@ export function computeInputPreview(raw: OrcaInputState, draft: SettingsDraft, b
   const digitalMapping = draft.digitalMappings[profile] ?? draft.digitalMappings[0];
   const mappedDigitalMask = applyDigitalMapping(raw.digitalMask, digitalMapping);
 
-  const x = (mappedAnalog[ORCA_JOYSTICK_X_RIGHT] ?? 0) - (mappedAnalog[ORCA_JOYSTICK_X_LEFT] ?? 0);
-  const y = (mappedAnalog[ORCA_JOYSTICK_Y_UP] ?? 0) - (mappedAnalog[ORCA_JOYSTICK_Y_DOWN] ?? 0);
-  const x01 = scale(x, -1, 1, 0, 1);
-  const y01 = scale(y, -1, 1, 0, 1);
+  let x = (mappedAnalog[ORCA_JOYSTICK_X_RIGHT] ?? 0) - (mappedAnalog[ORCA_JOYSTICK_X_LEFT] ?? 0);
+  let y = (mappedAnalog[ORCA_JOYSTICK_Y_UP] ?? 0) - (mappedAnalog[ORCA_JOYSTICK_Y_DOWN] ?? 0);
+
+  // Scale to [0, 1] first (matches firmware order)
+  let x01 = scale(x, -1, 1, 0, 1);
+  let y01 = scale(y, -1, 1, 0, 1);
+
+  // Apply circle coordinates transformation if enabled (after scaling to [0, 1])
+  const curveFlags = curveParams?.flags ?? 0;
+  if (curveFlags & STICK_CURVE_FLAG_CIRCLE_COORDS) {
+    const transformed = applyCircleCoordinates(x01, y01);
+    x01 = transformed.x;
+    y01 = transformed.y;
+    // Update x, y to reflect transformed values for magnitude calculation
+    x = (x01 - 0.5) * 2.0;
+    y = (y01 - 0.5) * 2.0;
+  }
+
   const magnitude = Math.sqrt(x * x + y * y);
 
   const policy = draft.triggerPolicy[profile] ?? draft.triggerPolicy[0];
