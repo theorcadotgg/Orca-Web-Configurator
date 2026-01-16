@@ -23,8 +23,8 @@ export function HeaderBar() {
       <div className="header-status">
         {state.progress && <span className="text-sm text-secondary">{state.progress}</span>}
         <a
-          href="/OrcaDol2.2.uf2"
-          download="OrcaDol2.2.uf2"
+          href="/OrcaDol2.3.uf2"
+          download="OrcaDol2.3.uf2"
           className={`btn-download${hasSchemaMismatch ? ' btn-download-alert' : ''}`}
           title={hasSchemaMismatch
             ? "Firmware update recommended! Your controller's firmware doesn't match this configurator version."

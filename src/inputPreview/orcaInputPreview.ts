@@ -248,17 +248,21 @@ export function computeInputPreview(raw: OrcaInputState, draft: SettingsDraft, b
   const rangeCal = tryParseRangeCalibration(baseBlob);
 
   const rangeCalibratedAnalog = applyRangeCalibration(raw.analog, rangeCal);
-  const curveParams = draft.stickCurveParams[profile] ?? draft.stickCurveParams[0];
-  const curvedAnalog = applyStickCurve(rangeCalibratedAnalog, curveParams);
 
+  // Apply analog mapping BEFORE stick curve so that calibration parameters
+  // (range, notch, deadzone) are applied based on destination role, not physical source.
+  // This matches firmware behavior for remapped inputs (e.g., trigger used as directional).
   const analogMapping = draft.analogMappings[profile] ?? draft.analogMappings[0];
-  const mappedAnalog = applyAnalogMapping(curvedAnalog, analogMapping);
+  const mappedAnalog = applyAnalogMapping(rangeCalibratedAnalog, analogMapping);
+
+  const curveParams = draft.stickCurveParams[profile] ?? draft.stickCurveParams[0];
+  const curvedAnalog = applyStickCurve(mappedAnalog, curveParams);
 
   const digitalMapping = draft.digitalMappings[profile] ?? draft.digitalMappings[0];
   const mappedDigitalMask = applyDigitalMapping(raw.digitalMask, digitalMapping);
 
-  let x = (mappedAnalog[ORCA_JOYSTICK_X_RIGHT] ?? 0) - (mappedAnalog[ORCA_JOYSTICK_X_LEFT] ?? 0);
-  let y = (mappedAnalog[ORCA_JOYSTICK_Y_UP] ?? 0) - (mappedAnalog[ORCA_JOYSTICK_Y_DOWN] ?? 0);
+  let x = (curvedAnalog[ORCA_JOYSTICK_X_RIGHT] ?? 0) - (curvedAnalog[ORCA_JOYSTICK_X_LEFT] ?? 0);
+  let y = (curvedAnalog[ORCA_JOYSTICK_Y_UP] ?? 0) - (curvedAnalog[ORCA_JOYSTICK_Y_DOWN] ?? 0);
 
   // Scale to [0, 1] first (matches firmware order)
   let x01 = scale(x, -1, 1, 0, 1);
@@ -278,7 +282,7 @@ export function computeInputPreview(raw: OrcaInputState, draft: SettingsDraft, b
   const magnitude = Math.sqrt(x * x + y * y);
 
   const policy = draft.triggerPolicy[profile] ?? draft.triggerPolicy[0];
-  const triggers = computeTriggers(raw.digitalMask, mappedDigitalMask, mappedAnalog, policy);
+  const triggers = computeTriggers(raw.digitalMask, mappedDigitalMask, curvedAnalog, policy);
 
   return {
     raw,
