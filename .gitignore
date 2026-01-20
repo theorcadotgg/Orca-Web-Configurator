@@ -8,3 +8,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Generated WASM files (built from shared/orca_input_lib)
+src/wasm/orca_input.js
+src/wasm/orca_input.wasm

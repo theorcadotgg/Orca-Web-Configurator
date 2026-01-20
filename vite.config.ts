@@ -12,6 +12,11 @@ export default defineConfig({
   // Use relative asset paths so the app works from GitHub Pages project URLs like:
   // https://<org>.github.io/<repo>/
   base: './',
+  // Allow importing .wasm files
+  assetsInclude: ['**/*.wasm'],
+  optimizeDeps: {
+    exclude: ['./src/wasm/orca_input.js'],
+  },
   plugins: [
     react(),
     VitePWA({

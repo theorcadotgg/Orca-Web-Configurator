@@ -20,9 +20,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.51
+
+      - name: Build WASM module
+        run: |
+          cd shared/orca_input_lib/wasm
+          mkdir -p build
+          cd build
+          emcmake cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_WASM=ON ..
+          cmake --build . --config Release
+          cp orca_input.js orca_input.wasm ../../../../src/wasm/
 
       - name: Setup Node
         uses: actions/setup-node@v4

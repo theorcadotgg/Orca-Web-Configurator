@@ -4,8 +4,56 @@ import type { SettingsDraft, StickCurveParamsV1, TriggerPolicyV1 } from '../sche
 import { STICK_CURVE_FLAG_CIRCLE_COORDS } from '../schema/settingsBlob';
 import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT, TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP } from '../schema/triggerPolicyFlags';
 import type { OrcaInputState } from '../usb/OrcaTransport';
+import {
+  getWasmProcessor,
+  initWasmProcessor,
+  UNIFIED_ANALOG_INPUT_COUNT,
+  UNIFIED_DIGITAL_INPUT_COUNT,
+  TRIGGER_POLICY_FLAG_ANALOG_TO_LT,
+  TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP as WASM_TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP,
+  STICK_CURVE_FLAG_CIRCLE_COORDS as WASM_STICK_CURVE_FLAG_CIRCLE_COORDS,
+  UnifiedDigitalIndex,
+  type WasmInputProcessor,
+  type UnifiedOutputState,
+  type MeleeOutputState,
+} from '../wasm/WasmInputProcessor';
 
 const ORCA_ANALOG_MAPPING_DISABLED = 0xff;
+
+// WASM processor state
+let wasmInitialized = false;
+let wasmInitPromise: Promise<void> | null = null;
+
+/**
+ * Initialize the WASM input processor.
+ * Call this once at application startup.
+ */
+export async function initInputPreviewWasm(): Promise<boolean> {
+  if (wasmInitialized) return true;
+
+  if (!wasmInitPromise) {
+    wasmInitPromise = (async () => {
+      try {
+        await initWasmProcessor();
+        wasmInitialized = true;
+        console.log('[orcaInputPreview] WASM processor initialized');
+      } catch (err) {
+        console.error('[orcaInputPreview] WASM init failed:', err);
+        wasmInitialized = false;
+      }
+    })();
+  }
+
+  await wasmInitPromise;
+  return wasmInitialized;
+}
+
+/**
+ * Check if WASM processor is ready.
+ */
+export function isWasmReady(): boolean {
+  return wasmInitialized && getWasmProcessor().isReady();
+}
 
 const ORCA_JOYSTICK_X_LEFT = 0;
 const ORCA_JOYSTICK_X_RIGHT = 1;
@@ -337,5 +385,119 @@ export function computeInputPreview(raw: OrcaInputState, draft: SettingsDraft, b
     mappedDigitalMask,
     joystick: { x, y, x01, y01, magnitude },
     triggers,
+  };
+}
+
+/**
+ * Extended result type that includes WASM-computed Melee output.
+ */
+export type InputPreviewResultWithMelee = InputPreviewResult & {
+  wasmOutput?: UnifiedOutputState;
+  meleeOutput?: MeleeOutputState;
+};
+
+/**
+ * Compute input preview using WASM processor.
+ * WASM is required - returns null if not ready.
+ *
+ * Returns extended result with WASM-computed Melee coordinates.
+ */
+export function computeInputPreviewWithWasm(
+  raw: OrcaInputState,
+  draft: SettingsDraft,
+  baseBlob: Uint8Array
+): InputPreviewResultWithMelee | null {
+  // WASM is required
+  if (!isWasmReady()) {
+    return null;
+  }
+
+  // Compute JS result for intermediate values (analog bars display)
+  const jsResult = computeInputPreview(raw, draft, baseBlob);
+
+  const processor = getWasmProcessor();
+  const profile = draft.activeProfile ?? 0;
+
+  // Set raw inputs
+  processor.setRawInputs({
+    digitalMask: raw.digitalMask,
+    analog: raw.analog,
+  });
+
+  // Set range calibration
+  const rangeCal = tryParseRangeCalibration(baseBlob);
+  processor.setRangeCalibration(rangeCal);
+
+  // Set analog mapping
+  const analogMapping = draft.analogMappings[profile] ?? draft.analogMappings[0];
+  processor.setAnalogMapping(analogMapping ?? null);
+
+  // Set digital mapping
+  const digitalMapping = draft.digitalMappings[profile] ?? draft.digitalMappings[0];
+  processor.setDigitalMapping(digitalMapping ?? null);
+
+  // Set stick curve parameters
+  const curveParams = draft.stickCurveParams[profile] ?? draft.stickCurveParams[0];
+  if (curveParams) {
+    processor.setStickCurveParams({
+      range: curveParams.range,
+      notch: curveParams.notch,
+      dz_lower: curveParams.dz_lower,
+      dz_upper: curveParams.dz_upper,
+      notch_start_input: curveParams.notch_start_input,
+      notch_end_input: curveParams.notch_end_input,
+      flags: curveParams.flags,
+    });
+  } else {
+    processor.setStickCurveParams(null);
+  }
+
+  // Set trigger policy
+  const triggerPolicy = draft.triggerPolicy[profile] ?? draft.triggerPolicy[0];
+  if (triggerPolicy) {
+    // Only use light sources if version is 1 (configured), otherwise use defaults
+    // When version is 0, the blob values are garbage (often 0 = A button)
+    const useLightSources = triggerPolicy.digitalLightSrcVersion === TRIGGER_POLICY_LIGHT_SRC_VERSION;
+    processor.setTriggerPolicy({
+      analogRangeMax: triggerPolicy.analogRangeMax,
+      digitalFullPress: triggerPolicy.digitalFullPress,
+      digitalLightshield: triggerPolicy.digitalLightshield,
+      flags: triggerPolicy.flags,
+      digitalLightLtSrc: useLightSources ? triggerPolicy.digitalLightLtSrc : undefined,
+      digitalLightRtSrc: useLightSources ? triggerPolicy.digitalLightRtSrc : undefined,
+    });
+  } else {
+    processor.setTriggerPolicy(null);
+  }
+
+  // DPAD layer not yet supported in draft schema - skip for now
+  processor.setDpadLayer(null);
+
+  // Process in Orca mode
+  const wasmOutput = processor.processOrca();
+  const meleeOutput = processor.toMeleeOutput();
+
+  // Return combined result
+  // NOTE: We keep jsResult.mappedDigitalMask (Orca input indices) for display purposes.
+  // wasmOutput.digitalMask uses intermediate output indices (GP2040-style L1/L2/R1/R2)
+  // which is not suitable for Orca mode button label display.
+  return {
+    ...jsResult,
+    wasmOutput,
+    meleeOutput,
+    // Override joystick with WASM values for accuracy
+    joystick: {
+      x: wasmOutput.leftStickX,
+      y: wasmOutput.leftStickY,
+      x01: (wasmOutput.leftStickX + 1) / 2,
+      y01: (wasmOutput.leftStickY + 1) / 2,
+      magnitude: Math.sqrt(wasmOutput.leftStickX ** 2 + wasmOutput.leftStickY ** 2),
+    },
+    triggers: {
+      l: wasmOutput.triggerL,
+      r: wasmOutput.triggerR,
+    },
+    // Keep jsResult.mappedDigitalMask for Orca button display (uses Orca input indices)
+    // mappedDigitalMask is NOT overridden here - it comes from jsResult spread above
   };
 }

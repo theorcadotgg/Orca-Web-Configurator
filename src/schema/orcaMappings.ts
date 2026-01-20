@@ -120,3 +120,67 @@ export function isLockedDigitalSource(id: number): boolean {
 export function isLockedDigitalDestination(id: number): boolean {
   return isLockedSystemButton(id) || id === ORCA_DUMMY_FIELD;
 }
+
+/*===========================================================================
+ * Intermediate Digital Output Definitions
+ *
+ * The WASM processor outputs digital state using UnifiedIntermediateDigital
+ * indices, which differ from the Orca input indices. Use these for displaying
+ * the output digital mask from WASM processing.
+ *===========================================================================*/
+
+/** Intermediate digital output indices (matches UnifiedIntermediateDigital in C) */
+export enum IntermediateDigitalOutput {
+  A = 0,
+  B = 1,
+  X = 2,
+  Y = 3,
+  Z = 4,
+  L1 = 5,
+  L2 = 6,
+  L3 = 7,
+  R1 = 8,
+  R2 = 9,
+  R3 = 10,
+  START = 11,
+  SELECT = 12,
+  HOME = 13,
+  DPAD_UP = 14,
+  DPAD_DOWN = 15,
+  DPAD_LEFT = 16,
+  DPAD_RIGHT = 17,
+}
+
+/** Output button definitions for display */
+export type IntermediateOutputDef = {
+  id: IntermediateDigitalOutput;
+  label: string;
+  isMeleeRelevant: boolean; // Show in Melee/Orca mode
+};
+
+/** All intermediate digital outputs for display */
+export const INTERMEDIATE_OUTPUTS: IntermediateOutputDef[] = [
+  { id: IntermediateDigitalOutput.A, label: 'A', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.B, label: 'B', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.X, label: 'X', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.Y, label: 'Y', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.Z, label: 'Z', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.L1, label: 'L', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.L2, label: 'L2', isMeleeRelevant: false },
+  { id: IntermediateDigitalOutput.L3, label: 'L3', isMeleeRelevant: false },
+  { id: IntermediateDigitalOutput.R1, label: 'R1', isMeleeRelevant: false },
+  { id: IntermediateDigitalOutput.R2, label: 'R', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.R3, label: 'R3', isMeleeRelevant: false },
+  { id: IntermediateDigitalOutput.START, label: 'Start', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.SELECT, label: 'Select', isMeleeRelevant: false },
+  { id: IntermediateDigitalOutput.HOME, label: 'Home', isMeleeRelevant: false },
+  { id: IntermediateDigitalOutput.DPAD_UP, label: 'D-Up', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.DPAD_DOWN, label: 'D-Down', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.DPAD_LEFT, label: 'D-Left', isMeleeRelevant: true },
+  { id: IntermediateDigitalOutput.DPAD_RIGHT, label: 'D-Right', isMeleeRelevant: true },
+];
+
+/** Get label for an intermediate digital output */
+export function intermediateOutputLabel(id: IntermediateDigitalOutput): string {
+  return INTERMEDIATE_OUTPUTS.find((d) => d.id === id)?.label ?? `Out ${id}`;
+}

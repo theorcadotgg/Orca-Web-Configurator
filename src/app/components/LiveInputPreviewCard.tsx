@@ -4,7 +4,7 @@ import type { SettingsDraft } from '../../schema/settingsBlob';
 import { ANALOG_INPUTS, DIGITAL_INPUTS, analogInputLabel, digitalInputLabel, ORCA_DUMMY_FIELD } from '../../schema/orcaMappings';
 import type { OrcaInputState, OrcaTransport } from '../../usb/OrcaTransport';
 import { OrcaDeviceError } from '../../usb/OrcaTransport';
-import { computeInputPreview } from '../../inputPreview/orcaInputPreview';
+import { computeInputPreviewWithWasm, initInputPreviewWasm, isWasmReady } from '../../inputPreview/orcaInputPreview';
 
 type Props = {
   transport: OrcaTransport;
@@ -23,40 +23,6 @@ function clamp(v: number, lo: number, hi: number): number {
   if (v < lo) return lo;
   if (v > hi) return hi;
   return v;
-}
-
-/**
- * Scale stick coordinates to Melee-style 80-pixel unit circle.
- * The input x/y come from firmware in 128-unit space (range 0..1 maps to 0..128).
- * Melee uses 80-unit space with integer truncation for clamping.
- * Formula from orcagui.html: clamp = 80 / sqrt(x² + y²), then Math.trunc(coord * clamp) / 80.
- */
-function scaleToMeleeUnitCircle(x: number, y: number): { x: number; y: number } {
-  const MELEE_RADIUS = 80;
-
-  // Convert from firmware 128-unit space to Melee integer format
-  // Multiply by 128 to get the raw integer value the firmware uses
-  const xInt = Math.round(x * 128);
-  const yInt = Math.round(y * 128);
-
-  const magnitude = Math.sqrt(xInt * xInt + yInt * yInt);
-
-  if (magnitude <= MELEE_RADIUS) {
-    // Within the unit circle, just divide by 80 for normalized output
-    // Use Math.trunc to match Melee's integer quantization
-    return {
-      x: Math.trunc(xInt) / MELEE_RADIUS,
-      y: Math.trunc(yInt) / MELEE_RADIUS,
-    };
-  }
-
-  // Outside the circle: project onto the edge using Melee's exact formula
-  // clamp = 80 / magnitude, then Math.trunc(coord * clamp) / 80
-  const clampFactor = MELEE_RADIUS / magnitude;
-  return {
-    x: Math.trunc(xInt * clampFactor) / MELEE_RADIUS,
-    y: Math.trunc(yInt * clampFactor) / MELEE_RADIUS,
-  };
 }
 
 function format(v: number): string {
@@ -131,6 +97,11 @@ export function LiveInputPreviewCard({ transport, draft, baseBlob, disabled, sty
   const [supported, setSupported] = useState(true);
   const [lastErr, setLastErr] = useState<string>('');
 
+  // Initialize WASM on mount
+  useEffect(() => {
+    void initInputPreviewWasm();
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     setSupported(true);
@@ -168,7 +139,7 @@ export function LiveInputPreviewCard({ transport, draft, baseBlob, disabled, sty
 
   const computed = useMemo(() => {
     if (!raw) return null;
-    return computeInputPreview(raw, draft, baseBlob);
+    return computeInputPreviewWithWasm(raw, draft, baseBlob);
   }, [baseBlob, draft, raw]);
 
   const notchStart = draft.stickCurveParams[draft.activeProfile]?.notch_start_input ?? draft.stickCurveParams[0]?.notch_start_input ?? 0;
@@ -215,25 +186,43 @@ export function LiveInputPreviewCard({ transport, draft, baseBlob, disabled, sty
           <h2 className="card-title">Live Input Preview</h2>
           <p className="card-subtitle">Mapped outputs (draft config)</p>
         </div>
-        {lastErr && <span className="pill pill-warn" title={lastErr}>Warning</span>}
+        {lastErr && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span className="pill pill-warn" title={lastErr}>Warning</span>
+          </div>
+        )}
       </div>
 
-      {!computed ? (
+      {!raw ? (
         <div className="text-sm text-muted">Waiting for input…</div>
+      ) : !isWasmReady() || !computed || !computed.meleeOutput ? (
+        <div className="text-sm text-muted">Initializing processor…</div>
       ) : (() => {
-        // Apply Melee-style unit circle scaling for Orca mode
-        // Function expects firmware 0-1 range values and converts to Melee 80-unit space internally
-        const stickCoords = scaleToMeleeUnitCircle(computed.joystick.x, computed.joystick.y);
+        // WASM provides Melee coordinates directly (like SmashScope, can exceed ±80)
+        const meleeX = computed.meleeOutput.leftStick.x;
+        const meleeY = computed.meleeOutput.leftStick.y;
+        const meleeMag = Math.sqrt(meleeX * meleeX + meleeY * meleeY);
+
+        // Apply 80-unit circle projection like the Melee calculator does
+        // clamp = 80 / magnitude, then project and divide by 80
+        const clampFactor = meleeMag > 0 ? Math.min(1, 80 / meleeMag) : 1;
+        const projectedX = Math.trunc(meleeX * clampFactor);
+        const projectedY = Math.trunc(meleeY * clampFactor);
+        const normalizedX = projectedX / 80;
+        const normalizedY = projectedY / 80;
+
+        // Gate display: clamp to unit circle
+        const stickCoordsNormalized = { x: normalizedX, y: normalizedY };
 
         return (
           <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 'var(--spacing-lg)', alignItems: 'start' }}>
             <div className="col" style={{ gap: 'var(--spacing-sm)' }}>
-              <StickGate x={stickCoords.x} y={stickCoords.y} notchStart={notchStart} notchEnd={notchEnd} />
+              <StickGate x={stickCoordsNormalized.x} y={stickCoordsNormalized.y} notchStart={notchStart} notchEnd={notchEnd} />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div className="text-xs text-secondary">X: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(stickCoords.x)}</span></div>
-                <div className="text-xs text-secondary">Y: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(stickCoords.y)}</span></div>
-                <div className="text-xs text-secondary">Mag: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(Math.sqrt(stickCoords.x * stickCoords.x + stickCoords.y * stickCoords.y))}</span></div>
-                <div className="text-xs text-secondary">TR: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(computed.triggers.r)}</span></div>
+                <div className="text-xs text-secondary">X: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(normalizedX)}</span></div>
+                <div className="text-xs text-secondary">Y: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{format(normalizedY)}</span></div>
+                <div className="text-xs text-secondary">Mag: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{meleeMag.toFixed(1)}</span></div>
+                <div className="text-xs text-secondary">TR: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{Math.round(computed.triggers.r * 255)}</span></div>
               </div>
             </div>
 
