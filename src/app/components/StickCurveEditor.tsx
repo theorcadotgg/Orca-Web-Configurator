@@ -15,8 +15,10 @@ type Props = {
 // GP2040 uses different Rivals 2 values and supports higher ranges
 const PRESETS = {
     melee: {
-        magnitude: 105,  // 105/128 ≈ 0.7734
-        notch: 35,      // 35/128 ≈ 0.2578
+        magnitude: 100,       // 100/128 ≈ 0.78125
+        notch: 35,            // 35/128 ≈ 0.2578
+        dzLower: 12 / 128,    // Lower deadzone (normalized)
+        dzUpper: 20 / 108,    // Upper deadzone: inputs 108-128 clamp to 100 (normalized)
     },
     rivals2: {
         orca: {
@@ -89,12 +91,12 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
     // Show sliders if detected as custom OR user explicitly selected custom
     const showCustomSliders = effectivePreset === 'custom';
 
-    // GP2040 supports extended ranges: magnitude up to 154 (1.2 * 128), notch up to 100
+    // GP2040 mode has wider ranges than Orca mode
     // Orca mode uses specific ranges per ruleset
     const magnitudeMin = mode === 'gp2040' ? 70 : 80;
-    const magnitudeMax = mode === 'gp2040' ? 154 : 120;
+    const magnitudeMax = mode === 'gp2040' ? 128 : 120;
     const notchMin = mode === 'gp2040' ? 20 : 25;
-    const notchMax = mode === 'gp2040' ? 100 : 50;
+    const notchMax = mode === 'gp2040' ? 128 : 50;
 
     function updateParams(patch: Partial<StickCurveParamsV1>) {
         const updated = cloneDraft(draft);
@@ -125,6 +127,20 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
             notchNorm, notchNorm, notchNorm, notchNorm,
             updated.stickCurveParams[activeProfile]!.notch[4] ?? 0.398,
         ];
+
+        // Apply deadzone values for Melee preset
+        if (preset === 'melee') {
+            const dzLower = PRESETS.melee.dzLower;
+            const dzUpper = PRESETS.melee.dzUpper;
+            const triggerDz = 12 / 128;  // Trigger uses different deadzone
+            updated.stickCurveParams[activeProfile]!.dz_lower = [
+                dzLower, dzLower, dzLower, dzLower, triggerDz,
+            ];
+            updated.stickCurveParams[activeProfile]!.dz_upper = [
+                dzUpper, dzUpper, dzUpper, dzUpper, triggerDz,
+            ];
+        }
+
         onChange(updated);
 
         // Reset force custom when applying a preset

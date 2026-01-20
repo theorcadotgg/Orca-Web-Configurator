@@ -50,7 +50,7 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
 
     // Trigger notch: stored value gets multiplied by analogMax in firmware
     // So we display: notch_stored * analogMax * 255 (to show final Dolphin output)
-    // And store: display_value / analogMax / 255 * 128
+    // And store: display_value / 255 / analogMax (normalized 0-1)
 
     // "Light press" output:
     // - Orca mode: derived from trigger notch calibration (displayed as final Dolphin output).
@@ -79,14 +79,28 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
             return;
         }
 
-        // Orca mode: reverse the analogMax scaling to get the stored notch value.
+        // Orca mode: update both the notch calibration AND digitalLightshield
+        // so they stay in sync for both lightshield-only and normal modes.
         const storedNormalized = analogMaxNormalized > 0 ? clamped255 / 255 / analogMaxNormalized : 0;
         const updated = cloneDraft(draft);
+
+        // Update notch in stickCurveParams
         const params = updated.stickCurveParams[activeProfile] ?? updated.stickCurveParams[0];
         if (!params) return;
         const notch = [...params.notch];
         notch[TRIGGER_NOTCH_INDEX] = clamp(storedNormalized, 0, 1);
         updated.stickCurveParams[activeProfile] = { ...params, notch };
+
+        // Also update digitalLightshield in triggerPolicy to keep them in sync
+        // digitalLightshield is stored as the final 0-1 value (clamped255 / 255)
+        const currentPolicy = updated.triggerPolicy[activeProfile] ?? updated.triggerPolicy[0];
+        if (currentPolicy) {
+            updated.triggerPolicy[activeProfile] = {
+                ...currentPolicy,
+                digitalLightshield: from255(clamped255)
+            };
+        }
+
         onChange(updated);
     }
 

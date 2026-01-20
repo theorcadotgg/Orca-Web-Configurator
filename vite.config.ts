@@ -15,8 +15,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
+      registerType: 'prompt',
+      injectRegister: null,
       manifestFilename: 'site.webmanifest',
       manifest: {
         name: 'Orca Control Panel',
@@ -60,7 +60,7 @@ export default defineConfig({
     fs: {
       allow: [resolve(__dirname, '..')],
     },
-    allowedHosts: ['c1f58596e8a8.ngrok-free.app'],
+    allowedHosts: ['4a3ef19e2e1d.ngrok-free.app'],
   },
   build: {
     rollupOptions: {

@@ -130,6 +130,44 @@ function applyRangeCalibration(analog: number[], rc: RangeCalibration | null): n
   return out;
 }
 
+// Trigger-specific calibration constants (matches firmware)
+const TRIGGER_DEADZONE_END_INPUT = 8.0 / 128.0;
+const TRIGGER_NOTCH_INPUT = 12.0 / 128.0;
+const TRIGGER_LIGHTSHIELD_END_INPUT = 40.0 / 128.0;
+const TRIGGER_INDEX = 4;
+
+/**
+ * Apply trigger-specific calibration.
+ * Matches Orca-NewOrca/src/Calibration/UnifiedCalibration/UnifiedCalibration.c applyTriggerCalibration
+ *
+ * Zones:
+ * 1. Deadzone: 0 → 8/128 input, output 0 (flat)
+ * 2. Ramp to notch: 8/128 → 12/128 input, ramp from 0 to notch
+ * 3. Lightshield zone: 12/128 → 40/128 input, output notch (flat)
+ * 4. Full press ramp: 40/128 → 1.0 input, ramp from notch to magnitude
+ */
+function applyTriggerCalibration(input: number, magnitude: number, notchValue: number): number {
+  const value = clamp01(input);
+
+  if (value < TRIGGER_DEADZONE_END_INPUT) {
+    // Zone 1: Deadzone - output 0
+    return 0;
+  }
+
+  if (value < TRIGGER_NOTCH_INPUT) {
+    // Zone 2: Ramp from 0 to notch value (reaches notch at physical notch position)
+    return scale(value, TRIGGER_DEADZONE_END_INPUT, TRIGGER_NOTCH_INPUT, 0, notchValue);
+  }
+
+  if (value < TRIGGER_LIGHTSHIELD_END_INPUT) {
+    // Zone 3: Flat at notch value (lightshield zone)
+    return notchValue;
+  }
+
+  // Zone 4: Ramp from notch to magnitude
+  return scale(value, TRIGGER_LIGHTSHIELD_END_INPUT, 1.0, notchValue, magnitude);
+}
+
 function applyStickCurve(analog: number[], params: StickCurveParamsV1 | undefined): number[] {
   if (!params) return analog.slice(0, ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT);
 
@@ -145,12 +183,19 @@ function applyStickCurve(analog: number[], params: StickCurveParamsV1 | undefine
     const dzUpper = params.dz_upper[i] ?? 0;
     const notch = params.notch[i] ?? 0;
 
+    // Use trigger-specific calibration for index 4 (trigger)
+    if (i === TRIGGER_INDEX) {
+      out[i] = applyTriggerCalibration(value, range, notch);
+      continue;
+    }
+
+    // Sticks use 6-point curve with prenotch/postnotch zones
     const points = [
       { input: 0.0, output: 0.0 },                                // Start
       { input: 0.0 + (dzLower * range), output: 0.0 },            // StartDeadzone
       { input: notchStartInput, output: notch },                  // NotchStart
-      { input: notchEndInput, output: notch + (3.0 / 128.0) },    // NotchEnd
-      { input: 1.0 - (dzUpper * range), output: 100.0 / 128.0 },  // EndDeadzone (intentional: matches firmware)
+      { input: notchEndInput, output: Math.min(range, notch + (4.0 / 128.0)) }, // NotchEnd
+      { input: 1.0 - (dzUpper * range), output: range },          // EndDeadzone
       { input: 1.0, output: range },                              // End
     ];
 
