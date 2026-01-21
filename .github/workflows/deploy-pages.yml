@@ -21,7 +21,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
+          token: ${{ secrets.SHARED_REPO_PAT }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
