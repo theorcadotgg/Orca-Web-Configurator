@@ -1101,3 +1101,8 @@ input[type="number"] {
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* Slide up animation for cards */
+.animate-slide-up {
+  animation: slideUp var(--transition-normal);
+}

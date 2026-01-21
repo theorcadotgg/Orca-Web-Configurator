@@ -19,6 +19,8 @@ import {
 } from '../../schema/orcaMappings';
 import { getGp2040DestinationLabelSet, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
 import type { TriggerPolicyV1 } from '../../schema/settingsBlob';
+import type { OrcaInputState, OrcaTransport } from '../../usb/OrcaTransport';
+import { tryParseRangeCalibration, type RangeCalibration } from '../../inputPreview/orcaInputPreview';
 
 /**
  * =====================================================
@@ -127,6 +129,13 @@ interface Props {
     onAnalogMappingChange: (dest: number, src: number, virtualDest?: number) => void;
     onClearAllBindings?: () => void;
     onResetToDefault?: () => void;
+    // Live input visualization (optional)
+    transport?: OrcaTransport;
+    baseBlob?: Uint8Array; // For range calibration
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function ControllerVisualizer({
@@ -144,10 +153,68 @@ export function ControllerVisualizer({
     onAnalogMappingChange,
     onClearAllBindings,
     onResetToDefault,
+    transport,
+    baseBlob,
 }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [selectedButton, setSelectedButton] = useState<ButtonConfig | null>(null);
     const [panelPosition, setPanelPosition] = useState<{ x: number; y: number } | null>(null);
+    const [rawInput, setRawInput] = useState<OrcaInputState | null>(null);
+
+    // Poll for input state (only if transport is provided)
+    useEffect(() => {
+        if (!transport) return;
+
+        let cancelled = false;
+        const t = transport; // Capture for closure
+
+        async function run() {
+            while (!cancelled) {
+                if (disabled) {
+                    await sleep(100);
+                    continue;
+                }
+                try {
+                    const next = await t.getInputState();
+                    if (cancelled) return;
+                    setRawInput(next);
+                    await sleep(16); // ~60Hz
+                } catch {
+                    if (cancelled) return;
+                    await sleep(250);
+                }
+            }
+        }
+
+        void run();
+        return () => {
+            cancelled = true;
+        };
+    }, [disabled, transport]);
+
+    // Parse range calibration from baseBlob
+    const rangeCalibration = useMemo(() => {
+        if (!baseBlob) return null;
+        return tryParseRangeCalibration(baseBlob);
+    }, [baseBlob]);
+
+    // Apply range calibration to raw analog values
+    const calibratedAnalog = useMemo(() => {
+        if (!rawInput) return null;
+        const rc = rangeCalibration;
+        const out: number[] = [];
+        for (let i = 0; i < 5; i++) {
+            const v = rawInput.analog[i] ?? 0;
+            const lower = rc?.lower[i] ?? 0;
+            const upper = rc?.upper[i] ?? 1;
+            // Scale from [lower, upper] to [0, 1] and clamp
+            const scaled = upper !== lower ? (v - lower) / (upper - lower) : 0.5;
+            out.push(Math.min(1, Math.max(0, scaled)));
+        }
+        return out;
+    }, [rawInput, rangeCalibration]);
+
+    const liveInputEnabled = transport && rawInput && calibratedAnalog;
 
     const digitalButtons = DIGITAL_BUTTONS;
     const analogButtons = ANALOG_BUTTONS;
@@ -495,31 +562,82 @@ export function ControllerVisualizer({
     }
 
     const circleStyle = (index: number): CSSProperties => {
-        const isActive = selectedButton?.type === 'digital' && selectedButton?.elementIndex === index;
+        const isSelected = selectedButton?.type === 'digital' && selectedButton?.elementIndex === index;
         const modified = isCircleModified(index);
         const button = getButtonForElement('digital', index);
         const isLocked = button && isLockedDigitalDestination(button.id);
 
+        // Check if this source button is currently pressed (raw input)
+        const srcId = button?.id ?? -1;
+        const isPressed = liveInputEnabled && srcId >= 0 && ((rawInput.digitalMask >>> srcId) & 1) !== 0;
+
         return {
-            fill: modified ? 'rgba(30, 143, 201, 0.4)' : 'rgba(30, 143, 201, 0.15)',
-            stroke: isActive ? '#1E8FC9' : 'rgba(30, 143, 201, 0.6)',
-            strokeWidth: isActive ? 2 : 1,
+            fill: isPressed
+                ? 'rgba(30, 143, 201, 0.7)'
+                : modified
+                    ? 'rgba(30, 143, 201, 0.4)'
+                    : 'rgba(30, 143, 201, 0.15)',
+            stroke: isPressed ? '#1E8FC9' : isSelected ? '#1E8FC9' : 'rgba(30, 143, 201, 0.6)',
+            strokeWidth: isPressed ? 2 : isSelected ? 2 : 1,
             cursor: isLocked ? 'not-allowed' : 'pointer',
             opacity: isLocked ? 0.4 : 1,
-            transition: 'all 0.15s ease',
+            transition: 'all 0.1s ease',
+            filter: isPressed ? 'drop-shadow(0 0 8px rgba(30, 143, 201, 0.6))' : undefined,
         };
     };
 
     const oblongStyle = (index: number): CSSProperties => {
-        const isActive = selectedButton?.type === 'analog' && selectedButton?.elementIndex === index;
+        const isSelected = selectedButton?.type === 'analog' && selectedButton?.elementIndex === index;
         const modified = isOblongModified(index);
+        const button = getButtonForElement('analog', index);
+
+        // Check calibrated analog value for live input (source button ID maps to analog array index)
+        const srcId = button?.id ?? -1;
+        const analogValue = liveInputEnabled && srcId >= 0 && srcId < calibratedAnalog.length
+            ? calibratedAnalog[srcId]
+            : 0;
+
+        // Determine activation level based on trigger thresholds
+        const light = triggerPolicy?.digitalLightshield ?? 0.19;
+        const full = triggerPolicy?.digitalFullPress ?? 0.78;
+
+        let isActive = false;
+        let isLight = false;
+        let isMid = false;
+        let isFull = false;
+
+        if (analogValue > 0.01) {
+            isActive = true;
+            if (analogValue < light) {
+                isLight = true;
+            } else if (analogValue < full) {
+                isMid = true;
+            } else {
+                isFull = true;
+            }
+        }
 
         return {
-            fill: modified ? 'rgba(100, 160, 200, 0.4)' : 'rgba(100, 160, 200, 0.15)',
-            stroke: isActive ? '#64A0C8' : 'rgba(100, 160, 200, 0.6)',
-            strokeWidth: isActive ? 2 : 1,
+            fill: isFull
+                ? 'rgba(100, 160, 200, 0.7)'
+                : isMid
+                    ? 'rgba(100, 160, 200, 0.55)'
+                    : isLight
+                        ? 'rgba(100, 160, 200, 0.35)'
+                        : modified
+                            ? 'rgba(100, 160, 200, 0.4)'
+                            : 'rgba(100, 160, 200, 0.15)',
+            stroke: isActive ? '#64A0C8' : isSelected ? '#64A0C8' : 'rgba(100, 160, 200, 0.6)',
+            strokeWidth: isActive ? 2 : isSelected ? 2 : 1,
             cursor: 'pointer',
-            transition: 'all 0.15s ease',
+            transition: 'all 0.1s ease',
+            filter: isFull
+                ? 'drop-shadow(0 0 10px rgba(100, 160, 200, 0.6))'
+                : isMid
+                    ? 'drop-shadow(0 0 6px rgba(100, 160, 200, 0.5))'
+                    : isLight
+                        ? 'drop-shadow(0 0 4px rgba(100, 160, 200, 0.4))'
+                        : undefined,
         };
     };
 

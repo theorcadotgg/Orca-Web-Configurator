@@ -220,6 +220,8 @@ export function MainPane() {
                     onAnalogMappingChange={setAnalogMapping}
                     onClearAllBindings={clearAllBindings}
                     onResetToDefault={resetToDefaultBindings}
+                    transport={state.transport}
+                    baseBlob={baseBlob ?? undefined}
                   />
                 </div>
 

@@ -24,6 +24,10 @@ jobs:
           submodules: recursive
           token: ${{ secrets.SHARED_REPO_PAT }}
 
+      - name: Update shared submodule to latest
+        run: |
+          git submodule update --remote shared
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
