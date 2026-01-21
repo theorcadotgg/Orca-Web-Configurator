@@ -37,7 +37,7 @@ jobs:
           cd shared/orca_input_lib/wasm
           mkdir -p build
           cd build
-          emcmake cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_WASM=ON ..
+          emcmake cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_WASM=ON ../..
           cmake --build . --config Release
           cp orca_input.js orca_input.wasm ../../../../src/wasm/
 
