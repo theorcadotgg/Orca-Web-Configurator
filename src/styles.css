@@ -523,7 +523,7 @@ label {
 input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: var(--color-brand);
+  accent-color: var(--color-success);
   cursor: pointer;
 }
 

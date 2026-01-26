@@ -323,7 +323,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: ((params.flags ?? 0) & STICK_CURVE_FLAG_CIRCLE_COORDS) ? 'var(--color-accent-primary)' : 'var(--color-bg-secondary)',
+                        backgroundColor: ((params.flags ?? 0) & STICK_CURVE_FLAG_CIRCLE_COORDS) ? 'var(--color-success)' : 'var(--color-bg-secondary)',
                         borderRadius: 12,
                         transition: 'background-color 0.2s ease',
                         border: '1px solid var(--color-border)',

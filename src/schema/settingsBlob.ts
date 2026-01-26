@@ -359,7 +359,7 @@ export function buildSettingsBlob(baseBlob: Uint8Array, draft: SettingsDraft): U
   }
   const out = baseBlob.slice();
 
-  out[ORCA_CONFIG_SETTINGS_HEADER_ACTIVE_PROFILE_OFFSET] = draft.activeProfile & 0xff;
+  out[ORCA_CONFIG_SETTINGS_HEADER_ACTIVE_PROFILE_OFFSET] = 0;
 
   for (let i = 0; i < OrcaSettingsTlv.ProfileLabels.count; i++) {
     const label = draft.profileLabels[i] ?? '';
