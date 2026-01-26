@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
-import { ORCA_CONFIG_LOCKED_BUTTON_WISDOM } from '@shared/orca_config_idl_generated';
+import { ORCA_CONFIG_LOCKED_BUTTON_POWER, ORCA_CONFIG_LOCKED_BUTTON_WISDOM } from '@shared/orca_config_idl_generated';
 import {
     DIGITAL_INPUTS,
     ANALOG_INPUTS,
@@ -60,6 +60,8 @@ const DIGITAL_BUTTONS: ButtonConfig[] = [
     { id: 11, label: 'DPAD Modifier', shortLabel: '✚', type: 'digital', elementIndex: 3 },
     { id: 12, label: 'Lightshield', shortLabel: 'LS', type: 'digital', elementIndex: 4 },
     { id: 13, label: 'Start', shortLabel: 'St', type: 'digital', elementIndex: 14 },
+    // Reserved / non-remappable, but should still light up on input.
+    { id: ORCA_CONFIG_LOCKED_BUTTON_POWER, label: '1', shortLabel: '1', type: 'digital', elementIndex: 12 },
 ];
 
 // ============================================================
@@ -426,6 +428,7 @@ export function ControllerVisualizer({
     }
 
     function getShortMappingLabel(button: ButtonConfig): string {
+        if (button.type === 'digital' && button.id === ORCA_CONFIG_LOCKED_BUTTON_POWER) return '1';
         if (button.type === 'digital') {
             const destId = digitalDestBySrc[button.id] ?? ORCA_DUMMY_FIELD;
 
@@ -580,7 +583,7 @@ export function ControllerVisualizer({
             stroke: isPressed ? '#1E8FC9' : isSelected ? '#1E8FC9' : 'rgba(30, 143, 201, 0.6)',
             strokeWidth: isPressed ? 2 : isSelected ? 2 : 1,
             cursor: isLocked ? 'not-allowed' : 'pointer',
-            opacity: isLocked ? 0.4 : 1,
+            opacity: isLocked ? (isPressed ? 1 : 0.4) : 1,
             transition: 'all 0.1s ease',
             filter: isPressed ? 'drop-shadow(0 0 8px rgba(30, 143, 201, 0.6))' : undefined,
         };
