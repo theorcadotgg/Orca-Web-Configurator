@@ -1,27 +1,9 @@
 {
   "latest": {
-    "configurator": "configurator-2026-01-29",
+    "configurator": "configurator-2026-01-28",
     "firmware": "firmware-2.5"
   },
   "entries": [
-    {
-      "id": "configurator-2026-01-29",
-      "kind": "configurator",
-      "version": "2026.01.29",
-      "date": "2026-01-29",
-      "title": "Changelog",
-      "related": {
-        "firmwareId": "firmware-2.5"
-      },
-      "sections": [
-        {
-          "title": "New",
-          "items": [
-            "Feat: Add “Firmware Update” button to reboot the controller into BOOTSEL/UF2 mode."
-          ]
-        }
-      ]
-    },
     {
       "id": "configurator-2026-01-28",
       "kind": "configurator",
@@ -36,7 +18,8 @@
           "title": "New",
           "items": [
             "Fix: Active profile is no longer set to the last profile selected when saving configuration.",
-            "Feat: Add 1 button visualization to the configurator remapping page."
+            "Feat: Add 1 button visualization to the configurator remapping page.",
+            "Feat: Add “Firmware Update” button to reboot the controller into BOOTSEL/UF2 mode."
           ]
         }
       ]
