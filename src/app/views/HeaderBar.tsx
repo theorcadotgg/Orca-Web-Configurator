@@ -1,11 +1,14 @@
 import OrcaLogo from '../../assets/Orca_Logo_B.png';
 import { useOrcaApp } from '../contexts/OrcaAppContext';
 import { ModeTabs } from '../components/ModeTabs';
+import { useChangelog } from '../changelog/ChangelogProvider';
 
 export function HeaderBar() {
   const { state, handleModeChange, compatibility } = useOrcaApp();
+  const { openLatestConfigurator, hasUnseenConfigurator } = useChangelog();
 
   const hasSchemaMismatch = compatibility === 'minor_mismatch' || compatibility === 'major_mismatch';
+  const firmwareFilename = 'OrcaDol2.5.uf2';
 
   return (
     <header className="layout-header">
@@ -23,8 +26,8 @@ export function HeaderBar() {
       <div className="header-status">
         {state.progress && <span className="text-sm text-secondary">{state.progress}</span>}
         <a
-          href="/OrcaDol2.4.uf2"
-          download="OrcaDol2.4.uf2"
+          href={`${import.meta.env.BASE_URL}${firmwareFilename}`}
+          download={firmwareFilename}
           className={`btn-download${hasSchemaMismatch ? ' btn-download-alert' : ''}`}
           title={hasSchemaMismatch
             ? "Firmware update recommended! Your controller's firmware doesn't match this configurator version."
@@ -37,6 +40,27 @@ export function HeaderBar() {
           </svg>
           {hasSchemaMismatch ? 'Update Firmware!' : 'Download Firmware'}
         </a>
+        <button
+          className="ghost sm"
+          onClick={openLatestConfigurator}
+          title="View changelog"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}
+        >
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 6h13" />
+            <path d="M8 12h13" />
+            <path d="M8 18h13" />
+            <path d="M3 6h.01" />
+            <path d="M3 12h.01" />
+            <path d="M3 18h.01" />
+          </svg>
+          <span>Changelog</span>
+          {hasUnseenConfigurator && (
+            <span className="pill pill-brand" style={{ marginLeft: 4 }}>
+              New
+            </span>
+          )}
+        </button>
         <div className="connection-indicator">
           <div className={`connection-dot ${state.transport ? 'connected' : ''}`} />
           <span>{state.transport ? 'Connected' : 'Disconnected'}</span>

@@ -1051,7 +1051,7 @@ input[type="number"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1100;
   animation: fadeIn var(--transition-fast);
 }
 
@@ -1064,6 +1064,36 @@ input[type="number"] {
   max-width: 480px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   animation: fadeIn var(--transition-normal);
+}
+
+.modal-content.changelog-modal {
+  max-width: 760px;
+  width: min(760px, calc(100vw - 2 * var(--spacing-lg)));
+  max-height: min(80vh, 720px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.changelog-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: var(--spacing-sm);
+}
+
+.modal-content.changelog-modal a:not(.btn-download) {
+  color: var(--color-brand);
+  text-decoration: none;
+}
+
+.modal-content.changelog-modal a:not(.btn-download):hover {
+  text-decoration: underline;
+}
+
+.modal-content.changelog-modal li {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 4px 0;
 }
 
 /* ----------------------------------------

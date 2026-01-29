@@ -1,5 +1,7 @@
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
+const PENDING_UPDATE_KEY = 'orca.changelog.pendingUpdate';
+
 export function UpdatePrompt() {
   const {
     needRefresh: [needRefresh],
@@ -22,7 +24,17 @@ export function UpdatePrompt() {
   return (
     <div className="update-banner">
       <span>A new version is available</span>
-      <button className="primary" onClick={() => updateServiceWorker(true)}>
+      <button
+        className="primary"
+        onClick={() => {
+          try {
+            window.localStorage.setItem(PENDING_UPDATE_KEY, '1');
+          } catch {
+            // ignore
+          }
+          updateServiceWorker(true);
+        }}
+      >
         Refresh
       </button>
     </div>

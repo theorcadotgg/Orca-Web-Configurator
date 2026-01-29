@@ -1,0 +1,46 @@
+{
+  "latest": {
+    "configurator": "configurator-2026-01-28",
+    "firmware": "firmware-2.5"
+  },
+  "entries": [
+    {
+      "id": "configurator-2026-01-28",
+      "kind": "configurator",
+      "version": "2026.01.28",
+      "date": "2026-01-28",
+      "title": "Changelog",
+      "related": {
+        "firmwareId": "firmware-2.5"
+      },
+      "sections": [
+        {
+          "title": "New",
+          "items": [
+            "Fix: Active profile is no longer set to the last profile selected when saving configuration.",
+            "Feat: Add 1 button visualization to the configurator remapping page."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "firmware-2.5",
+      "kind": "firmware",
+      "version": "2.5",
+      "title": "OrcaDol firmware 2.5",
+      "download": {
+        "filename": "OrcaDol2.5.uf2",
+        "label": "Download UF2"
+      },
+      "sections": [
+        {
+          "title": "Notes",
+          "items": [
+            "Feat: Add support for N64 mode.",
+            "Fix: Profiles are loaded correctly."
+          ]
+        }
+      ]
+    }
+  ]
+}

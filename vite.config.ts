@@ -22,6 +22,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       injectRegister: null,
+      includeAssets: ['changelog.json'],
       manifestFilename: 'site.webmanifest',
       manifest: {
         name: 'Orca Control Panel',
