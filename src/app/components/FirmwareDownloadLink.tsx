@@ -23,7 +23,7 @@ export function FirmwareDownloadLink({ onClick, children, ...rest }: Props) {
       </a>
       <ConfirmModal
         isOpen={showConfirm}
-        title="Firmware Update Mode (BOOTSEL)"
+        title="Enter Firmware Update Mode?"
         message={
           <>
             This will reboot the controller into BOOTSEL/UF2 mode and disconnect it from the configurator.
