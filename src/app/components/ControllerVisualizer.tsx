@@ -111,6 +111,7 @@ interface Props {
     analogMapping: number[];
     defaultDigitalMapping?: number[];
     defaultAnalogMapping?: number[];
+    remappedCount?: number;
     disabled?: boolean;
     destinationLabelMode?: 'orca' | 'gp2040';
     gp2040LabelPreset?: Gp2040LabelPreset;
@@ -145,6 +146,7 @@ export function ControllerVisualizer({
     analogMapping,
     defaultDigitalMapping,
     defaultAnalogMapping,
+    remappedCount = 0,
     disabled,
     destinationLabelMode = 'orca',
     gp2040LabelPreset,
@@ -1028,8 +1030,8 @@ export function ControllerVisualizer({
             )}
 
             {/* Legend and Clear Button - always visible at bottom */}
-            <div className="row" style={{ marginTop: 'var(--spacing-md)', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
-                <div className="row" style={{ gap: 'var(--spacing-lg)' }}>
+            <div className="row" style={{ marginTop: 'var(--spacing-md)', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', gap: 'var(--spacing-sm)' }}>
+                <div className="row" style={{ gap: 'var(--spacing-lg)', flex: 1, minWidth: 0 }}>
                     <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
                         <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #1E8FC9', background: 'rgba(30, 143, 201, 0.15)' }} />
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Digital ({DIGITAL_BUTTONS.length})</span>
@@ -1039,7 +1041,18 @@ export function ControllerVisualizer({
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Analog ({ANALOG_BUTTONS.length})</span>
                     </div>
                 </div>
-                <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
+                <div
+                    className="text-sm text-secondary"
+                    style={{
+                        flexShrink: 0,
+                        textAlign: 'center',
+                        whiteSpace: 'nowrap',
+                        visibility: remappedCount > 0 ? 'visible' : 'hidden',
+                    }}
+                >
+                    {remappedCount} button{remappedCount === 1 ? '' : 's'} remapped
+                </div>
+                <div className="row" style={{ gap: 'var(--spacing-sm)', flex: 1, justifyContent: 'flex-end', minWidth: 0 }}>
                     {onResetToDefault && (
                         <button
                             onClick={onResetToDefault}

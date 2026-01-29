@@ -44,12 +44,10 @@ export function ActionToolbar({
     rebootAfterSave = false,
     onRebootAfterSaveChange,
 }: Props) {
-    const actionsMenuRef = useRef<HTMLDetailsElement | null>(null);
-    const filesMenuRef = useRef<HTMLDetailsElement | null>(null);
+    const importExportMenuRef = useRef<HTMLDetailsElement | null>(null);
 
-    const closeMenus = () => {
-        actionsMenuRef.current?.removeAttribute('open');
-        filesMenuRef.current?.removeAttribute('open');
+    const closeMenu = () => {
+        importExportMenuRef.current?.removeAttribute('open');
     };
 
     return (
@@ -85,64 +83,61 @@ export function ActionToolbar({
                 )}
             </div>
 
-            {/* Menus */}
+            <div className="footer-divider" />
+
+            {/* Device actions */}
+            <div className="footer-group footer-group-actions">
+                <button
+                    onClick={onCalibrate}
+                    disabled={!canWrite || busy}
+                    title="Run calibration on the device"
+                >
+                    Calibrate
+                </button>
+                <button
+                    onClick={onResetMode}
+                    disabled={!canWrite || busy}
+                    title="Reset current mode settings to defaults"
+                >
+                    Reset Defaults
+                </button>
+                <button
+                    onClick={onReboot}
+                    disabled={busy}
+                    title="Reboot the controller"
+                >
+                    Reboot
+                </button>
+                <button
+                    className="warning"
+                    onClick={onEnterBootsel}
+                    disabled={busy}
+                    title="Reboot into BOOTSEL/UF2 mode for firmware updates (disconnects the configurator)"
+                >
+                    Firmware Update
+                </button>
+                <div className="footer-divider footer-divider-sm" />
+                <button
+                    className="danger"
+                    onClick={onFactoryReset}
+                    disabled={!canWrite || busy}
+                    title="Factory reset the device (both modes)"
+                >
+                    Factory Reset
+                </button>
+            </div>
+
+            <div className="footer-divider" />
+
+            {/* Import/Export */}
             <div className="footer-group footer-group-menus">
-                <details ref={actionsMenuRef} className="footer-menu">
-                    <summary className="footer-menu-trigger">Actions</summary>
-                    <div className="footer-menu-panel" role="menu" aria-label="Device actions">
-                        <button
-                            className="footer-menu-item"
-                            onClick={() => { closeMenus(); onCalibrate(); }}
-                            disabled={!canWrite || busy}
-                            title="Run calibration on the device"
-                        >
-                            Calibrate
-                        </button>
-                        <button
-                            className="footer-menu-item"
-                            onClick={() => { closeMenus(); onResetMode(); }}
-                            disabled={!canWrite || busy}
-                            title="Reset current mode settings to defaults"
-                        >
-                            Reset Mode Defaults
-                        </button>
-                        <button
-                            className="footer-menu-item"
-                            onClick={() => { closeMenus(); onReboot(); }}
-                            disabled={busy}
-                            title="Reboot the controller"
-                        >
-                            Reboot
-                        </button>
-                        <button
-                            className="footer-menu-item warning"
-                            onClick={() => { closeMenus(); onEnterBootsel(); }}
-                            disabled={busy}
-                            title="Reboot into BOOTSEL/UF2 mode for firmware updates (disconnects the configurator)"
-                        >
-                            Firmware Update (BOOTSEL)
-                        </button>
-
-                        <div className="footer-menu-divider" role="separator" />
-
-                        <button
-                            className="footer-menu-item danger"
-                            onClick={() => { closeMenus(); onFactoryReset(); }}
-                            disabled={!canWrite || busy}
-                            title="Factory reset the device (both modes)"
-                        >
-                            Factory Reset Device
-                        </button>
-                    </div>
-                </details>
-
-                <details ref={filesMenuRef} className="footer-menu">
+                <details ref={importExportMenuRef} className="footer-menu">
                     <summary className="footer-menu-trigger">Import/Export</summary>
                     <div className="footer-menu-panel" role="menu" aria-label="Import and export">
                         <div className="footer-menu-label">Profile</div>
                         <button
                             className="footer-menu-item"
-                            onClick={() => { closeMenus(); onExportProfile(); }}
+                            onClick={() => { closeMenu(); onExportProfile(); }}
                             disabled={busy}
                             title="Export the currently selected profile"
                         >
@@ -150,7 +145,7 @@ export function ActionToolbar({
                         </button>
                         <button
                             className="footer-menu-item"
-                            onClick={() => { closeMenus(); onImportProfile(); }}
+                            onClick={() => { closeMenu(); onImportProfile(); }}
                             disabled={busy}
                             title="Import into the currently selected profile"
                         >
@@ -162,7 +157,7 @@ export function ActionToolbar({
                         <div className="footer-menu-label">Device</div>
                         <button
                             className="footer-menu-item"
-                            onClick={() => { closeMenus(); onExportDeviceCurrent(); }}
+                            onClick={() => { closeMenu(); onExportDeviceCurrent(); }}
                             disabled={busy}
                             title="Export the full device configuration (both modes)"
                         >
@@ -170,7 +165,7 @@ export function ActionToolbar({
                         </button>
                         <button
                             className="footer-menu-item"
-                            onClick={() => { closeMenus(); onExportDeviceDraft(); }}
+                            onClick={() => { closeMenu(); onExportDeviceDraft(); }}
                             disabled={busy || !dirty}
                             title="Export unsaved changes (both modes)"
                         >
@@ -178,7 +173,7 @@ export function ActionToolbar({
                         </button>
                         <button
                             className="footer-menu-item"
-                            onClick={() => { closeMenus(); onImportDevice(); }}
+                            onClick={() => { closeMenu(); onImportDevice(); }}
                             disabled={busy}
                             title="Import a full device configuration (both modes)"
                         >

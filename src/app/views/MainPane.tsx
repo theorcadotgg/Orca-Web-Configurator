@@ -133,7 +133,7 @@ export function MainPane() {
                 gap: 'var(--spacing-sm)',
               }}
             >
-              <div className="flex-1 row" style={{ justifyContent: 'flex-start', minWidth: 0 }}>
+              <div className="flex-1 row" style={{ justifyContent: 'flex-start', minWidth: 0, gap: 'var(--spacing-sm)' }}>
                 {activeProfile !== 0 && !state.busy && (
                   <button
                     onClick={() => markAsDefault(activeProfile)}
@@ -211,6 +211,7 @@ export function MainPane() {
                     defaultDigitalMapping={defaultDigitalMapping}
                     defaultAnalogMapping={defaultAnalogMapping}
                     disabled={state.busy}
+                    remappedCount={remappedCount}
                     destinationLabelMode={state.configMode}
                     gp2040LabelPreset={gp2040LabelPreset}
                     gp2040AnalogTriggerRouting={gp2040AnalogTriggerOutput}
@@ -225,17 +226,6 @@ export function MainPane() {
                   />
                 </div>
 
-                {/* Status footer - fixed height, won't shrink */}
-                <div
-                  className="text-center text-sm text-secondary"
-                  style={{ flexShrink: 0, padding: 'var(--spacing-xs) 0' }}
-                >
-                  {remappedCount > 0 ? (
-                    <>{remappedCount} button{remappedCount > 1 ? 's' : ''} remapped</>
-                  ) : (
-                    <>&nbsp;</>
-                  )}
-                </div>
               </div>
             ) : mainView === 'inputs' && baseBlob ? (
               <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
