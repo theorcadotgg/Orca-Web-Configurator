@@ -84,6 +84,7 @@ export type OrcaAppController = {
   resetDefaultsOnDevice: () => Promise<void>;
   factoryResetOnDevice: () => Promise<void>;
   rebootNow: () => Promise<void>;
+  enterBootselNow: () => Promise<void>;
   exportCurrentBlob: () => Promise<void>;
   exportDraftBlob: () => Promise<void>;
   exportCurrentProfile: () => void;
@@ -100,6 +101,9 @@ export function useOrcaAppController(): OrcaAppController {
   const [state, dispatch] = useReducer(orcaAppReducer, undefined, createInitialOrcaAppState);
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  const expectedDisconnectRef = useRef<null | 'reboot' | 'bootsel'>(null);
+  const expectedDisconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [mainViewState, setMainViewState] = useLocalStorageState<MainView>('orca.mainView', 'layout', {
     serialize: (value) => value,
@@ -205,6 +209,27 @@ export function useOrcaAppController(): OrcaAppController {
 
       // Set up disconnect detection
       nextTransport.setOnDisconnect(() => {
+        const expected = expectedDisconnectRef.current;
+        expectedDisconnectRef.current = null;
+        if (expectedDisconnectTimeoutRef.current) {
+          clearTimeout(expectedDisconnectTimeoutRef.current);
+          expectedDisconnectTimeoutRef.current = null;
+        }
+
+        if (expected === 'bootsel') {
+          resetConnection({
+            lastError: '',
+            busy: false,
+            progress: 'Firmware update mode (BOOTSEL). Install the UF2, then reconnect.',
+          });
+          return;
+        }
+
+        if (expected === 'reboot') {
+          resetConnection({ lastError: '', busy: false });
+          return;
+        }
+
         resetConnection({ lastError: 'Device disconnected', busy: false });
       });
 
@@ -416,6 +441,11 @@ export function useOrcaAppController(): OrcaAppController {
 
       if (rebootAfterSave) {
         dispatch({ type: 'patch', patch: { progress: 'Rebooting...' } });
+        expectedDisconnectRef.current = 'reboot';
+        if (expectedDisconnectTimeoutRef.current) clearTimeout(expectedDisconnectTimeoutRef.current);
+        expectedDisconnectTimeoutRef.current = setTimeout(() => {
+          if (expectedDisconnectRef.current === 'reboot') expectedDisconnectRef.current = null;
+        }, 3000);
         await transport.reboot();
         resetConnection();
         return;
@@ -548,9 +578,52 @@ export function useOrcaAppController(): OrcaAppController {
     dispatch({ type: 'patch', patch: { lastError: '' } });
     try {
       dispatch({ type: 'patch', patch: { busy: true } });
+      expectedDisconnectRef.current = 'reboot';
+      if (expectedDisconnectTimeoutRef.current) clearTimeout(expectedDisconnectTimeoutRef.current);
+      expectedDisconnectTimeoutRef.current = setTimeout(() => {
+        if (expectedDisconnectRef.current === 'reboot') expectedDisconnectRef.current = null;
+      }, 3000);
       await transport.reboot();
     } catch (e) {
+      expectedDisconnectRef.current = null;
+      if (expectedDisconnectTimeoutRef.current) {
+        clearTimeout(expectedDisconnectTimeoutRef.current);
+        expectedDisconnectTimeoutRef.current = null;
+      }
       dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e) } });
+    } finally {
+      dispatch({ type: 'patch', patch: { busy: false } });
+    }
+  }, []);
+
+  const enterBootselNow = useCallback(async () => {
+    const { transport } = stateRef.current;
+    if (!transport) return;
+
+    dispatch({ type: 'patch', patch: { lastError: '', progress: '' } });
+    try {
+      dispatch({ type: 'patch', patch: { busy: true, progress: 'Entering BOOTSEL...' } });
+      expectedDisconnectRef.current = 'bootsel';
+      if (expectedDisconnectTimeoutRef.current) clearTimeout(expectedDisconnectTimeoutRef.current);
+      expectedDisconnectTimeoutRef.current = setTimeout(() => {
+        if (expectedDisconnectRef.current === 'bootsel') expectedDisconnectRef.current = null;
+      }, 3000);
+      await transport.enterBootsel();
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      if (
+        expectedDisconnectRef.current === 'bootsel' &&
+        (errorMsg.includes('disconnected') || errorMsg.includes('closed') || errorMsg.includes('not open'))
+      ) {
+        // BOOTSEL causes an intentional disconnect; treat this as success.
+      } else {
+        expectedDisconnectRef.current = null;
+        if (expectedDisconnectTimeoutRef.current) {
+          clearTimeout(expectedDisconnectTimeoutRef.current);
+          expectedDisconnectTimeoutRef.current = null;
+        }
+        dispatch({ type: 'patch', patch: { lastError: errorMsg, progress: '' } });
+      }
     } finally {
       dispatch({ type: 'patch', patch: { busy: false } });
     }
@@ -849,6 +922,7 @@ export function useOrcaAppController(): OrcaAppController {
     resetDefaultsOnDevice,
     factoryResetOnDevice,
     rebootNow,
+    enterBootselNow,
     exportCurrentBlob,
     exportDraftBlob,
     exportCurrentProfile,

@@ -222,4 +222,6 @@ export class MockOrcaTransport implements OrcaTransport {
   }
 
   async reboot(): Promise<void> {}
+
+  async enterBootsel(): Promise<void> {}
 }

@@ -11,6 +11,7 @@ type Props = {
     onResetMode: () => void;
     onFactoryReset: () => void;
     onReboot: () => void;
+    onEnterBootsel: () => void;
     onExportProfile: () => void;
     onImportProfile: () => void;
     onExportDeviceCurrent: () => void;
@@ -32,6 +33,7 @@ export function ActionToolbar({
     onResetMode,
     onFactoryReset,
     onReboot,
+    onEnterBootsel,
     onExportProfile,
     onImportProfile,
     onExportDeviceCurrent,
@@ -77,6 +79,14 @@ export function ActionToolbar({
                 </button>
                 <button onClick={onReboot} disabled={busy}>
                     Reboot
+                </button>
+                <button
+                    className="warning"
+                    onClick={onEnterBootsel}
+                    disabled={busy}
+                    title="Reboot into BOOTSEL/UF2 mode for firmware updates (disconnects the configurator)"
+                >
+                    Firmware Update
                 </button>
                 {onRebootAfterSaveChange && (
                     <label className="text-sm">

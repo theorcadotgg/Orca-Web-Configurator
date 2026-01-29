@@ -8,6 +8,7 @@ import {
   encodeCommitStagedSlotRequest,
   encodeGetInputStateRequest,
   encodeGetInfoRequest,
+  encodeEnterBootselRequest,
   encodeRebootRequest,
   encodeReadBlobRequest,
   encodeReadBlobSlotRequest,
@@ -428,6 +429,15 @@ export class OrcaWebSerialTransport implements OrcaTransport {
   async reboot(): Promise<void> {
     const seq = this.seq++;
     const frame = await this.sendAndRead(encodeRebootRequest(seq));
+    if (frame.msgType === OrcaMsgType.ERROR) {
+      const { cmd, err } = parseErrorPayload(frame.payload);
+      throw new OrcaDeviceError(cmd, err);
+    }
+  }
+
+  async enterBootsel(): Promise<void> {
+    const seq = this.seq++;
+    const frame = await this.sendAndRead(encodeEnterBootselRequest(seq));
     if (frame.msgType === OrcaMsgType.ERROR) {
       const { cmd, err } = parseErrorPayload(frame.payload);
       throw new OrcaDeviceError(cmd, err);

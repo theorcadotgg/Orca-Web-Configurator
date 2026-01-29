@@ -405,6 +405,15 @@ button.danger:hover:not(:disabled) {
   background: rgba(244, 67, 54, 0.1);
 }
 
+button.warning {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+button.warning:hover:not(:disabled) {
+  background: rgba(255, 152, 0, 0.12);
+}
+
 button.ghost {
   background: transparent;
   border-color: transparent;

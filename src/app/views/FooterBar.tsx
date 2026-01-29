@@ -20,6 +20,7 @@ export function FooterBar() {
     resetDefaultsOnDevice,
     factoryResetOnDevice,
     rebootNow,
+    enterBootselNow,
     exportCurrentProfile,
     exportCurrentBlob,
     exportDraftBlob,
@@ -34,6 +35,7 @@ export function FooterBar() {
   const importProfileRef = useRef<HTMLInputElement | null>(null);
   const [showMeleeConfirm, setShowMeleeConfirm] = useState(false);
   const [showCalibrationConfirm, setShowCalibrationConfirm] = useState(false);
+  const [showEnterBootselConfirm, setShowEnterBootselConfirm] = useState(false);
 
   const meleeInvalidProfiles = useMemo(() => {
     if (!draft || state.configMode !== 'orca') return [];
@@ -64,6 +66,7 @@ export function FooterBar() {
           onResetMode={() => setShowResetConfirm(true)}
           onFactoryReset={() => setShowFactoryResetConfirm(true)}
           onReboot={() => void rebootNow()}
+          onEnterBootsel={() => setShowEnterBootselConfirm(true)}
           onExportProfile={exportCurrentProfile}
           onImportProfile={() => importProfileRef.current?.click()}
           onExportDeviceCurrent={() => void exportCurrentBlob()}
@@ -123,6 +126,30 @@ export function FooterBar() {
           void runCalibrationOnDevice();
         }}
         onCancel={() => setShowCalibrationConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showEnterBootselConfirm}
+        title="Firmware Update Mode (BOOTSEL)"
+        message={
+          <>
+            This will reboot the controller into BOOTSEL/UF2 mode and disconnect it from the configurator.
+            <br />
+            <br />
+            {dirty ? (
+              <strong>Unsaved changes will be lost.</strong>
+            ) : null}
+            {dirty ? <br /> : null}
+            Drag the new firmware `.uf2` onto the BOOTSEL drive, then reconnect.
+          </>
+        }
+        confirmLabel="Enter Update Mode"
+        cancelLabel="Cancel"
+        onConfirm={() => {
+          setShowEnterBootselConfirm(false);
+          void enterBootselNow();
+        }}
+        onCancel={() => setShowEnterBootselConfirm(false)}
       />
 
       <CalibrationRunningModal isOpen={state.calibrationInProgress} />

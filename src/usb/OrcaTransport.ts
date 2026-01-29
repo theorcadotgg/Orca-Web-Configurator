@@ -63,4 +63,5 @@ export interface OrcaTransport {
   resetDefaults(slot: number): Promise<{ generation: number }>;
   factoryReset(): Promise<{ flags: number; primaryGeneration: number; secondaryGeneration: number }>;
   reboot(): Promise<void>;
+  enterBootsel(): Promise<void>;
 }

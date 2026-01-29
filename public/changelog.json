@@ -1,9 +1,27 @@
 {
   "latest": {
-    "configurator": "configurator-2026-01-28",
+    "configurator": "configurator-2026-01-29",
     "firmware": "firmware-2.5"
   },
   "entries": [
+    {
+      "id": "configurator-2026-01-29",
+      "kind": "configurator",
+      "version": "2026.01.29",
+      "date": "2026-01-29",
+      "title": "Changelog",
+      "related": {
+        "firmwareId": "firmware-2.5"
+      },
+      "sections": [
+        {
+          "title": "New",
+          "items": [
+            "Feat: Add “Firmware Update” button to reboot the controller into BOOTSEL/UF2 mode."
+          ]
+        }
+      ]
+    },
     {
       "id": "configurator-2026-01-28",
       "kind": "configurator",
@@ -37,6 +55,7 @@
           "title": "Notes",
           "items": [
             "Feat: Add support for N64.",
+            "Feat: Add BOOTSEL/UF2 reboot command for firmware updates from the configurator.",
             "Fix: Profiles are loaded correctly."
           ]
         }
