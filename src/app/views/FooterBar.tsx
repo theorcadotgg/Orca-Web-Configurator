@@ -140,7 +140,7 @@ export function FooterBar() {
               <strong>Unsaved changes will be lost.</strong>
             ) : null}
             {dirty ? <br /> : null}
-            Drag the new firmware `.uf2` onto the BOOTSEL drive, then reconnect.
+            Drag the new firmware `.uf2` onto the RPI-RP2 drive, then reconnect.
           </>
         }
         confirmLabel="Enter Update Mode"
