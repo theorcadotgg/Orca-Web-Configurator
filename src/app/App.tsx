@@ -5,11 +5,11 @@ import { ChangelogProvider } from './changelog/ChangelogProvider';
 
 export default function App() {
   return (
-    <ChangelogProvider>
-      <OrcaAppProvider>
+    <OrcaAppProvider>
+      <ChangelogProvider>
         <UpdatePrompt />
         <AppShell />
-      </OrcaAppProvider>
-    </ChangelogProvider>
+      </ChangelogProvider>
+    </OrcaAppProvider>
   );
 }

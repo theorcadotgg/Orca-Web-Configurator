@@ -2,6 +2,7 @@ import OrcaLogo from '../../assets/Orca_Logo_B.png';
 import { useOrcaApp } from '../contexts/OrcaAppContext';
 import { ModeTabs } from '../components/ModeTabs';
 import { useChangelog } from '../changelog/ChangelogProvider';
+import { FirmwareDownloadLink } from '../components/FirmwareDownloadLink';
 
 export function HeaderBar() {
   const { state, handleModeChange, compatibility } = useOrcaApp();
@@ -25,7 +26,7 @@ export function HeaderBar() {
 
       <div className="header-status">
         {state.progress && <span className="text-sm text-secondary">{state.progress}</span>}
-        <a
+        <FirmwareDownloadLink
           href={`${import.meta.env.BASE_URL}${firmwareFilename}`}
           download={firmwareFilename}
           className={`btn-download${hasSchemaMismatch ? ' btn-download-alert' : ''}`}
@@ -39,7 +40,7 @@ export function HeaderBar() {
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
           {hasSchemaMismatch ? 'Update Firmware!' : 'Download Firmware'}
-        </a>
+        </FirmwareDownloadLink>
         <button
           className="ghost sm"
           onClick={openLatestConfigurator}

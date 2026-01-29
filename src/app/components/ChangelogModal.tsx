@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { findChangelogEntry, getLatestChangelogEntryId, type Changelog } from '../changelog/changelog';
+import { FirmwareDownloadLink } from './FirmwareDownloadLink';
 
 type Props = {
   isOpen: boolean;
@@ -121,14 +122,14 @@ export function ChangelogModal({
                 </div>
 
                 {entry.kind === 'firmware' && entry.download && (
-                  <a
+                  <FirmwareDownloadLink
                     className="btn-download"
                     href={`${import.meta.env.BASE_URL}${entry.download.filename}`}
                     download={entry.download.filename}
                     style={{ padding: 'var(--spacing-xs) var(--spacing-md)', fontSize: 'var(--font-size-xs)' }}
                   >
                     {entry.download.label ?? 'Download'}
-                  </a>
+                  </FirmwareDownloadLink>
                 )}
               </div>
 
@@ -173,14 +174,14 @@ export function ChangelogModal({
                     </div>
 
                     {relatedFirmwareEntry.download && (
-                      <a
+                      <FirmwareDownloadLink
                         className="btn-download"
                         href={`${import.meta.env.BASE_URL}${relatedFirmwareEntry.download.filename}`}
                         download={relatedFirmwareEntry.download.filename}
                         style={{ padding: 'var(--spacing-xs) var(--spacing-md)', fontSize: 'var(--font-size-xs)' }}
                       >
                         {relatedFirmwareEntry.download.label ?? 'Download'}
-                      </a>
+                      </FirmwareDownloadLink>
                     )}
                   </div>
 
