@@ -84,6 +84,7 @@ export type StickCurveParamsV1 = {
 
 // StickCurveParamsV1 flags
 export const STICK_CURVE_FLAG_CIRCLE_COORDS = 1 << 0;
+export const STICK_CURVE_FLAG_SAMUS_CSTICK_MODE = 1 << 1;
 
 export type SettingsDraft = {
   activeProfile: number;

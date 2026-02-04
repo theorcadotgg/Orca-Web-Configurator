@@ -66,7 +66,7 @@ export default defineConfig({
     fs: {
       allow: [resolve(__dirname, '..')],
     },
-    allowedHosts: ['4a3ef19e2e1d.ngrok-free.app'],
+    allowedHosts: ['8430-174-21-76-83.ngrok-free.app'],
   },
   build: {
     rollupOptions: {

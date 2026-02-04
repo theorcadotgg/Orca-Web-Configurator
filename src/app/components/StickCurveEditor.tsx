@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { SettingsDraft, StickCurveParamsV1 } from '../../schema/settingsBlob';
-import { STICK_CURVE_FLAG_CIRCLE_COORDS } from '../../schema/settingsBlob';
+import { STICK_CURVE_FLAG_CIRCLE_COORDS, STICK_CURVE_FLAG_SAMUS_CSTICK_MODE } from '../../schema/settingsBlob';
 import { cloneDraft } from '../domain/cloneDraft';
 
 type Props = {
@@ -278,6 +278,72 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                     {showCustomSliders && 'Custom values - adjust sliders below'}
                 </span>
             </div>
+
+            {/* Samus C-Stick Mode Toggle (Orca mode only) */}
+            {mode === 'orca' && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 'var(--spacing-sm) var(--spacing-md)',
+                    background: 'var(--color-bg-tertiary)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--color-border)',
+                }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+                        <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                            Samus C-Stick Mode
+                        </span>
+                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+                            Adjusts diagonal C-stick corner values (X=110, Y=83)
+                        </span>
+                    </div>
+                    <label style={{
+                        position: 'relative',
+                        display: 'inline-block',
+                        width: 44,
+                        height: 24,
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        opacity: disabled ? 0.5 : 1,
+                    }}>
+                        <input
+                            type="checkbox"
+                            checked={!!((params.flags ?? 0) & STICK_CURVE_FLAG_SAMUS_CSTICK_MODE)}
+                            disabled={disabled}
+                            onChange={(e) => {
+                                const newFlags = e.target.checked
+                                    ? ((params.flags ?? 0) | STICK_CURVE_FLAG_SAMUS_CSTICK_MODE)
+                                    : ((params.flags ?? 0) & ~STICK_CURVE_FLAG_SAMUS_CSTICK_MODE);
+                                updateParams({ flags: newFlags });
+                            }}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                        />
+                        <span style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: ((params.flags ?? 0) & STICK_CURVE_FLAG_SAMUS_CSTICK_MODE) ? 'var(--color-success)' : 'var(--color-bg-secondary)',
+                            borderRadius: 12,
+                            transition: 'background-color 0.2s ease',
+                            border: '1px solid var(--color-border)',
+                        }}>
+                            <span style={{
+                                position: 'absolute',
+                                content: '""',
+                                height: 18,
+                                width: 18,
+                                left: ((params.flags ?? 0) & STICK_CURVE_FLAG_SAMUS_CSTICK_MODE) ? 22 : 2,
+                                bottom: 2,
+                                backgroundColor: 'white',
+                                borderRadius: '50%',
+                                transition: 'left 0.2s ease',
+                            }} />
+                        </span>
+                    </label>
+                </div>
+            )}
 
             {/* Circle Coordinates Toggle */}
             <div style={{
