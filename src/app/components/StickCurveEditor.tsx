@@ -295,7 +295,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                             Samus C-Stick Mode
                         </span>
                         <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
-                            Adjusts diagonal C-stick corner values (X=110, Y=83)
+                            Combining C-Up/Down and C-Left/Right will result in angled F-Smash inputs.
                         </span>
                     </div>
                     <label style={{
