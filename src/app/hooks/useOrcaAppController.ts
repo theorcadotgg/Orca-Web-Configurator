@@ -27,6 +27,8 @@ import {
   getDefaultDigitalMapping,
   getGp2040AnalogTriggerRouting,
   moveProfileToFirstSlot,
+  normalizeGp2040DraftTriggerPolicy,
+  normalizeGp2040TriggerPolicy,
   renameProfileInDraft,
   resetToDefaultBindingsInDraft,
   setActiveProfileInDraft,
@@ -197,7 +199,8 @@ export function useOrcaAppController(): OrcaAppController {
   const onDraftChange = useCallback((next: SettingsDraft) => {
     const { configMode } = stateRef.current;
     const slot = modeToSlotId(configMode);
-    updateSlotState(slot, { draft: next, dirty: true });
+    const normalized = configMode === 'gp2040' ? normalizeGp2040DraftTriggerPolicy(next) : next;
+    updateSlotState(slot, { draft: normalized, dirty: true });
     dispatch({ type: 'patch', patch: { deviceValidation: null } });
   }, [updateSlotState]);
 
@@ -251,7 +254,8 @@ export function useOrcaAppController(): OrcaAppController {
       });
       const res = tryParseSettingsBlob(blob);
       if (!res.ok) throw new Error(res.error);
-      updateSlotState(slotToRead, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+      const draftForSlot = slotToRead === 1 ? normalizeGp2040DraftTriggerPolicy(res.value.draft) : res.value.draft;
+      updateSlotState(slotToRead, { baseBlob: blob, parsed: res.value, draft: draftForSlot, dirty: false });
       dispatch({ type: 'patch', patch: { progress: '' } });
     } catch (e) {
       dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e), progress: '' } });
@@ -301,7 +305,8 @@ export function useOrcaAppController(): OrcaAppController {
           });
           const res = tryParseSettingsBlob(blob);
           if (!res.ok) throw new Error(res.error);
-          updateSlotState(nextSlot, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+          const draftForSlot = nextSlot === 1 ? normalizeGp2040DraftTriggerPolicy(res.value.draft) : res.value.draft;
+          updateSlotState(nextSlot, { baseBlob: blob, parsed: res.value, draft: draftForSlot, dirty: false });
         } catch (e) {
           dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e) } });
           return;
@@ -437,7 +442,12 @@ export function useOrcaAppController(): OrcaAppController {
       });
       const res = tryParseSettingsBlob(readBack);
       if (!res.ok) throw new Error(`Read-back failed: ${res.error}`);
-      updateSlotState(slot, { baseBlob: readBack, parsed: res.value, draft: res.value.draft, dirty: false });
+      updateSlotState(slot, {
+        baseBlob: readBack,
+        parsed: res.value,
+        draft: slot === 1 ? normalizeGp2040DraftTriggerPolicy(res.value.draft) : res.value.draft,
+        dirty: false,
+      });
 
       if (rebootAfterSave) {
         dispatch({ type: 'patch', patch: { progress: 'Rebooting...' } });
@@ -504,7 +514,13 @@ export function useOrcaAppController(): OrcaAppController {
 
         const res = tryParseSettingsBlob(blob);
         if (!res.ok) throw new Error(res.error);
-        updateSlotState(slot as SlotId, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+        const slotId = slot as SlotId;
+        updateSlotState(slotId, {
+          baseBlob: blob,
+          parsed: res.value,
+          draft: slotId === 1 ? normalizeGp2040DraftTriggerPolicy(res.value.draft) : res.value.draft,
+          dirty: false,
+        });
       }
 
       dispatch({ type: 'patch', patch: { progress: '' } });
@@ -535,7 +551,12 @@ export function useOrcaAppController(): OrcaAppController {
       const readBack = await transport.readBlob(slot, { blobSize: deviceInfo.blobSize, maxChunk: deviceInfo.maxChunk });
       const res = tryParseSettingsBlob(readBack);
       if (!res.ok) throw new Error(res.error);
-      updateSlotState(slot, { baseBlob: readBack, parsed: res.value, draft: res.value.draft, dirty: false });
+      updateSlotState(slot, {
+        baseBlob: readBack,
+        parsed: res.value,
+        draft: slot === 1 ? normalizeGp2040DraftTriggerPolicy(res.value.draft) : res.value.draft,
+        dirty: false,
+      });
       dispatch({ type: 'patch', patch: { progress: '' } });
     } catch (e) {
       dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e), progress: '' } });
@@ -561,7 +582,13 @@ export function useOrcaAppController(): OrcaAppController {
         const blob = await transport.readBlob(slot, { blobSize: deviceInfo.blobSize, maxChunk: deviceInfo.maxChunk });
         const res = tryParseSettingsBlob(blob);
         if (!res.ok) throw new Error(`${slotDisplayName(slot as SlotId)}: ${res.error}`);
-        updateSlotState(slot as SlotId, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+        const slotId = slot as SlotId;
+        updateSlotState(slotId, {
+          baseBlob: blob,
+          parsed: res.value,
+          draft: slotId === 1 ? normalizeGp2040DraftTriggerPolicy(res.value.draft) : res.value.draft,
+          dirty: false,
+        });
       }
 
       dispatch({ type: 'patch', patch: { progress: '' } });
@@ -663,7 +690,12 @@ export function useOrcaAppController(): OrcaAppController {
           });
           const res = tryParseSettingsBlob(blob);
           if (!res.ok) throw new Error(`GP2040 mode: ${res.error}`);
-          updateSlotState(1, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+          updateSlotState(1, {
+            baseBlob: blob,
+            parsed: res.value,
+            draft: normalizeGp2040DraftTriggerPolicy(res.value.draft),
+            dirty: false,
+          });
           gp2040Blob = blob;
         }
 
@@ -716,7 +748,12 @@ export function useOrcaAppController(): OrcaAppController {
           });
           const res = tryParseSettingsBlob(blob);
           if (!res.ok) throw new Error(`GP2040 mode: ${res.error}`);
-          updateSlotState(1, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: false });
+          updateSlotState(1, {
+            baseBlob: blob,
+            parsed: res.value,
+            draft: normalizeGp2040DraftTriggerPolicy(res.value.draft),
+            dirty: false,
+          });
           gp2040Blob = blob;
         }
 
@@ -771,7 +808,7 @@ export function useOrcaAppController(): OrcaAppController {
       digitalMapping: [...digitalMapping],
       analogMapping: [...analogMapping],
       dpadLayer,
-      triggerPolicy,
+      triggerPolicy: configMode === 'gp2040' ? normalizeGp2040TriggerPolicy(triggerPolicy) : triggerPolicy,
       stickCurveParams,
     };
 
@@ -802,7 +839,12 @@ export function useOrcaAppController(): OrcaAppController {
         if (gp2040Slot) {
           const res = tryParseSettingsBlob(gp2040Slot);
           if (!res.ok) throw new Error(`GP2040 slot: ${res.error}`);
-          updateSlotState(1, { baseBlob: gp2040Slot, parsed: res.value, draft: res.value.draft, dirty: true });
+          updateSlotState(1, {
+            baseBlob: gp2040Slot,
+            parsed: res.value,
+            draft: normalizeGp2040DraftTriggerPolicy(res.value.draft),
+            dirty: true,
+          });
         }
       } catch (jsonError) {
         // Not valid JSON, try as legacy binary format
@@ -813,7 +855,8 @@ export function useOrcaAppController(): OrcaAppController {
 
         // Import to current mode only (backward compatibility)
         const slot = modeToSlotId(stateRef.current.configMode);
-        updateSlotState(slot, { baseBlob: blob, parsed: res.value, draft: res.value.draft, dirty: true });
+        const draftForSlot = slot === 1 ? normalizeGp2040DraftTriggerPolicy(res.value.draft) : res.value.draft;
+        updateSlotState(slot, { baseBlob: blob, parsed: res.value, draft: draftForSlot, dirty: true });
       }
     } catch (e) {
       dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e) } });

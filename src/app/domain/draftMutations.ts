@@ -8,14 +8,12 @@ import {
   DPAD_LEFT_VIRTUAL_DEST,
   DPAD_RIGHT_VIRTUAL_DEST,
   DPAD_UP_VIRTUAL_DEST,
-  LT_LIGHT_VIRTUAL_DEST,
-  RT_LIGHT_VIRTUAL_DEST,
   ORCA_ANALOG_MAPPING_DISABLED,
   ORCA_DUMMY_FIELD,
   isLockedDigitalDestination,
   isVirtualDpadDestination,
 } from '../../schema/orcaMappings';
-import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT } from '../../schema/triggerPolicyFlags';
+import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT, TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP } from '../../schema/triggerPolicyFlags';
 import { cloneDraft } from './cloneDraft';
 
 const ORCA_A1_HOME_DEST = 11;
@@ -24,6 +22,41 @@ const ORCA_C_RIGHT_SRC = 8;
 const ORCA_C_UP_SRC = 9;
 const ORCA_C_DOWN_SRC = 10;
 const ANALOG_TRIGGER_L_VIRTUAL_ID = 254;
+const TRIGGER_POLICY_LIGHT_SRC_VERSION = 1;
+
+export function normalizeGp2040TriggerPolicy<T extends { flags: number; digitalLightLtSrc: number; digitalLightRtSrc: number; digitalLightSrcVersion: number }>(
+  policy: T,
+): T {
+  const nextFlags = policy.flags & ~TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP;
+  if (
+    nextFlags === policy.flags &&
+    policy.digitalLightLtSrc === ORCA_DUMMY_FIELD &&
+    policy.digitalLightRtSrc === ORCA_DUMMY_FIELD &&
+    policy.digitalLightSrcVersion === TRIGGER_POLICY_LIGHT_SRC_VERSION
+  ) {
+    return policy;
+  }
+  return {
+    ...policy,
+    flags: nextFlags,
+    digitalLightLtSrc: ORCA_DUMMY_FIELD,
+    digitalLightRtSrc: ORCA_DUMMY_FIELD,
+    digitalLightSrcVersion: TRIGGER_POLICY_LIGHT_SRC_VERSION,
+  };
+}
+
+export function normalizeGp2040DraftTriggerPolicy(draft: SettingsDraft): SettingsDraft {
+  let changed = false;
+  const triggerPolicy = draft.triggerPolicy.map((policy) => {
+    const normalized = normalizeGp2040TriggerPolicy(policy);
+    if (normalized !== policy) changed = true;
+    return normalized;
+  });
+  if (!changed) return draft;
+  const updated = cloneDraft(draft);
+  updated.triggerPolicy = triggerPolicy;
+  return updated;
+}
 
 export function getDefaultDigitalMapping(mode: ProfileMode): number[] {
   const base = Array.from({ length: DIGITAL_INPUTS.length }, (_, i) => i);
@@ -101,7 +134,9 @@ export function applyImportedProfileToDraft(
   updated.digitalMappings[profileIndex] = imported.digitalMapping;
   updated.analogMappings[profileIndex] = imported.analogMapping;
   updated.dpadLayer[profileIndex] = imported.dpadLayer;
-  updated.triggerPolicy[profileIndex] = imported.triggerPolicy;
+  updated.triggerPolicy[profileIndex] = imported.mode === 'gp2040'
+    ? normalizeGp2040TriggerPolicy(imported.triggerPolicy)
+    : imported.triggerPolicy;
   updated.stickCurveParams[profileIndex] = imported.stickCurveParams;
   return updated;
 }
@@ -123,64 +158,6 @@ export function setDigitalMappingInDraft(
     if (!layer) return updated;
     layer.enable = digital(src);
     updated.dpadLayer[activeProfile] = layer;
-    return updated;
-  }
-
-  // Virtual GP2040 light-trigger destinations (handled via TriggerPolicy).
-  if (dest === LT_LIGHT_VIRTUAL_DEST || dest === RT_LIGHT_VIRTUAL_DEST) {
-    // If this source was being used for any DPAD direction, restore those directions to the default C-stick bindings.
-    {
-      const layer = updated.dpadLayer[activeProfile] ?? updated.dpadLayer[0];
-      if (layer && src !== ORCA_DUMMY_FIELD) {
-        const isSrc = (s: { type: number; index: number } | undefined) => s?.type === 1 && s.index === src;
-        if (isSrc(layer.up)) {
-          layer.mode_up = defaultCStickMode;
-          layer.up = digital(ORCA_C_UP_SRC);
-        }
-        if (isSrc(layer.down)) {
-          layer.mode_down = defaultCStickMode;
-          layer.down = digital(ORCA_C_DOWN_SRC);
-        }
-        if (isSrc(layer.left)) {
-          layer.mode_left = defaultCStickMode;
-          layer.left = digital(ORCA_C_LEFT_SRC);
-        }
-        if (isSrc(layer.right)) {
-          layer.mode_right = defaultCStickMode;
-          layer.right = digital(ORCA_C_RIGHT_SRC);
-        }
-        updated.dpadLayer[activeProfile] = layer;
-      }
-    }
-
-    const policy = updated.triggerPolicy[activeProfile] ?? updated.triggerPolicy[0];
-    if (!policy) return updated;
-
-    const base =
-      policy.digitalLightSrcVersion === 1
-        ? policy
-        : { ...policy, digitalLightLtSrc: ORCA_DUMMY_FIELD, digitalLightRtSrc: ORCA_DUMMY_FIELD };
-
-    updated.triggerPolicy[activeProfile] = {
-      ...base,
-      digitalLightSrcVersion: 1,
-      digitalLightLtSrc: dest === LT_LIGHT_VIRTUAL_DEST ? src : base.digitalLightLtSrc,
-      digitalLightRtSrc: dest === RT_LIGHT_VIRTUAL_DEST ? src : base.digitalLightRtSrc,
-    };
-
-    // Repurpose behavior: disable the source button's normal output mapping.
-    if (src !== ORCA_DUMMY_FIELD) {
-      updated.digitalMappings[activeProfile] = [...(updated.digitalMappings[activeProfile] ?? [])];
-      const currentMapping = updated.digitalMappings[activeProfile]!;
-      for (let i = 0; i < currentMapping.length; i++) {
-        const mappedSrc = currentMapping[i] ?? defaultDigitalMapping[i] ?? i;
-        if (mappedSrc === src && !isLockedDigitalDestination(i)) {
-          currentMapping[i] = ORCA_DUMMY_FIELD;
-          break;
-        }
-      }
-    }
-
     return updated;
   }
 
@@ -269,26 +246,6 @@ export function setDigitalMappingInDraft(
         layer.right = digital(ORCA_C_RIGHT_SRC);
       }
       updated.dpadLayer[activeProfile] = layer;
-    }
-  }
-
-  // If this source was being used for GP2040 light triggers, clear it.
-  {
-    const policy = updated.triggerPolicy[activeProfile] ?? updated.triggerPolicy[0];
-    if (policy && src !== ORCA_DUMMY_FIELD && policy.digitalLightSrcVersion === 1) {
-      const next = { ...policy };
-      let changed = false;
-      if (next.digitalLightLtSrc === src) {
-        next.digitalLightLtSrc = ORCA_DUMMY_FIELD;
-        changed = true;
-      }
-      if (next.digitalLightRtSrc === src) {
-        next.digitalLightRtSrc = ORCA_DUMMY_FIELD;
-        changed = true;
-      }
-      if (changed) {
-        updated.triggerPolicy[activeProfile] = next;
-      }
     }
   }
 

@@ -52,15 +52,13 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
     // So we display: notch_stored * analogMax * 255 (to show final Dolphin output)
     // And store: display_value / 255 / analogMax (normalized 0-1)
 
-    // "Light press" output:
-    // - Orca mode: derived from trigger notch calibration (displayed as final Dolphin output).
-    // - GP2040 mode: directly uses TriggerPolicy.digitalLightshield (0..255).
-    const lightPressMin255 = mode === 'orca' ? 49 : 0;
-    const lightPressMax255 = mode === 'orca' ? Math.floor(analogRangeMax255 / 2) : digitalFullPress255;
+    // Light press / notch tuning is Orca-specific.
+    const lightPressMin255 = 49;
+    const lightPressMax255 = Math.floor(analogRangeMax255 / 2);
 
     const triggerNotchStored = curveParams.notch[TRIGGER_NOTCH_INDEX] ?? 0;
     const triggerNotchDisplay255 = Math.round(triggerNotchStored * analogMaxNormalized * 255);
-    const lightPressDisplay255 = mode === 'orca' ? triggerNotchDisplay255 : to255(policy.digitalLightshield);
+    const lightPressDisplay255 = triggerNotchDisplay255;
 
     function updatePolicy(patch: Partial<typeof policy>) {
         const updated = cloneDraft(draft);
@@ -74,10 +72,6 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
     // display = stored * analogMax * 255  =>  stored = display / 255 / analogMax
     function updateLightPress(displayValue255: number) {
         const clamped255 = clamp(displayValue255, lightPressMin255, lightPressMax255);
-        if (mode !== 'orca') {
-            updatePolicy({ digitalLightshield: from255(clamped255) });
-            return;
-        }
 
         // Orca mode: update both the notch calibration AND digitalLightshield
         // so they stay in sync for both lightshield-only and normal modes.
@@ -139,16 +133,17 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                             opacity: 0.6,
                             transition: 'height 0.15s ease'
                         }} />
-                        {/* Trigger notch threshold line */}
-                        <div style={{
-                            position: 'absolute',
-                            left: 0,
-                            right: 0,
-                            bottom: `${(triggerNotchDisplay255 / 255) * 100}%`,
-                            height: 2,
-                            background: '#FF9800',
-                            zIndex: 1
-                        }} />
+                        {mode === 'orca' && (
+                            <div style={{
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                                bottom: `${(triggerNotchDisplay255 / 255) * 100}%`,
+                                height: 2,
+                                background: '#FF9800',
+                                zIndex: 1
+                            }} />
+                        )}
                     </div>
                 </div>
 
@@ -175,16 +170,17 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
                             opacity: 0.6,
                             transition: 'height 0.15s ease'
                         }} />
-                        {/* Trigger notch threshold line */}
-                        <div style={{
-                            position: 'absolute',
-                            left: 0,
-                            right: 0,
-                            bottom: `${(triggerNotchDisplay255 / 255) * 100}%`,
-                            height: 2,
-                            background: '#FF9800',
-                            zIndex: 1
-                        }} />
+                        {mode === 'orca' && (
+                            <div style={{
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                                bottom: `${(triggerNotchDisplay255 / 255) * 100}%`,
+                                height: 2,
+                                background: '#FF9800',
+                                zIndex: 1
+                            }} />
+                        )}
                     </div>
                 </div>
             </div>
@@ -192,7 +188,7 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
             {/* Legend - single line */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16, fontSize: 10, color: 'var(--color-text-muted)' }}>
                 <span>■ Digital Full Press</span>
-                <span style={{ color: '#FF9800' }}>━ Trigger Notch</span>
+                {mode === 'orca' && <span style={{ color: '#FF9800' }}>━ Trigger Notch</span>}
             </div>
 
             {/* Lightshield Only Checkbox - Orca mode only */}
@@ -223,28 +219,29 @@ export function TriggerEditor({ draft, disabled, onChange, mode = 'orca' }: Prop
 
             {/* Sliders - compact single-line format */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {/* Trigger Notch */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11, width: 90, flexShrink: 0, color: '#FF9800' }}>Light Press</span>
-                    <input
-                        type="range"
-                        min={lightPressMin255}
-                        max={lightPressMax255}
-                        value={clamp(lightPressDisplay255, lightPressMin255, lightPressMax255)}
-                        onChange={(e) => updateLightPress(Number(e.target.value))}
-                        disabled={disabled}
-                        style={{ flex: 1, minWidth: 0 }}
-                    />
-                    <input
-                        type="number"
-                        min={lightPressMin255}
-                        max={lightPressMax255}
-                        value={clamp(lightPressDisplay255, lightPressMin255, lightPressMax255)}
-                        onChange={(e) => updateLightPress(Number(e.target.value))}
-                        disabled={disabled}
-                        style={{ width: 48, fontSize: 11, padding: '2px 4px', textAlign: 'center', flexShrink: 0 }}
-                    />
-                </div>
+                {mode === 'orca' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, width: 90, flexShrink: 0, color: '#FF9800' }}>Light Press</span>
+                        <input
+                            type="range"
+                            min={lightPressMin255}
+                            max={lightPressMax255}
+                            value={clamp(lightPressDisplay255, lightPressMin255, lightPressMax255)}
+                            onChange={(e) => updateLightPress(Number(e.target.value))}
+                            disabled={disabled}
+                            style={{ flex: 1, minWidth: 0 }}
+                        />
+                        <input
+                            type="number"
+                            min={lightPressMin255}
+                            max={lightPressMax255}
+                            value={clamp(lightPressDisplay255, lightPressMin255, lightPressMax255)}
+                            onChange={(e) => updateLightPress(Number(e.target.value))}
+                            disabled={disabled}
+                            style={{ width: 48, fontSize: 11, padding: '2px 4px', textAlign: 'center', flexShrink: 0 }}
+                        />
+                    </div>
+                )}
 
                 {/* Analog Max */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

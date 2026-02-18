@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
-import { ORCA_CONFIG_LOCKED_BUTTON_POWER, ORCA_CONFIG_LOCKED_BUTTON_WISDOM } from '@shared/orca_config_idl_generated';
+import { ORCA_CONFIG_LOCKED_BUTTON_POWER } from '@shared/orca_config_idl_generated';
 import {
     DIGITAL_INPUTS,
     ANALOG_INPUTS,
@@ -8,8 +8,6 @@ import {
     isLockedDigitalDestination,
     ORCA_DUMMY_FIELD,
     ORCA_ANALOG_MAPPING_DISABLED,
-    LT_LIGHT_VIRTUAL_DEST,
-    RT_LIGHT_VIRTUAL_DEST,
     DPAD_MODIFIER_VIRTUAL_DEST,
     DPAD_UP_VIRTUAL_DEST,
     DPAD_DOWN_VIRTUAL_DEST,
@@ -250,21 +248,6 @@ export function ControllerVisualizer({
         });
     }, [analogMapping, defaultAnalogMapping]);
 
-    // GP2040-only: light-trigger sources are evaluated on raw physical inputs (independent of the main mapping).
-    const gp2040LtLightSrc = useMemo(() => {
-        if (!triggerPolicy) return ORCA_DUMMY_FIELD;
-        if (triggerPolicy.digitalLightSrcVersion === 1) return triggerPolicy.digitalLightLtSrc;
-        // Legacy (reserved bytes unset): LT light defaults to Lightshield.
-        return 12;
-    }, [triggerPolicy]);
-
-    const gp2040RtLightSrc = useMemo(() => {
-        if (!triggerPolicy) return ORCA_DUMMY_FIELD;
-        if (triggerPolicy.digitalLightSrcVersion === 1) return triggerPolicy.digitalLightRtSrc;
-        // Legacy: RT light defaults off.
-        return ORCA_DUMMY_FIELD;
-    }, [triggerPolicy]);
-
     // In Orca mode, DPAD modifier enable is evaluated on mapped inputs (so the physical source is "dest→src").
     // In GP2040 mode, the modifier enable is evaluated on raw physical inputs.
     const dpadModifierDigitalSrc = useMemo(() => {
@@ -321,22 +304,14 @@ export function ControllerVisualizer({
 
     const digitalDestinationOptions = useMemo(() => {
         const base = DIGITAL_INPUTS.filter((d) => !isLockedDigitalDestination(d.id) && !d.isDummy).sort((a, b) => a.id - b.id);
-        // Add DPAD + GP2040-specific virtual destinations.
-        const triggerLabelBase = (label: string) => label.replace(/\s*\(Analog\)\s*$/, '');
-        const gp2040Virtual = destinationLabelMode === 'gp2040'
-            ? [
-                { id: LT_LIGHT_VIRTUAL_DEST, key: 'GP2040_LT_LIGHT', label: `${triggerLabelBase(getGp2040TriggerLabels.lt.label)} (Light)`, lockedSystem: false, isDummy: false },
-                { id: RT_LIGHT_VIRTUAL_DEST, key: 'GP2040_RT_LIGHT', label: `${triggerLabelBase(getGp2040TriggerLabels.rt.label)} (Light)`, lockedSystem: false, isDummy: false },
-            ]
-            : [];
-
-        const withVirtual = [...base, ...DPAD_VIRTUAL_DESTINATIONS, ...gp2040Virtual];
+        // Add DPAD virtual destinations.
+        const withVirtual = [...base, ...DPAD_VIRTUAL_DESTINATIONS];
         if (destinationLabelMode !== 'gp2040') return withVirtual;
         return withVirtual.map((opt) => {
             const overlay = gp2040LabelSet.digital[opt.id];
             return overlay ? { ...opt, label: overlay.label } : opt;
         });
-    }, [destinationLabelMode, getGp2040TriggerLabels, gp2040LabelSet]);
+    }, [destinationLabelMode, gp2040LabelSet]);
 
     const analogDestinationOptions = useMemo(() => {
         const base = [...ANALOG_INPUTS].sort((a, b) => a.id - b.id);
@@ -444,10 +419,6 @@ export function ControllerVisualizer({
             }
 
             if (destId === ORCA_DUMMY_FIELD) {
-                if (destinationLabelMode === 'gp2040') {
-                    if (gp2040LtLightSrc === button.id) return `${getGp2040TriggerLabels.lt.shortLabel}*`;
-                    if (gp2040RtLightSrc === button.id) return `${getGp2040TriggerLabels.rt.shortLabel}*`;
-                }
                 return 'OFF';
             }
             if (destinationLabelMode === 'gp2040') {
@@ -510,17 +481,6 @@ export function ControllerVisualizer({
                         onDigitalMappingChange(dpadBindings[0].virtualDest, ORCA_DUMMY_FIELD);
                         return;
                     }
-                    // GP2040-only: allow clearing light trigger sources when the button has no normal output mapping.
-                    if (destinationLabelMode === 'gp2040') {
-                        if (gp2040LtLightSrc === src) {
-                            onDigitalMappingChange(LT_LIGHT_VIRTUAL_DEST, ORCA_DUMMY_FIELD);
-                            return;
-                        }
-                        if (gp2040RtLightSrc === src) {
-                            onDigitalMappingChange(RT_LIGHT_VIRTUAL_DEST, ORCA_DUMMY_FIELD);
-                            return;
-                        }
-                    }
                 }
                 return;
             }
@@ -545,10 +505,6 @@ export function ControllerVisualizer({
             if (currentDest !== undefined) return currentDest;
             const dpadBindings = getDpadBindingsForSource(src);
             if (dpadBindings.length > 0) return dpadBindings[0].virtualDest;
-            if (destinationLabelMode === 'gp2040') {
-                if (gp2040LtLightSrc === src) return LT_LIGHT_VIRTUAL_DEST;
-                if (gp2040RtLightSrc === src) return RT_LIGHT_VIRTUAL_DEST;
-            }
             return ORCA_DUMMY_FIELD;
         }
         const destId = analogDestBySrc[selectedButton.id] ?? ORCA_ANALOG_MAPPING_DISABLED;
@@ -962,15 +918,7 @@ export function ControllerVisualizer({
                                 <>
                                     <option value={ORCA_DUMMY_FIELD}>Disabled (OFF)</option>
                                     {digitalDestinationOptions.map((opt) => (
-                                        <option
-                                            key={opt.id}
-                                            value={opt.id}
-                                            disabled={
-                                                destinationLabelMode === 'gp2040' &&
-                                                (opt.id === LT_LIGHT_VIRTUAL_DEST || opt.id === RT_LIGHT_VIRTUAL_DEST) &&
-                                                selectedButton.id === ORCA_CONFIG_LOCKED_BUTTON_WISDOM
-                                            }
-                                        >
+                                        <option key={opt.id} value={opt.id}>
                                             {opt.label}
                                         </option>
                                     ))}

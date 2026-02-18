@@ -1,6 +1,7 @@
 import { ORCA_CONFIG_SETTINGS_PROFILE_COUNT } from '@shared/orca_config_idl_generated';
 import { isGp2040LabelPreset } from '../../schema/gp2040Labels';
 import { useOrcaApp } from '../contexts/OrcaAppContext';
+import { ButtonChordGlyph } from '../components/ButtonChordGlyph';
 import { ControllerVisualizer } from '../components/ControllerVisualizer';
 import { LiveInputPreviewCard } from '../components/LiveInputPreviewCard';
 
@@ -50,14 +51,11 @@ export function MainPane() {
             <h2 style={{ margin: 0, fontWeight: 500, color: 'var(--color-text-secondary)' }}>
               Connect your Orca while holding
             </h2>
-            <svg width="60" height="52" viewBox="0 0 60 52" style={{ marginTop: '-8px' }}>
-              {/* Top circle - filled */}
-              <circle cx="30" cy="12" r="10" fill="var(--color-text-secondary)" stroke="var(--color-text-secondary)" strokeWidth="2" />
-              {/* Bottom-left circle - filled */}
-              <circle cx="12" cy="40" r="10" fill="var(--color-text-secondary)" stroke="var(--color-text-secondary)" strokeWidth="2" />
-              {/* Bottom-right circle - not filled */}
-              <circle cx="48" cy="40" r="10" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2" />
-            </svg>
+            <ButtonChordGlyph
+              filled={['top', 'left']}
+              style={{ marginTop: '-8px' }}
+              ariaLabel="Connect chord"
+            />
             <button className="primary" onClick={() => void connect()} disabled={state.busy}>
               {state.busy ? 'Connecting...' : 'Connect'}
             </button>

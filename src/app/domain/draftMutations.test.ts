@@ -5,19 +5,19 @@ import {
   DIGITAL_INPUTS,
   DPAD_MODIFIER_VIRTUAL_DEST,
   DPAD_UP_VIRTUAL_DEST,
-  LT_LIGHT_VIRTUAL_DEST,
-  RT_LIGHT_VIRTUAL_DEST,
   ORCA_ANALOG_MAPPING_DISABLED,
   ORCA_DUMMY_FIELD,
   isLockedDigitalDestination,
 } from '../../schema/orcaMappings';
-import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT } from '../../schema/triggerPolicyFlags';
+import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT, TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP } from '../../schema/triggerPolicyFlags';
 import {
   applyImportedProfileToDraft,
   clearAllBindingsInDraft,
   getDefaultAnalogMapping,
   getDefaultDigitalMapping,
   getGp2040AnalogTriggerRouting,
+  normalizeGp2040DraftTriggerPolicy,
+  normalizeGp2040TriggerPolicy,
   renameProfileInDraft,
   resetToDefaultBindingsInDraft,
   setAnalogMappingInDraft,
@@ -146,27 +146,6 @@ describe('setDigitalMappingInDraft', () => {
     expect(updated.dpadLayer[0]?.enable.index).toBe(0);
     expect(updated.digitalMappings[0]?.[0]).toBe(0);
   });
-
-  it('sets GP2040 LT light source via virtual destination', () => {
-    const draft = makeDraft();
-    const defaultDigitalMapping = getDefaultDigitalMapping('orca');
-    const updated = setDigitalMappingInDraft(draft, { dest: LT_LIGHT_VIRTUAL_DEST, src: 2, defaultDigitalMapping });
-    expect(updated.triggerPolicy[0]?.digitalLightSrcVersion).toBe(1);
-    expect(updated.triggerPolicy[0]?.digitalLightLtSrc).toBe(2);
-    expect(updated.triggerPolicy[0]?.digitalLightRtSrc).toBe(ORCA_DUMMY_FIELD);
-    expect(updated.digitalMappings[0]?.[2]).toBe(ORCA_DUMMY_FIELD);
-  });
-
-  it('sets GP2040 RT light source via virtual destination and preserves LT', () => {
-    const draft = makeDraft();
-    draft.triggerPolicy[0] = { ...makeTriggerPolicy(), digitalLightSrcVersion: 1, digitalLightLtSrc: 1, digitalLightRtSrc: 2 };
-    const defaultDigitalMapping = getDefaultDigitalMapping('orca');
-    const updated = setDigitalMappingInDraft(draft, { dest: RT_LIGHT_VIRTUAL_DEST, src: 3, defaultDigitalMapping });
-    expect(updated.triggerPolicy[0]?.digitalLightSrcVersion).toBe(1);
-    expect(updated.triggerPolicy[0]?.digitalLightLtSrc).toBe(1);
-    expect(updated.triggerPolicy[0]?.digitalLightRtSrc).toBe(3);
-    expect(updated.digitalMappings[0]?.[3]).toBe(ORCA_DUMMY_FIELD);
-  });
 });
 
 describe('setAnalogMappingInDraft', () => {
@@ -244,6 +223,76 @@ describe('applyImportedProfileToDraft', () => {
     expect(updated.digitalMappings[1]).toEqual(imported.digitalMapping);
     expect(updated.triggerPolicy[1]?.flags).toBe(1);
     expect(updated.profileLabels[0]).toBe('Profile 1');
+  });
+
+  it('normalizes GP2040 trigger policy while importing', () => {
+    const draft = makeDraft();
+    const imported = {
+      type: 'orca-profile',
+      version: 2,
+      mode: 'gp2040',
+      label: 'GP2040 Imported',
+      digitalMapping: Array.from({ length: DIGITAL_INPUTS.length }, () => 0),
+      analogMapping: Array.from({ length: ANALOG_INPUTS.length }, () => 0),
+      dpadLayer: makeDpadLayer(),
+      triggerPolicy: {
+        ...makeTriggerPolicy(TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP),
+        digitalLightLtSrc: 2,
+        digitalLightRtSrc: 3,
+        digitalLightSrcVersion: 0,
+      },
+      stickCurveParams: makeStickParams(),
+    } as const;
+
+    const updated = applyImportedProfileToDraft(draft, 0, imported);
+    expect(updated.triggerPolicy[0]?.flags & TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP).toBe(0);
+    expect(updated.triggerPolicy[0]?.digitalLightLtSrc).toBe(ORCA_DUMMY_FIELD);
+    expect(updated.triggerPolicy[0]?.digitalLightRtSrc).toBe(ORCA_DUMMY_FIELD);
+    expect(updated.triggerPolicy[0]?.digitalLightSrcVersion).toBe(1);
+  });
+});
+
+describe('normalizeGp2040TriggerPolicy', () => {
+  it('clears clamp flag and resets light source fields', () => {
+    const policy = {
+      ...makeTriggerPolicy(TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP),
+      digitalLightLtSrc: 5,
+      digitalLightRtSrc: 6,
+      digitalLightSrcVersion: 0,
+    };
+    const normalized = normalizeGp2040TriggerPolicy(policy);
+    expect(normalized.flags & TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP).toBe(0);
+    expect(normalized.digitalLightLtSrc).toBe(ORCA_DUMMY_FIELD);
+    expect(normalized.digitalLightRtSrc).toBe(ORCA_DUMMY_FIELD);
+    expect(normalized.digitalLightSrcVersion).toBe(1);
+  });
+});
+
+describe('normalizeGp2040DraftTriggerPolicy', () => {
+  it('normalizes all profile trigger policies in draft', () => {
+    const draft = makeDraft(2);
+    draft.triggerPolicy[0] = {
+      ...makeTriggerPolicy(TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP),
+      digitalLightLtSrc: 7,
+      digitalLightRtSrc: 8,
+      digitalLightSrcVersion: 0,
+    };
+    draft.triggerPolicy[1] = {
+      ...makeTriggerPolicy(TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP),
+      digitalLightLtSrc: 9,
+      digitalLightRtSrc: 10,
+      digitalLightSrcVersion: 0,
+    };
+
+    const normalized = normalizeGp2040DraftTriggerPolicy(draft);
+    expect(normalized.triggerPolicy[0]?.flags & TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP).toBe(0);
+    expect(normalized.triggerPolicy[0]?.digitalLightLtSrc).toBe(ORCA_DUMMY_FIELD);
+    expect(normalized.triggerPolicy[0]?.digitalLightRtSrc).toBe(ORCA_DUMMY_FIELD);
+    expect(normalized.triggerPolicy[0]?.digitalLightSrcVersion).toBe(1);
+    expect(normalized.triggerPolicy[1]?.flags & TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP).toBe(0);
+    expect(normalized.triggerPolicy[1]?.digitalLightLtSrc).toBe(ORCA_DUMMY_FIELD);
+    expect(normalized.triggerPolicy[1]?.digitalLightRtSrc).toBe(ORCA_DUMMY_FIELD);
+    expect(normalized.triggerPolicy[1]?.digitalLightSrcVersion).toBe(1);
   });
 });
 

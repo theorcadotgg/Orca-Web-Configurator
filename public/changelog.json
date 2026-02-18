@@ -1,14 +1,14 @@
 {
   "latest": {
-    "configurator": "configurator-2026-01-28",
+    "configurator": "configurator-2026-02-18",
     "firmware": "firmware-2.5"
   },
   "entries": [
     {
-      "id": "configurator-2026-01-28",
+      "id": "configurator-2026-02-18",
       "kind": "configurator",
-      "version": "2026.01.28",
-      "date": "2026-01-28",
+      "version": "2026.02.18",
+      "date": "2026-02-18",
       "title": "Changelog",
       "related": {
         "firmwareId": "firmware-2.5"
@@ -20,7 +20,8 @@
             "Fix: Active profile is no longer set to the last profile selected when saving configuration.",
             "Feat: Add 1 button visualization to the configurator remapping page.",
             "Feat: Add “Firmware Update” button to reboot the controller into BOOTSEL/UF2 mode.",
-            "Feat: Add Samus C-Stick mode selector in the stick configuration settings."
+            "Feat: Add Samus C-Stick mode selector in the stick configuration settings.",
+            "Feat: Add GP2040 instructions."
           ]
         }
       ]
@@ -41,7 +42,8 @@
             "Feat: Add support for N64.",
             "Feat: Add BOOTSEL/UF2 reboot command for firmware updates from the configurator.",
             "Fix: Profiles are loaded correctly.",
-            "Feat: Add support for Samus C-Stick mode. Simultaneously pressing C-Up/Down and C-Left/Right will result in angled F-Smash inputs."
+            "Feat: Add support for Samus C-Stick mode. Simultaneously pressing C-Up/Down and C-Left/Right will result in angled F-Smash inputs.",
+            "Fix: GP2040: Fix trigger/shoulder button handling so they don't overlap under certain circumstances."
           ]
         }
       ]
