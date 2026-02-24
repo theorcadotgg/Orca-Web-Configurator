@@ -141,7 +141,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                 dzUpper, dzUpper, dzUpper, dzUpper, triggerDz,
             ];
         }
-        if (PRESETS[preset][mode].circleCoords) {
+        if (preset === 'rivals2' && 'circleCoords' in PRESETS.rivals2[mode] && PRESETS.rivals2[mode].circleCoords) {
             updated.stickCurveParams[activeProfile]!.flags |= STICK_CURVE_FLAG_CIRCLE_COORDS;
         } else {
             updated.stickCurveParams[activeProfile]!.flags &= ~STICK_CURVE_FLAG_CIRCLE_COORDS;
