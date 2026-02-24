@@ -26,8 +26,9 @@ const PRESETS = {
             notch: 50,      // 50/128 ≈ 0.3906
         },
         gp2040: {
-            magnitude: 125, // 125/128 ≈ 0.9766
-            notch: 65,      // 65/128 ≈ 0.5078
+            magnitude: 125,
+            notch: 55,
+            circleCoords: false,
         },
     },
 } as const;
@@ -139,6 +140,11 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
             updated.stickCurveParams[activeProfile]!.dz_upper = [
                 dzUpper, dzUpper, dzUpper, dzUpper, triggerDz,
             ];
+        }
+        if (PRESETS[preset][mode].circleCoords) {
+            updated.stickCurveParams[activeProfile]!.flags |= STICK_CURVE_FLAG_CIRCLE_COORDS;
+        } else {
+            updated.stickCurveParams[activeProfile]!.flags &= ~STICK_CURVE_FLAG_CIRCLE_COORDS;
         }
 
         onChange(updated);
