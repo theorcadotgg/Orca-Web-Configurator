@@ -26,7 +26,7 @@ const PRESETS = {
             notch: 50,      // 50/128 ≈ 0.3906
         },
         gp2040: {
-            magnitude: 125,
+            magnitude: 128,
             notch: 55,
             circleCoords: false,
         },
