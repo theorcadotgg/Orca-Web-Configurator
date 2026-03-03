@@ -27,7 +27,7 @@ const PRESETS = {
         },
         gp2040: {
             magnitude: 128,
-            notch: 55,
+            notch: 60,
             circleCoords: false,
         },
     },
