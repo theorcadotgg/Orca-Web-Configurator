@@ -3,6 +3,9 @@ import { ORCA_CONFIG_LOCKED_BUTTON_POWER } from '@shared/orca_config_idl_generat
 import {
     DIGITAL_INPUTS,
     ANALOG_INPUTS,
+    GP2040_EXTRA_VIRTUAL_DESTINATIONS,
+    GP2040_L3_VIRTUAL_DEST,
+    GP2040_R3_VIRTUAL_DEST,
     digitalInputLabel,
     analogInputLabel,
     isLockedDigitalDestination,
@@ -16,7 +19,7 @@ import {
     DPAD_VIRTUAL_DESTINATIONS,
 } from '../../schema/orcaMappings';
 import { getGp2040DestinationLabelSet, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
-import type { TriggerPolicyV1 } from '../../schema/settingsBlob';
+import type { Gp2040ExtraMappingsV1, TriggerPolicyV1 } from '../../schema/settingsBlob';
 import type { OrcaInputState, OrcaTransport } from '../../usb/OrcaTransport';
 import { tryParseRangeCalibration, type RangeCalibration } from '../../inputPreview/orcaInputPreview';
 
@@ -114,6 +117,7 @@ interface Props {
     destinationLabelMode?: 'orca' | 'gp2040';
     gp2040LabelPreset?: Gp2040LabelPreset;
     gp2040AnalogTriggerRouting?: 'lt' | 'rt'; // Read-only, derived from trigger policy
+    gp2040ExtraMappings?: Gp2040ExtraMappingsV1;
     triggerPolicy?: TriggerPolicyV1;
     dpadLayer?: {
         mode_up: number;
@@ -149,6 +153,7 @@ export function ControllerVisualizer({
     destinationLabelMode = 'orca',
     gp2040LabelPreset,
     gp2040AnalogTriggerRouting = 'rt',
+    gp2040ExtraMappings,
     triggerPolicy,
     dpadLayer,
     onDigitalMappingChange,
@@ -222,6 +227,10 @@ export function ControllerVisualizer({
     const analogButtons = ANALOG_BUTTONS;
     const gp2040LabelSet = useMemo(() => getGp2040DestinationLabelSet(gp2040LabelPreset), [gp2040LabelPreset]);
     const DEFAULT_DPAD_MODIFIER_SRC = 11;
+    const effectiveGp2040ExtraMappings = useMemo(
+        () => gp2040ExtraMappings ?? { l3Src: ORCA_DUMMY_FIELD, r3Src: ORCA_DUMMY_FIELD },
+        [gp2040ExtraMappings],
+    );
 
     // Helper to get trigger labels based on preset
     const getGp2040TriggerLabels = useMemo(() => {
@@ -269,8 +278,14 @@ export function ControllerVisualizer({
             if (src === ORCA_DUMMY_FIELD) continue;
             if (src >= 0 && src < out.length) out[src] = dest;
         }
+        if (effectiveGp2040ExtraMappings.l3Src >= 0 && effectiveGp2040ExtraMappings.l3Src < out.length && effectiveGp2040ExtraMappings.l3Src !== ORCA_DUMMY_FIELD) {
+            out[effectiveGp2040ExtraMappings.l3Src] = GP2040_L3_VIRTUAL_DEST;
+        }
+        if (effectiveGp2040ExtraMappings.r3Src >= 0 && effectiveGp2040ExtraMappings.r3Src < out.length && effectiveGp2040ExtraMappings.r3Src !== ORCA_DUMMY_FIELD) {
+            out[effectiveGp2040ExtraMappings.r3Src] = GP2040_R3_VIRTUAL_DEST;
+        }
         return out;
-    }, [effectiveDigitalMapping]);
+    }, [effectiveDigitalMapping, effectiveGp2040ExtraMappings]);
 
     const analogDestBySrc = useMemo(() => {
         const out: Array<number | undefined> = Array.from({ length: ANALOG_INPUTS.length }, () => undefined);
@@ -305,7 +320,9 @@ export function ControllerVisualizer({
     const digitalDestinationOptions = useMemo(() => {
         const base = DIGITAL_INPUTS.filter((d) => !isLockedDigitalDestination(d.id) && !d.isDummy).sort((a, b) => a.id - b.id);
         // Add DPAD virtual destinations.
-        const withVirtual = [...base, ...DPAD_VIRTUAL_DESTINATIONS];
+        const withVirtual = destinationLabelMode === 'gp2040'
+            ? [...base, ...GP2040_EXTRA_VIRTUAL_DESTINATIONS, ...DPAD_VIRTUAL_DESTINATIONS]
+            : [...base, ...DPAD_VIRTUAL_DESTINATIONS];
         if (destinationLabelMode !== 'gp2040') return withVirtual;
         return withVirtual.map((opt) => {
             const overlay = gp2040LabelSet.digital[opt.id];

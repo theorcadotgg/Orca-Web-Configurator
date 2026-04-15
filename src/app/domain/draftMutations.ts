@@ -3,6 +3,8 @@ import type { OrcaProfileFileV1, ProfileMode } from '../../schema/profileFile';
 import {
   ANALOG_INPUTS,
   DIGITAL_INPUTS,
+  GP2040_L3_VIRTUAL_DEST,
+  GP2040_R3_VIRTUAL_DEST,
   DPAD_MODIFIER_VIRTUAL_DEST,
   DPAD_DOWN_VIRTUAL_DEST,
   DPAD_LEFT_VIRTUAL_DEST,
@@ -23,6 +25,38 @@ const ORCA_C_UP_SRC = 9;
 const ORCA_C_DOWN_SRC = 10;
 const ANALOG_TRIGGER_L_VIRTUAL_ID = 254;
 const TRIGGER_POLICY_LIGHT_SRC_VERSION = 1;
+
+function getDefaultGp2040ExtraMappings() {
+  return { l3Src: ORCA_DUMMY_FIELD, r3Src: ORCA_DUMMY_FIELD };
+}
+
+function getCurrentPrimarySource(
+  dest: number,
+  currentMapping: number[],
+  defaultDigitalMapping: number[],
+  extra: { l3Src: number; r3Src: number },
+): number {
+  if (dest === GP2040_L3_VIRTUAL_DEST) return extra.l3Src;
+  if (dest === GP2040_R3_VIRTUAL_DEST) return extra.r3Src;
+  return currentMapping[dest] ?? defaultDigitalMapping[dest] ?? dest;
+}
+
+function setPrimarySource(
+  dest: number,
+  src: number,
+  currentMapping: number[],
+  extra: { l3Src: number; r3Src: number },
+) {
+  if (dest === GP2040_L3_VIRTUAL_DEST) {
+    extra.l3Src = src;
+    return;
+  }
+  if (dest === GP2040_R3_VIRTUAL_DEST) {
+    extra.r3Src = src;
+    return;
+  }
+  currentMapping[dest] = src;
+}
 
 export function normalizeGp2040TriggerPolicy<T extends { flags: number; digitalLightLtSrc: number; digitalLightRtSrc: number; digitalLightSrcVersion: number }>(
   policy: T,
@@ -107,6 +141,7 @@ export function moveProfileToFirstSlot(draft: SettingsDraft, profileIndex: numbe
   swap(updated.profileLabels, 0, profileIndex);
   swap(updated.digitalMappings, 0, profileIndex);
   swap(updated.analogMappings, 0, profileIndex);
+  swap(updated.gp2040ExtraMappings, 0, profileIndex);
   swap(updated.dpadLayer, 0, profileIndex);
   swap(updated.triggerPolicy, 0, profileIndex);
   swap(updated.stickCurveParams, 0, profileIndex);
@@ -133,6 +168,7 @@ export function applyImportedProfileToDraft(
   updated.profileLabels[profileIndex] = imported.label.trim() || `Profile ${profileIndex + 1}`;
   updated.digitalMappings[profileIndex] = imported.digitalMapping;
   updated.analogMappings[profileIndex] = imported.analogMapping;
+  updated.gp2040ExtraMappings[profileIndex] = imported.gp2040ExtraMappings;
   updated.dpadLayer[profileIndex] = imported.dpadLayer;
   updated.triggerPolicy[profileIndex] = imported.mode === 'gp2040'
     ? normalizeGp2040TriggerPolicy(imported.triggerPolicy)
@@ -151,6 +187,61 @@ export function setDigitalMappingInDraft(
 
   const digital = (index: number) => ({ type: 1, index, threshold: 0, hysteresis: 0 });
   const defaultCStickMode = 1;
+  updated.digitalMappings[activeProfile] = [...(updated.digitalMappings[activeProfile] ?? [])];
+  const currentMapping = updated.digitalMappings[activeProfile]!;
+  updated.gp2040ExtraMappings[activeProfile] = {
+    ...(updated.gp2040ExtraMappings[activeProfile] ?? getDefaultGp2040ExtraMappings()),
+  };
+  const extraMappings = updated.gp2040ExtraMappings[activeProfile]!;
+
+  const restoreDpadDirection = (direction: 'up' | 'down' | 'left' | 'right') => {
+    if (!updated.dpadLayer[activeProfile]) return;
+    if (direction === 'up') {
+      updated.dpadLayer[activeProfile]!.mode_up = defaultCStickMode;
+      updated.dpadLayer[activeProfile]!.up = digital(ORCA_C_UP_SRC);
+    } else if (direction === 'down') {
+      updated.dpadLayer[activeProfile]!.mode_down = defaultCStickMode;
+      updated.dpadLayer[activeProfile]!.down = digital(ORCA_C_DOWN_SRC);
+    } else if (direction === 'left') {
+      updated.dpadLayer[activeProfile]!.mode_left = defaultCStickMode;
+      updated.dpadLayer[activeProfile]!.left = digital(ORCA_C_LEFT_SRC);
+    } else if (direction === 'right') {
+      updated.dpadLayer[activeProfile]!.mode_right = defaultCStickMode;
+      updated.dpadLayer[activeProfile]!.right = digital(ORCA_C_RIGHT_SRC);
+    }
+  };
+
+  const clearDpadSourceConflicts = (source: number) => {
+    if (source === ORCA_DUMMY_FIELD) return;
+    const layer = updated.dpadLayer[activeProfile] ?? updated.dpadLayer[0];
+    if (!layer) return;
+    if (layer.up.type === 1 && layer.up.index === source) restoreDpadDirection('up');
+    if (layer.down.type === 1 && layer.down.index === source) restoreDpadDirection('down');
+    if (layer.left.type === 1 && layer.left.index === source) restoreDpadDirection('left');
+    if (layer.right.type === 1 && layer.right.index === source) restoreDpadDirection('right');
+    updated.dpadLayer[activeProfile] = layer;
+  };
+
+  const resolvePrimaryConflicts = (targetDest: number, replacementSrc: number, source: number) => {
+    if (source === ORCA_DUMMY_FIELD) return;
+    let replacementAvailable = replacementSrc !== ORCA_DUMMY_FIELD;
+    const primaryDests = [
+      ...Array.from({ length: DIGITAL_INPUTS.length }, (_, i) => i).filter((i) => !isLockedDigitalDestination(i)),
+      GP2040_L3_VIRTUAL_DEST,
+      GP2040_R3_VIRTUAL_DEST,
+    ];
+    for (const otherDest of primaryDests) {
+      if (otherDest === targetDest) continue;
+      const otherSrc = getCurrentPrimarySource(otherDest, currentMapping, defaultDigitalMapping, extraMappings);
+      if (otherSrc !== source) continue;
+      if (replacementAvailable) {
+        setPrimarySource(otherDest, replacementSrc, currentMapping, extraMappings);
+        replacementAvailable = false;
+      } else {
+        setPrimarySource(otherDest, ORCA_DUMMY_FIELD, currentMapping, extraMappings);
+      }
+    }
+  };
 
   // Virtual DPAD modifier destination (handled via DPAD Layer enable).
   if (dest === DPAD_MODIFIER_VIRTUAL_DEST) {
@@ -169,35 +260,33 @@ export function setDigitalMappingInDraft(
     // Selecting a DPAD virtual destination from the per-button dropdown implies a repurpose binding:
     // set the direction to "Always on" and disable the source button's normal output mapping.
     const boundMode = 2;
+    clearDpadSourceConflicts(src);
+    resolvePrimaryConflicts(dest, ORCA_DUMMY_FIELD, src);
 
     if (dest === DPAD_UP_VIRTUAL_DEST) {
       if (src === ORCA_DUMMY_FIELD) {
-        layer.mode_up = defaultCStickMode;
-        layer.up = digital(ORCA_C_UP_SRC);
+        restoreDpadDirection('up');
       } else {
         layer.mode_up = boundMode;
         layer.up = digital(src);
       }
     } else if (dest === DPAD_DOWN_VIRTUAL_DEST) {
       if (src === ORCA_DUMMY_FIELD) {
-        layer.mode_down = defaultCStickMode;
-        layer.down = digital(ORCA_C_DOWN_SRC);
+        restoreDpadDirection('down');
       } else {
         layer.mode_down = boundMode;
         layer.down = digital(src);
       }
     } else if (dest === DPAD_LEFT_VIRTUAL_DEST) {
       if (src === ORCA_DUMMY_FIELD) {
-        layer.mode_left = defaultCStickMode;
-        layer.left = digital(ORCA_C_LEFT_SRC);
+        restoreDpadDirection('left');
       } else {
         layer.mode_left = boundMode;
         layer.left = digital(src);
       }
     } else if (dest === DPAD_RIGHT_VIRTUAL_DEST) {
       if (src === ORCA_DUMMY_FIELD) {
-        layer.mode_right = defaultCStickMode;
-        layer.right = digital(ORCA_C_RIGHT_SRC);
+        restoreDpadDirection('right');
       } else {
         layer.mode_right = boundMode;
         layer.right = digital(src);
@@ -205,70 +294,19 @@ export function setDigitalMappingInDraft(
     }
 
     updated.dpadLayer[activeProfile] = layer;
-
-    // Repurpose behavior: disable the source button's normal output mapping.
-    if (src !== ORCA_DUMMY_FIELD) {
-      updated.digitalMappings[activeProfile] = [...(updated.digitalMappings[activeProfile] ?? [])];
-      const currentMapping = updated.digitalMappings[activeProfile]!;
-      for (let i = 0; i < currentMapping.length; i++) {
-        const mappedSrc = currentMapping[i] ?? defaultDigitalMapping[i] ?? i;
-        if (mappedSrc === src && !isLockedDigitalDestination(i)) {
-          currentMapping[i] = ORCA_DUMMY_FIELD;
-          break;
-        }
-      }
-    }
-
     return updated;
   }
 
-  // Normal digital mapping logic
-
-  // If this source was being used for any DPAD direction, restore those directions to the default C-stick bindings.
-  {
-    const layer = updated.dpadLayer[activeProfile] ?? updated.dpadLayer[0];
-    if (layer && src !== ORCA_DUMMY_FIELD) {
-      const isSrc = (s: { type: number; index: number } | undefined) => s?.type === 1 && s.index === src;
-      if (isSrc(layer.up)) {
-        layer.mode_up = defaultCStickMode;
-        layer.up = digital(ORCA_C_UP_SRC);
-      }
-      if (isSrc(layer.down)) {
-        layer.mode_down = defaultCStickMode;
-        layer.down = digital(ORCA_C_DOWN_SRC);
-      }
-      if (isSrc(layer.left)) {
-        layer.mode_left = defaultCStickMode;
-        layer.left = digital(ORCA_C_LEFT_SRC);
-      }
-      if (isSrc(layer.right)) {
-        layer.mode_right = defaultCStickMode;
-        layer.right = digital(ORCA_C_RIGHT_SRC);
-      }
-      updated.dpadLayer[activeProfile] = layer;
-    }
-  }
-
-  updated.digitalMappings[activeProfile] = [...(updated.digitalMappings[activeProfile] ?? [])];
-  const currentMapping = updated.digitalMappings[activeProfile]!;
-  const currentSrc = currentMapping[dest] ?? defaultDigitalMapping[dest] ?? dest;
+  const currentSrc = getCurrentPrimarySource(dest, currentMapping, defaultDigitalMapping, extraMappings);
 
   if (src === ORCA_DUMMY_FIELD) {
-    currentMapping[dest] = src;
+    setPrimarySource(dest, src, currentMapping, extraMappings);
     return updated;
   }
 
-  const numSlots = Math.max(currentMapping.length, defaultDigitalMapping.length, DIGITAL_INPUTS.length);
-  for (let otherDest = 0; otherDest < numSlots; otherDest++) {
-    if (otherDest === dest) continue;
-    if (isLockedDigitalDestination(otherDest)) continue;
-    const otherSrc = currentMapping[otherDest] ?? defaultDigitalMapping[otherDest] ?? otherDest;
-    if (otherSrc === src) {
-      currentMapping[otherDest] = currentSrc;
-      break;
-    }
-  }
-  currentMapping[dest] = src;
+  clearDpadSourceConflicts(src);
+  resolvePrimaryConflicts(dest, currentSrc, src);
+  setPrimarySource(dest, src, currentMapping, extraMappings);
   return updated;
 }
 
@@ -332,6 +370,7 @@ export function clearAllBindingsInDraft(draft: SettingsDraft): SettingsDraft {
     isLockedDigitalDestination(dest) ? dest : ORCA_DUMMY_FIELD
   );
   updated.analogMappings[activeProfile] = analogMapping.map(() => ORCA_ANALOG_MAPPING_DISABLED);
+  updated.gp2040ExtraMappings[activeProfile] = getDefaultGp2040ExtraMappings();
 
   // Clear DPAD layer values to Dummy (disabled) for all directions
   const dpadLayer = updated.dpadLayer[activeProfile];
@@ -355,5 +394,6 @@ export function resetToDefaultBindingsInDraft(
   const updated = cloneDraft(draft);
   updated.digitalMappings[activeProfile] = [...defaultDigitalMapping];
   updated.analogMappings[activeProfile] = [...defaultAnalogMapping];
+  updated.gp2040ExtraMappings[activeProfile] = getDefaultGp2040ExtraMappings();
   return updated;
 }

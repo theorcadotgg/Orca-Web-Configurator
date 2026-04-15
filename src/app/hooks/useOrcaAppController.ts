@@ -174,8 +174,13 @@ export function useOrcaAppController(): OrcaAppController {
       const cur = analogMapping[dest] ?? def;
       if (cur !== def) count++;
     }
+    if (state.configMode === 'gp2040') {
+      const extra = draft?.gp2040ExtraMappings[activeProfile];
+      if ((extra?.l3Src ?? 0xff) !== 0xff) count++;
+      if ((extra?.r3Src ?? 0xff) !== 0xff) count++;
+    }
     return count;
-  }, [analogMapping, defaultAnalogMapping, defaultDigitalMapping, digitalMapping]);
+  }, [activeProfile, analogMapping, defaultAnalogMapping, defaultDigitalMapping, digitalMapping, draft, state.configMode]);
 
   const resetConnection = useCallback((patch?: Partial<OrcaAppState>) => {
     dispatch({
@@ -791,11 +796,12 @@ export function useOrcaAppController(): OrcaAppController {
     const label = draft.profileLabels[activeProfile]?.trim() || `Profile ${activeProfile + 1}`;
     const digitalMapping = draft.digitalMappings[activeProfile];
     const analogMapping = draft.analogMappings[activeProfile];
+    const gp2040ExtraMappings = draft.gp2040ExtraMappings[activeProfile];
     const dpadLayer = draft.dpadLayer[activeProfile];
     const triggerPolicy = draft.triggerPolicy[activeProfile];
     const stickCurveParams = draft.stickCurveParams[activeProfile];
 
-    if (!digitalMapping || !analogMapping || !dpadLayer || !triggerPolicy || !stickCurveParams) {
+    if (!digitalMapping || !analogMapping || !gp2040ExtraMappings || !dpadLayer || !triggerPolicy || !stickCurveParams) {
       dispatch({ type: 'patch', patch: { lastError: 'Cannot export profile: missing profile data.' } });
       return;
     }
@@ -807,6 +813,7 @@ export function useOrcaAppController(): OrcaAppController {
       label,
       digitalMapping: [...digitalMapping],
       analogMapping: [...analogMapping],
+      gp2040ExtraMappings: { ...gp2040ExtraMappings },
       dpadLayer,
       triggerPolicy: configMode === 'gp2040' ? normalizeGp2040TriggerPolicy(triggerPolicy) : triggerPolicy,
       stickCurveParams,

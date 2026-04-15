@@ -6,6 +6,7 @@ export function cloneDraft(draft: SettingsDraft): SettingsDraft {
     profileLabels: [...draft.profileLabels],
     digitalMappings: draft.digitalMappings.map((m) => [...m]),
     analogMappings: draft.analogMappings.map((m) => [...m]),
+    gp2040ExtraMappings: draft.gp2040ExtraMappings.map((m) => ({ ...m })),
     dpadLayer: draft.dpadLayer.map((layer) => ({
       ...layer,
       enable: { ...layer.enable },
@@ -24,4 +25,3 @@ export function cloneDraft(draft: SettingsDraft): SettingsDraft {
     })),
   };
 }
-

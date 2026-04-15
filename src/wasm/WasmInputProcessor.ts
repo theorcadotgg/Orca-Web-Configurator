@@ -28,6 +28,7 @@ export interface OrcaInputWasmModule {
   _wasm_alloc_stick_curve_params(): number;
   _wasm_alloc_trigger_policy(): number;
   _wasm_alloc_dpad_layer(): number;
+  _wasm_alloc_gp2040_extra_mappings(): number;
 
   // Raw input setters
   _wasm_set_raw_digital(raw: number, digitalMask: number): void;
@@ -47,6 +48,7 @@ export interface OrcaInputWasmModule {
     flags: number
   ): void;
   _wasm_set_trigger_light_sources(policy: number, ltSrc: number, rtSrc: number): void;
+  _wasm_set_gp2040_extra_mappings(extra: number, l3Src: number, r3Src: number): void;
 
   // DPAD layer setters
   _wasm_set_dpad_mode(dpad: number, mode: number): void;
@@ -68,6 +70,7 @@ export interface OrcaInputWasmModule {
     digitalMapping: number,
     curve: number,
     trigger: number,
+    extra: number,
     dpad: number,
     out: number
   ): void;
@@ -79,6 +82,7 @@ export interface OrcaInputWasmModule {
     digitalMapping: number,
     curve: number,
     trigger: number,
+    extra: number,
     dpad: number,
     out: number
   ): void;
@@ -211,6 +215,11 @@ export interface TriggerPolicyInput {
   digitalLightRtSrc?: number;
 }
 
+export interface Gp2040ExtraMappingsInput {
+  l3Src: number;
+  r3Src: number;
+}
+
 /** Digital source input */
 export interface DigitalSourceInput {
   type: DigitalSourceType;
@@ -270,6 +279,7 @@ export class WasmInputProcessor {
   private rangeCalPtr: number = 0;
   private curveParamsPtr: number = 0;
   private triggerPolicyPtr: number = 0;
+  private gp2040ExtraMappingsPtr: number = 0;
   private dpadLayerPtr: number = 0;
   private analogMappingPtr: number = 0;
   private digitalMappingPtr: number = 0;
@@ -295,6 +305,7 @@ export class WasmInputProcessor {
     this.rangeCalPtr = mod._wasm_alloc_range_calibration();
     this.curveParamsPtr = mod._wasm_alloc_stick_curve_params();
     this.triggerPolicyPtr = mod._wasm_alloc_trigger_policy();
+    this.gp2040ExtraMappingsPtr = mod._wasm_alloc_gp2040_extra_mappings();
     this.dpadLayerPtr = mod._wasm_alloc_dpad_layer();
 
     // Allocate mapping arrays
@@ -332,6 +343,7 @@ export class WasmInputProcessor {
     if (this.rangeCalPtr) this.module._wasm_free(this.rangeCalPtr);
     if (this.curveParamsPtr) this.module._wasm_free(this.curveParamsPtr);
     if (this.triggerPolicyPtr) this.module._wasm_free(this.triggerPolicyPtr);
+    if (this.gp2040ExtraMappingsPtr) this.module._wasm_free(this.gp2040ExtraMappingsPtr);
     if (this.dpadLayerPtr) this.module._wasm_free(this.dpadLayerPtr);
     if (this.analogMappingPtr) this.module._wasm_free(this.analogMappingPtr);
     if (this.digitalMappingPtr) this.module._wasm_free(this.digitalMappingPtr);
@@ -343,6 +355,7 @@ export class WasmInputProcessor {
     this.rangeCalPtr = 0;
     this.curveParamsPtr = 0;
     this.triggerPolicyPtr = 0;
+    this.gp2040ExtraMappingsPtr = 0;
     this.dpadLayerPtr = 0;
     this.analogMappingPtr = 0;
     this.digitalMappingPtr = 0;
@@ -488,6 +501,16 @@ export class WasmInputProcessor {
     setSource(4, dpad.right);
   }
 
+  setGp2040ExtraMappings(mappings: Gp2040ExtraMappingsInput | null): void {
+    if (!this.module) return;
+
+    this.module._wasm_set_gp2040_extra_mappings(
+      this.gp2040ExtraMappingsPtr,
+      mappings?.l3Src ?? UnifiedDigitalIndex.DUMMY_FIELD,
+      mappings?.r3Src ?? UnifiedDigitalIndex.DUMMY_FIELD
+    );
+  }
+
   /**
    * Set analog mapping.
    */
@@ -526,6 +549,7 @@ export class WasmInputProcessor {
       this.digitalMappingPtr,
       this.curveParamsPtr,
       this.triggerPolicyPtr,
+      this.gp2040ExtraMappingsPtr,
       this.dpadLayerPtr,
       this.outputStatePtr
     );
@@ -549,6 +573,7 @@ export class WasmInputProcessor {
       this.digitalMappingPtr,
       this.curveParamsPtr,
       this.triggerPolicyPtr,
+      this.gp2040ExtraMappingsPtr,
       this.dpadLayerPtr,
       this.outputStatePtr
     );

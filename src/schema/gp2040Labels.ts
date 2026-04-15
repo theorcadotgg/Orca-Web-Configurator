@@ -1,3 +1,5 @@
+import { GP2040_L3_VIRTUAL_DEST, GP2040_R3_VIRTUAL_DEST } from './orcaMappings';
+
 export type Gp2040LabelPair = {
   label: string;
   shortLabel: string;
@@ -29,6 +31,8 @@ export const GP2040_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
   13: { label: 'S1', shortLabel: 'S1' }, // ORCA_WISDOM_BUTTON
   14: { label: 'System', shortLabel: 'SYS' }, // ORCA_COURAGE_BUTTON (reserved/locked)
   15: { label: 'S2', shortLabel: 'S2' }, // ORCA_POWER_BUTTON
+  [GP2040_L3_VIRTUAL_DEST]: { label: 'L3', shortLabel: 'L3' },
+  [GP2040_R3_VIRTUAL_DEST]: { label: 'R3', shortLabel: 'R3' },
 };
 
 export const GP2040_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
@@ -56,6 +60,8 @@ export const XBOX_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
   13: { label: 'View', shortLabel: 'View' }, // ORCA_WISDOM_BUTTON
   14: { label: 'System', shortLabel: 'SYS' }, // ORCA_COURAGE_BUTTON (reserved/locked)
   15: { label: 'Menu', shortLabel: 'Menu' }, // ORCA_POWER_BUTTON
+  [GP2040_L3_VIRTUAL_DEST]: { label: 'LS', shortLabel: 'LS' },
+  [GP2040_R3_VIRTUAL_DEST]: { label: 'RS', shortLabel: 'RS' },
 };
 
 export const XBOX_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
@@ -83,6 +89,8 @@ export const SWITCH_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = {
   13: { label: '−', shortLabel: '−' }, // ORCA_WISDOM_BUTTON
   14: { label: 'System', shortLabel: 'SYS' }, // ORCA_COURAGE_BUTTON (reserved/locked)
   15: { label: '+', shortLabel: '+' }, // ORCA_POWER_BUTTON
+  [GP2040_L3_VIRTUAL_DEST]: { label: 'LS', shortLabel: 'LS' },
+  [GP2040_R3_VIRTUAL_DEST]: { label: 'RS', shortLabel: 'RS' },
 };
 
 export const SWITCH_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {
@@ -110,6 +118,8 @@ export const PLAYSTATION_DIGITAL_DEST_LABELS: Record<number, Gp2040LabelPair> = 
   13: { label: 'Share', shortLabel: 'Share' }, // ORCA_WISDOM_BUTTON
   14: { label: 'System', shortLabel: 'SYS' }, // ORCA_COURAGE_BUTTON (reserved/locked)
   15: { label: 'Options', shortLabel: 'Opt' }, // ORCA_POWER_BUTTON
+  [GP2040_L3_VIRTUAL_DEST]: { label: 'L3', shortLabel: 'L3' },
+  [GP2040_R3_VIRTUAL_DEST]: { label: 'R3', shortLabel: 'R3' },
 };
 
 export const PLAYSTATION_ANALOG_DEST_LABELS: Record<number, Gp2040LabelPair> = {

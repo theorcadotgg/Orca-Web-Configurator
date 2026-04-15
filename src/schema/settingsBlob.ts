@@ -71,6 +71,11 @@ export type TriggerPolicyV1 = {
   digitalLightSrcVersion: number;
 };
 
+export type Gp2040ExtraMappingsV1 = {
+  l3Src: number;
+  r3Src: number;
+};
+
 export type StickCurveParamsV1 = {
   size: number;
   range: number[];      // [5] - full press magnitude per axis (normalized 0-1.2)
@@ -91,6 +96,7 @@ export type SettingsDraft = {
   profileLabels: string[];
   digitalMappings: number[][];
   analogMappings: number[][];
+  gp2040ExtraMappings: Gp2040ExtraMappingsV1[];
   dpadLayer: DpadLayerV1[];
   triggerPolicy: TriggerPolicyV1[];
   stickCurveParams: StickCurveParamsV1[];
@@ -118,6 +124,19 @@ function readTlvData(blob: Uint8Array, tlv: TlvInfo, index: number): Uint8Array 
   const gotLen = readU16Le(blob, off + 2);
   if (gotType !== tlv.type || gotLen !== tlv.length) {
     throw new Error(`Bad TLV header (type=${tlv.type}, index=${index}, gotType=${gotType}, gotLen=${gotLen})`);
+  }
+  return blob.slice(off + 4, off + 4 + tlv.length);
+}
+
+function tryReadTlvData(blob: Uint8Array, tlv: TlvInfo, index: number): Uint8Array | null {
+  const off = tlvOffset(tlv, index);
+  if (off + 4 + tlv.length > blob.length) {
+    return null;
+  }
+  const gotType = readU16Le(blob, off);
+  const gotLen = readU16Le(blob, off + 2);
+  if (gotType !== tlv.type || gotLen !== tlv.length) {
+    return null;
   }
   return blob.slice(off + 4, off + 4 + tlv.length);
 }
@@ -205,6 +224,23 @@ function encodeTriggerPolicyV1(policy: TriggerPolicyV1): Uint8Array {
   out[13] = policy.digitalLightLtSrc & 0xff;
   out[14] = policy.digitalLightRtSrc & 0xff;
   out[15] = policy.digitalLightSrcVersion & 0xff;
+  return out;
+}
+
+function parseGp2040ExtraMappingsV1(data: Uint8Array): Gp2040ExtraMappingsV1 {
+  if (data.length !== OrcaSettingsTlv.Gp2040ExtraMappings.length) {
+    throw new Error('Bad Gp2040ExtraMappings length');
+  }
+  return {
+    l3Src: data[0] ?? 0,
+    r3Src: data[1] ?? 0,
+  };
+}
+
+function encodeGp2040ExtraMappingsV1(mappings: Gp2040ExtraMappingsV1): Uint8Array {
+  const out = new Uint8Array(OrcaSettingsTlv.Gp2040ExtraMappings.length);
+  out[0] = mappings.l3Src & 0xff;
+  out[1] = mappings.r3Src & 0xff;
   return out;
 }
 
@@ -319,6 +355,19 @@ export function parseSettingsBlob(blob: Uint8Array): ParsedSettings {
     analogMappings.push(Array.from(data));
   }
 
+  const gp2040ExtraMappings: Gp2040ExtraMappingsV1[] = [];
+  for (let i = 0; i < OrcaSettingsTlv.Gp2040ExtraMappings.count; i++) {
+    const data = tryReadTlvData(blob, OrcaSettingsTlv.Gp2040ExtraMappings satisfies TlvInfo, i);
+    if (data) {
+      gp2040ExtraMappings.push(parseGp2040ExtraMappingsV1(data));
+    } else {
+      gp2040ExtraMappings.push({
+        l3Src: OrcaSettingsTlv.DigitalMappings.length - 1,
+        r3Src: OrcaSettingsTlv.DigitalMappings.length - 1,
+      });
+    }
+  }
+
   const dpadLayer: DpadLayerV1[] = [];
   for (let i = 0; i < OrcaSettingsTlv.DpadLayer.count; i++) {
     const layer = parseDpadLayerV1(readTlvData(blob, OrcaSettingsTlv.DpadLayer satisfies TlvInfo, i));
@@ -346,6 +395,7 @@ export function parseSettingsBlob(blob: Uint8Array): ParsedSettings {
     profileLabels,
     digitalMappings,
     analogMappings,
+    gp2040ExtraMappings,
     dpadLayer,
     triggerPolicy,
     stickCurveParams,
@@ -382,6 +432,17 @@ export function buildSettingsBlob(baseBlob: Uint8Array, draft: SettingsDraft): U
       throw new Error(`Bad analog mapping length for profile ${i}`);
     }
     writeTlvData(out, OrcaSettingsTlv.AnalogMappings satisfies TlvInfo, i, Uint8Array.from(mapping.map((v) => v & 0xff)));
+  }
+
+  if (draft.gp2040ExtraMappings.length !== OrcaSettingsTlv.Gp2040ExtraMappings.count) {
+    throw new Error(`Bad GP2040 extra mappings length (want ${OrcaSettingsTlv.Gp2040ExtraMappings.count}, got ${draft.gp2040ExtraMappings.length})`);
+  }
+  for (let i = 0; i < OrcaSettingsTlv.Gp2040ExtraMappings.count; i++) {
+    const mappings = draft.gp2040ExtraMappings[i];
+    if (!mappings) {
+      throw new Error(`Missing GP2040 extra mappings for profile ${i}`);
+    }
+    writeTlvData(out, OrcaSettingsTlv.Gp2040ExtraMappings satisfies TlvInfo, i, encodeGp2040ExtraMappingsV1(mappings));
   }
 
   if (draft.dpadLayer.length !== OrcaSettingsTlv.DpadLayer.count) {

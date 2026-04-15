@@ -66,6 +66,8 @@ export const DIGITAL_INPUTS: DigitalInputDef[] = [
 ].map((d) => ({ ...d, lockedSystem: d.lockedSystem || isLockedSystemButton(d.id) }));
 
 // Virtual DPAD destination IDs (not real firmware destinations, handled specially in UI)
+export const GP2040_L3_VIRTUAL_DEST = 247;
+export const GP2040_R3_VIRTUAL_DEST = 248;
 export const LT_LIGHT_VIRTUAL_DEST = 249;
 export const RT_LIGHT_VIRTUAL_DEST = 250;
 export const DPAD_MODIFIER_VIRTUAL_DEST = 251;
@@ -74,10 +76,19 @@ export const DPAD_DOWN_VIRTUAL_DEST = 253;
 export const DPAD_LEFT_VIRTUAL_DEST = 254;
 export const DPAD_RIGHT_VIRTUAL_DEST = 255;
 
+export const GP2040_EXTRA_VIRTUAL_DESTINATIONS: DigitalInputDef[] = [
+  { id: GP2040_L3_VIRTUAL_DEST, key: 'GP2040_L3', label: 'L3', lockedSystem: false, isDummy: false },
+  { id: GP2040_R3_VIRTUAL_DEST, key: 'GP2040_R3', label: 'R3', lockedSystem: false, isDummy: false },
+];
+
 // Helper to check if a destination is a virtual DPAD button
 export function isVirtualDpadDestination(id: number): boolean {
   return id === DPAD_UP_VIRTUAL_DEST || id === DPAD_DOWN_VIRTUAL_DEST ||
     id === DPAD_LEFT_VIRTUAL_DEST || id === DPAD_RIGHT_VIRTUAL_DEST;
+}
+
+export function isGp2040ExtraVirtualDestination(id: number): boolean {
+  return id === GP2040_L3_VIRTUAL_DEST || id === GP2040_R3_VIRTUAL_DEST;
 }
 
 // Virtual DPAD destinations for binding dropdown
@@ -105,6 +116,7 @@ if (ANALOG_INPUTS.length !== ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT) {
 
 export function digitalInputLabel(id: number): string {
   return DIGITAL_INPUTS.find((d) => d.id === id)?.label ??
+    GP2040_EXTRA_VIRTUAL_DESTINATIONS.find((d) => d.id === id)?.label ??
     DPAD_VIRTUAL_DESTINATIONS.find((d) => d.id === id)?.label ??
     `Digital ${id}`;
 }

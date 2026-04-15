@@ -8,11 +8,11 @@ import { Gp2040HelpModal } from '../components/Gp2040HelpModal';
 
 export function HeaderBar() {
   const { state, handleModeChange, compatibility } = useOrcaApp();
-  const { openLatestConfigurator, hasUnseenConfigurator } = useChangelog();
+  const { openLatestConfigurator, hasUnseenConfigurator, latestFirmwareDownload } = useChangelog();
   const [isGp2040HelpOpen, setIsGp2040HelpOpen] = useState(false);
 
   const hasSchemaMismatch = compatibility === 'minor_mismatch' || compatibility === 'major_mismatch';
-  const firmwareFilename = 'OrcaDol2.5.uf2';
+  const firmwareFilename = latestFirmwareDownload?.filename ?? 'Orca+GP2040.uf2';
 
   return (
     <>
@@ -45,7 +45,7 @@ export function HeaderBar() {
             className={`btn-download${hasSchemaMismatch ? ' btn-download-alert' : ''}`}
             title={hasSchemaMismatch
               ? "Firmware update recommended! Your controller's firmware doesn't match this configurator version."
-              : "Download the latest Orca firmware"}
+              : "Download the latest combined Orca + GP2040 firmware"}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />

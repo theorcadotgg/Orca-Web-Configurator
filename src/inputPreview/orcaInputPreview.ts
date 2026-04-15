@@ -1,6 +1,6 @@
 import { ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT, ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT, OrcaSettingsTlv } from '@shared/orca_config_idl_generated';
 import { readF32Le, readU16Le, readU32Le } from '../schema/bytes';
-import type { SettingsDraft, StickCurveParamsV1, TriggerPolicyV1 } from '../schema/settingsBlob';
+import type { Gp2040ExtraMappingsV1, SettingsDraft, StickCurveParamsV1, TriggerPolicyV1 } from '../schema/settingsBlob';
 import { STICK_CURVE_FLAG_CIRCLE_COORDS } from '../schema/settingsBlob';
 import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT, TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP } from '../schema/triggerPolicyFlags';
 import type { OrcaInputState } from '../usb/OrcaTransport';
@@ -405,7 +405,8 @@ export type InputPreviewResultWithMelee = InputPreviewResult & {
 export function computeInputPreviewWithWasm(
   raw: OrcaInputState,
   draft: SettingsDraft,
-  baseBlob: Uint8Array
+  baseBlob: Uint8Array,
+  configMode: 'orca' | 'gp2040',
 ): InputPreviewResultWithMelee | null {
   // WASM is required
   if (!isWasmReady()) {
@@ -470,11 +471,14 @@ export function computeInputPreviewWithWasm(
     processor.setTriggerPolicy(null);
   }
 
+  const gp2040ExtraMappings: Gp2040ExtraMappingsV1 | undefined =
+    draft.gp2040ExtraMappings[profile] ?? draft.gp2040ExtraMappings[0];
+  processor.setGp2040ExtraMappings(gp2040ExtraMappings ?? null);
+
   // DPAD layer not yet supported in draft schema - skip for now
   processor.setDpadLayer(null);
 
-  // Process in Orca mode
-  const wasmOutput = processor.processOrca();
+  const wasmOutput = configMode === 'gp2040' ? processor.processGP2040() : processor.processOrca();
   const meleeOutput = processor.toMeleeOutput();
 
   // Return combined result

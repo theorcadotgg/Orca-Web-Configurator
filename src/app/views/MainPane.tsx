@@ -213,6 +213,7 @@ export function MainPane() {
                     destinationLabelMode={state.configMode}
                     gp2040LabelPreset={gp2040LabelPreset}
                     gp2040AnalogTriggerRouting={gp2040AnalogTriggerOutput}
+                    gp2040ExtraMappings={draft.gp2040ExtraMappings[activeProfile]}
                     triggerPolicy={draft.triggerPolicy[activeProfile]}
                     dpadLayer={draft.dpadLayer[activeProfile]}
                     onDigitalMappingChange={setDigitalMapping}
@@ -231,6 +232,8 @@ export function MainPane() {
                   transport={state.transport}
                   draft={draft}
                   baseBlob={baseBlob}
+                  configMode={state.configMode}
+                  gp2040LabelPreset={gp2040LabelPreset}
                   disabled={state.busy}
                   style={{ marginTop: 0 }}
                 />

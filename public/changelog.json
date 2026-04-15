@@ -1,9 +1,45 @@
 {
   "latest": {
-    "configurator": "configurator-2026-03-02",
-    "firmware": "firmware-2.5"
+    "configurator": "configurator-2026-04-15",
+    "firmware": "firmware-2.6"
   },
   "entries": [
+    {
+      "id": "configurator-2026-04-15",
+      "kind": "configurator",
+      "version": "2026.04.15",
+      "date": "2026-04-15",
+      "title": "Changelog",
+      "related": {
+        "firmwareId": "firmware-2.6"
+      },
+      "sections": [
+        {
+          "title": "New",
+          "items": [
+            "Feat: Add L3/R3 button mapping support for GP2040"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "firmware-2.6",
+      "kind": "firmware",
+      "version": "2.6",
+      "title": "OrcaDol firmware 2.6",
+      "download": {
+        "filename": "OrcaDol2.6.uf2",
+        "label": "Download UF2"
+      },
+      "sections": [
+        {
+          "title": "Notes",
+          "items": [
+            "Feat: Add L3/R3 support for GP2040 mode."
+          ]
+        }
+      ]
+    },
     {
       "id": "configurator-2026-03-02",
       "kind": "configurator",

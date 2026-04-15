@@ -89,6 +89,16 @@ function validateTriggerPolicy(policy: TriggerPolicyV1, label: string): string[]
   return errors;
 }
 
+function isValidGp2040ExtraSource(src: number): boolean {
+  if (src === ORCA_DUMMY_FIELD) {
+    return true;
+  }
+  if (src < 0 || src >= ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT) {
+    return false;
+  }
+  return src !== ORCA_CONFIG_LOCKED_BUTTON_WISDOM && !isLockedDigitalSource(src);
+}
+
 export function validateSettingsDraft(draft: SettingsDraft): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -142,6 +152,13 @@ export function validateSettingsDraft(draft: SettingsDraft): ValidationResult {
           if (src === ORCA_DUMMY_FIELD) continue;
           counts.set(src, (counts.get(src) ?? 0) + 1);
         }
+        const extra = draft.gp2040ExtraMappings[profile];
+        if (extra?.l3Src !== undefined && extra.l3Src !== ORCA_DUMMY_FIELD) {
+          counts.set(extra.l3Src, (counts.get(extra.l3Src) ?? 0) + 1);
+        }
+        if (extra?.r3Src !== undefined && extra.r3Src !== ORCA_DUMMY_FIELD) {
+          counts.set(extra.r3Src, (counts.get(extra.r3Src) ?? 0) + 1);
+        }
         const dupes = [...counts.entries()].filter(([, count]) => count > 1).map(([src, count]) => ({ src, count }));
         if (dupes.length) {
           warnings.push(
@@ -169,6 +186,24 @@ export function validateSettingsDraft(draft: SettingsDraft): ValidationResult {
         if (src < 0 || src >= ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT) {
           errors.push(`Profile ${profile + 1}: analog mapping dest ${dest} has out-of-range source ${src}`);
         }
+      }
+    }
+  }
+
+  if (draft.gp2040ExtraMappings.length !== ORCA_CONFIG_SETTINGS_PROFILE_COUNT) {
+    errors.push(`Expected ${ORCA_CONFIG_SETTINGS_PROFILE_COUNT} GP2040 extra mapping profiles`);
+  } else {
+    for (let profile = 0; profile < draft.gp2040ExtraMappings.length; profile++) {
+      const mappings = draft.gp2040ExtraMappings[profile];
+      if (!mappings) {
+        errors.push(`Profile ${profile + 1}: missing GP2040 extra mappings`);
+        continue;
+      }
+      if (!isValidGp2040ExtraSource(mappings.l3Src)) {
+        errors.push(`Profile ${profile + 1}: L3 source must be a normal digital input or OFF`);
+      }
+      if (!isValidGp2040ExtraSource(mappings.r3Src)) {
+        errors.push(`Profile ${profile + 1}: R3 source must be a normal digital input or OFF`);
       }
     }
   }

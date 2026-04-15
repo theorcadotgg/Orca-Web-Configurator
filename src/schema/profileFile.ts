@@ -1,10 +1,11 @@
 import { OrcaSettingsTlv } from '@shared/orca_config_idl_generated';
-import type { DpadLayerV1, StickCurveParamsV1, TriggerPolicyV1 } from './settingsBlob';
+import type { DpadLayerV1, Gp2040ExtraMappingsV1, StickCurveParamsV1, TriggerPolicyV1 } from './settingsBlob';
+import { ORCA_DUMMY_FIELD } from './orcaMappings';
 
 export type ProfileMode = 'orca' | 'gp2040';
 
 export const ORCA_PROFILE_FILE_TYPE = 'orca-profile';
-export const ORCA_PROFILE_FILE_VERSION = 2 as const;
+export const ORCA_PROFILE_FILE_VERSION = 3 as const;
 
 export type OrcaProfileFileV1 = {
   type: typeof ORCA_PROFILE_FILE_TYPE;
@@ -13,6 +14,7 @@ export type OrcaProfileFileV1 = {
   label: string;
   digitalMapping: number[];
   analogMapping: number[];
+  gp2040ExtraMappings: Gp2040ExtraMappingsV1;
   dpadLayer: DpadLayerV1;
   triggerPolicy: TriggerPolicyV1;
   stickCurveParams: StickCurveParamsV1;
@@ -86,7 +88,6 @@ function parseDpadLayerV1(value: unknown, name: string): DpadLayerV1 {
     mode_left = expectU8(rec.mode_left, `${name}.mode_left`);
     mode_right = expectU8(rec.mode_right, `${name}.mode_right`);
   } else {
-    // v1 legacy format stored a single `mode` for all directions
     const mode = expectU8(rec.mode, `${name}.mode`);
     mode_up = mode;
     mode_down = mode;
@@ -126,6 +127,14 @@ function parseTriggerPolicyV1(value: unknown, name: string): TriggerPolicyV1 {
     digitalLightLtSrc,
     digitalLightRtSrc,
     digitalLightSrcVersion,
+  };
+}
+
+function parseGp2040ExtraMappingsV1(value: unknown, name: string): Gp2040ExtraMappingsV1 {
+  const rec = expectRecord(value, name);
+  return {
+    l3Src: expectU8(rec.l3Src, `${name}.l3Src`),
+    r3Src: expectU8(rec.r3Src, `${name}.r3Src`),
   };
 }
 
@@ -169,7 +178,7 @@ export function parseProfileFileV1(jsonText: string): OrcaProfileFileV1 {
     throw new Error(`Unsupported profile file type: ${type}`);
   }
   const version = expectFiniteNumber(rec.version, 'profile file.version');
-  if (version !== 1 && version !== ORCA_PROFILE_FILE_VERSION) {
+  if (version !== 1 && version !== 2 && version !== ORCA_PROFILE_FILE_VERSION) {
     throw new Error(`Unsupported profile file version: ${version}`);
   }
 
@@ -177,18 +186,22 @@ export function parseProfileFileV1(jsonText: string): OrcaProfileFileV1 {
   const label = expectString(rec.label, 'profile file.label');
   const digitalMapping = expectNumberArray(rec.digitalMapping, 'profile file.digitalMapping', OrcaSettingsTlv.DigitalMappings.length);
   const analogMapping = expectNumberArray(rec.analogMapping, 'profile file.analogMapping', OrcaSettingsTlv.AnalogMappings.length);
+  const gp2040ExtraMappings = Object.prototype.hasOwnProperty.call(rec, 'gp2040ExtraMappings')
+    ? parseGp2040ExtraMappingsV1(rec.gp2040ExtraMappings, 'profile file.gp2040ExtraMappings')
+    : { l3Src: ORCA_DUMMY_FIELD, r3Src: ORCA_DUMMY_FIELD };
 
   const dpadLayer = parseDpadLayerV1(rec.dpadLayer, 'profile file.dpadLayer');
   const triggerPolicy = parseTriggerPolicyV1(rec.triggerPolicy, 'profile file.triggerPolicy');
   const stickCurveParams = parseStickCurveParamsV1(rec.stickCurveParams, 'profile file.stickCurveParams');
 
-	  return {
-	    type: ORCA_PROFILE_FILE_TYPE,
-	    version: ORCA_PROFILE_FILE_VERSION,
-	    mode,
+  return {
+    type: ORCA_PROFILE_FILE_TYPE,
+    version: ORCA_PROFILE_FILE_VERSION,
+    mode,
     label,
     digitalMapping,
     analogMapping,
+    gp2040ExtraMappings,
     dpadLayer,
     triggerPolicy,
     stickCurveParams,

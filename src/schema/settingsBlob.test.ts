@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ORCA_CONFIG_SETTINGS_BLOB_SIZE, ORCA_CONFIG_SETTINGS_HEADER_ACTIVE_PROFILE_OFFSET, ORCA_CONFIG_SETTINGS_PROFILE_COUNT } from '@shared/orca_config_idl_generated';
+import { ORCA_CONFIG_SETTINGS_BLOB_SIZE, ORCA_CONFIG_SETTINGS_HEADER_ACTIVE_PROFILE_OFFSET, ORCA_CONFIG_SETTINGS_PROFILE_COUNT, OrcaSettingsTlv } from '@shared/orca_config_idl_generated';
 import type { DigitalSourceV1, DpadLayerV1, SettingsDraft, StickCurveParamsV1, TriggerPolicyV1 } from './settingsBlob';
-import { buildSettingsBlob } from './settingsBlob';
-import { ANALOG_INPUTS, DIGITAL_INPUTS } from './orcaMappings';
+import { buildSettingsBlob, parseSettingsBlob } from './settingsBlob';
+import { ANALOG_INPUTS, DIGITAL_INPUTS, ORCA_DUMMY_FIELD } from './orcaMappings';
 
 function digital(index: number): DigitalSourceV1 {
   return { type: 1, index, threshold: 0, hysteresis: 0 };
@@ -53,6 +53,7 @@ function makeDraft(profileCount = ORCA_CONFIG_SETTINGS_PROFILE_COUNT): SettingsD
     profileLabels: Array.from({ length: profileCount }, (_, i) => `Profile ${i + 1}`),
     digitalMappings: Array.from({ length: profileCount }, () => Array.from({ length: DIGITAL_INPUTS.length }, (_, i) => i)),
     analogMappings: Array.from({ length: profileCount }, () => Array.from({ length: ANALOG_INPUTS.length }, (_, i) => i)),
+    gp2040ExtraMappings: Array.from({ length: profileCount }, () => ({ l3Src: ORCA_DUMMY_FIELD, r3Src: ORCA_DUMMY_FIELD })),
     dpadLayer: Array.from({ length: profileCount }, () => makeDpadLayer()),
     triggerPolicy: Array.from({ length: profileCount }, () => makeTriggerPolicy()),
     stickCurveParams: Array.from({ length: profileCount }, () => makeStickParams()),
@@ -68,5 +69,16 @@ describe('buildSettingsBlob', () => {
     expect(staged[ORCA_CONFIG_SETTINGS_HEADER_ACTIVE_PROFILE_OFFSET]).toBe(0);
     expect(base[ORCA_CONFIG_SETTINGS_HEADER_ACTIVE_PROFILE_OFFSET]).toBe(7);
   });
-});
 
+  it('round-trips GP2040 extra mappings', () => {
+    const base = new Uint8Array(ORCA_CONFIG_SETTINGS_BLOB_SIZE);
+    const draft = makeDraft();
+    draft.gp2040ExtraMappings[0] = { l3Src: 3, r3Src: 4 };
+
+    const staged = buildSettingsBlob(base, draft);
+    const parsed = parseSettingsBlob(staged);
+
+    expect(parsed.draft.gp2040ExtraMappings[0]).toEqual({ l3Src: 3, r3Src: 4 });
+    expect(parsed.draft.gp2040ExtraMappings).toHaveLength(OrcaSettingsTlv.Gp2040ExtraMappings.count);
+  });
+});

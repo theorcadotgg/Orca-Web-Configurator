@@ -3,6 +3,8 @@ import type { DpadLayerV1, DigitalSourceV1, SettingsDraft, StickCurveParamsV1, T
 import {
   ANALOG_INPUTS,
   DIGITAL_INPUTS,
+  GP2040_L3_VIRTUAL_DEST,
+  GP2040_R3_VIRTUAL_DEST,
   DPAD_MODIFIER_VIRTUAL_DEST,
   DPAD_UP_VIRTUAL_DEST,
   ORCA_ANALOG_MAPPING_DISABLED,
@@ -77,6 +79,7 @@ function makeDraft(profileCount = 1): SettingsDraft {
     analogMappings: Array.from({ length: profileCount }, () =>
       Array.from({ length: ANALOG_INPUTS.length }, (_, i) => i),
     ),
+    gp2040ExtraMappings: Array.from({ length: profileCount }, () => ({ l3Src: ORCA_DUMMY_FIELD, r3Src: ORCA_DUMMY_FIELD })),
     dpadLayer: Array.from({ length: profileCount }, () => makeDpadLayer()),
     triggerPolicy: Array.from({ length: profileCount }, () => makeTriggerPolicy()),
     stickCurveParams: Array.from({ length: profileCount }, () => makeStickParams()),
@@ -146,6 +149,23 @@ describe('setDigitalMappingInDraft', () => {
     expect(updated.dpadLayer[0]?.enable.index).toBe(0);
     expect(updated.digitalMappings[0]?.[0]).toBe(0);
   });
+
+  it('binds GP2040 L3 and swaps conflicting digital destination', () => {
+    const draft = makeDraft();
+    const defaultDigitalMapping = getDefaultDigitalMapping('gp2040');
+    const updated = setDigitalMappingInDraft(draft, { dest: GP2040_L3_VIRTUAL_DEST, src: 0, defaultDigitalMapping });
+    expect(updated.gp2040ExtraMappings[0]?.l3Src).toBe(0);
+    expect(updated.digitalMappings[0]?.[0]).toBe(ORCA_DUMMY_FIELD);
+  });
+
+  it('swaps sources between GP2040 L3 and R3', () => {
+    const draft = makeDraft();
+    draft.gp2040ExtraMappings[0] = { l3Src: 1, r3Src: ORCA_DUMMY_FIELD };
+    const defaultDigitalMapping = getDefaultDigitalMapping('gp2040');
+    const updated = setDigitalMappingInDraft(draft, { dest: GP2040_R3_VIRTUAL_DEST, src: 1, defaultDigitalMapping });
+    expect(updated.gp2040ExtraMappings[0]?.r3Src).toBe(1);
+    expect(updated.gp2040ExtraMappings[0]?.l3Src).toBe(ORCA_DUMMY_FIELD);
+  });
 });
 
 describe('setAnalogMappingInDraft', () => {
@@ -190,6 +210,7 @@ describe('clear/reset bindings', () => {
       expect(digital[dest]).toBe(isLockedDigitalDestination(dest) ? dest : ORCA_DUMMY_FIELD);
     }
     expect(updated.analogMappings[0]).toEqual(Array.from({ length: ANALOG_INPUTS.length }, () => ORCA_ANALOG_MAPPING_DISABLED));
+    expect(updated.gp2040ExtraMappings[0]).toEqual({ l3Src: ORCA_DUMMY_FIELD, r3Src: ORCA_DUMMY_FIELD });
   });
 
   it('resets to provided defaults', () => {
@@ -200,6 +221,7 @@ describe('clear/reset bindings', () => {
     const reset = resetToDefaultBindingsInDraft(cleared, { defaultDigitalMapping, defaultAnalogMapping });
     expect(reset.digitalMappings[0]).toEqual(defaultDigitalMapping);
     expect(reset.analogMappings[0]).toEqual(defaultAnalogMapping);
+    expect(reset.gp2040ExtraMappings[0]).toEqual({ l3Src: ORCA_DUMMY_FIELD, r3Src: ORCA_DUMMY_FIELD });
   });
 });
 
@@ -208,11 +230,12 @@ describe('applyImportedProfileToDraft', () => {
     const draft = makeDraft(2);
     const imported = {
       type: 'orca-profile',
-      version: 2,
+      version: 3,
       mode: 'orca',
       label: 'Imported',
       digitalMapping: Array.from({ length: DIGITAL_INPUTS.length }, () => 0),
       analogMapping: Array.from({ length: ANALOG_INPUTS.length }, () => 0),
+      gp2040ExtraMappings: { l3Src: 4, r3Src: 5 },
       dpadLayer: makeDpadLayer(),
       triggerPolicy: makeTriggerPolicy(1),
       stickCurveParams: makeStickParams(),
@@ -221,6 +244,7 @@ describe('applyImportedProfileToDraft', () => {
     const updated = applyImportedProfileToDraft(draft, 1, imported);
     expect(updated.profileLabels[1]).toBe('Imported');
     expect(updated.digitalMappings[1]).toEqual(imported.digitalMapping);
+    expect(updated.gp2040ExtraMappings[1]).toEqual(imported.gp2040ExtraMappings);
     expect(updated.triggerPolicy[1]?.flags).toBe(1);
     expect(updated.profileLabels[0]).toBe('Profile 1');
   });
@@ -229,11 +253,12 @@ describe('applyImportedProfileToDraft', () => {
     const draft = makeDraft();
     const imported = {
       type: 'orca-profile',
-      version: 2,
+      version: 3,
       mode: 'gp2040',
       label: 'GP2040 Imported',
       digitalMapping: Array.from({ length: DIGITAL_INPUTS.length }, () => 0),
       analogMapping: Array.from({ length: ANALOG_INPUTS.length }, () => 0),
+      gp2040ExtraMappings: { l3Src: 2, r3Src: 4 },
       dpadLayer: makeDpadLayer(),
       triggerPolicy: {
         ...makeTriggerPolicy(TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP),

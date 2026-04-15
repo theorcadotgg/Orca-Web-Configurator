@@ -1,6 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChangelogModal } from '../components/ChangelogModal';
-import { getLatestChangelogEntryId, parseChangelog, shouldAutoOpenChangelog, type Changelog } from './changelog';
+import {
+  findChangelogEntry,
+  getLatestChangelogEntryId,
+  parseChangelog,
+  shouldAutoOpenChangelog,
+  type Changelog,
+  type ChangelogDownload,
+} from './changelog';
 
 const LAST_SEEN_CONFIGURATOR_ID_KEY = 'orca.changelog.lastSeenConfiguratorId';
 const PENDING_UPDATE_KEY = 'orca.changelog.pendingUpdate';
@@ -33,6 +40,7 @@ type ChangelogController = {
   openLatestConfigurator: () => void;
   openLatestFirmware: () => void;
   hasUnseenConfigurator: boolean;
+  latestFirmwareDownload: ChangelogDownload | null;
 };
 
 const ChangelogContext = createContext<ChangelogController | null>(null);
@@ -89,6 +97,12 @@ export function ChangelogProvider({ children }: { children: ReactNode }) {
     if (!changelog) return null;
     return getLatestChangelogEntryId(changelog, 'firmware');
   }, [changelog]);
+  const latestFirmwareDownload = useMemo(() => {
+    if (!changelog || !latestFirmwareId) return null;
+    const entry = findChangelogEntry(changelog, latestFirmwareId);
+    if (!entry || entry.kind !== 'firmware') return null;
+    return entry.download ?? null;
+  }, [changelog, latestFirmwareId]);
 
   const hasUnseenConfigurator = useMemo(() => {
     if (!latestConfiguratorId) return false;
@@ -146,8 +160,9 @@ export function ChangelogProvider({ children }: { children: ReactNode }) {
       openLatestConfigurator,
       openLatestFirmware,
       hasUnseenConfigurator,
+      latestFirmwareDownload,
     }),
-    [hasUnseenConfigurator, openLatestConfigurator, openLatestFirmware],
+    [hasUnseenConfigurator, latestFirmwareDownload, openLatestConfigurator, openLatestFirmware],
   );
 
   return (

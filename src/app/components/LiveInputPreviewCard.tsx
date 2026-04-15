@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { OrcaErr } from '@shared/orca_config_idl_generated';
 import type { SettingsDraft } from '../../schema/settingsBlob';
-import { ANALOG_INPUTS, DIGITAL_INPUTS, analogInputLabel, digitalInputLabel, ORCA_DUMMY_FIELD } from '../../schema/orcaMappings';
+import { ANALOG_INPUTS, DIGITAL_INPUTS, GP2040_L3_VIRTUAL_DEST, GP2040_R3_VIRTUAL_DEST, IntermediateDigitalOutput, analogInputLabel, digitalInputLabel, ORCA_DUMMY_FIELD } from '../../schema/orcaMappings';
+import { getGp2040DestinationLabelSet, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
 import type { OrcaInputState, OrcaTransport } from '../../usb/OrcaTransport';
 import { OrcaDeviceError } from '../../usb/OrcaTransport';
 import { computeInputPreviewWithWasm, initInputPreviewWasm, isWasmReady } from '../../inputPreview/orcaInputPreview';
@@ -10,6 +11,8 @@ type Props = {
   transport: OrcaTransport;
   draft: SettingsDraft;
   baseBlob: Uint8Array;
+  configMode: 'orca' | 'gp2040';
+  gp2040LabelPreset?: Gp2040LabelPreset;
   disabled?: boolean;
   style?: CSSProperties;
 };
@@ -92,7 +95,32 @@ function AnalogBar({ label, value, max }: { label: string; value: number; max: n
   );
 }
 
-export function LiveInputPreviewCard({ transport, draft, baseBlob, disabled, style }: Props) {
+function gp2040PreviewLabel(output: IntermediateDigitalOutput, preset: Gp2040LabelPreset | undefined): string {
+  const digital = getGp2040DestinationLabelSet(preset).digital;
+  switch (output) {
+    case IntermediateDigitalOutput.A: return digital[0]?.label ?? 'A';
+    case IntermediateDigitalOutput.B: return digital[1]?.label ?? 'B';
+    case IntermediateDigitalOutput.X: return digital[2]?.label ?? 'X';
+    case IntermediateDigitalOutput.Y: return digital[3]?.label ?? 'Y';
+    case IntermediateDigitalOutput.Z: return 'Z';
+    case IntermediateDigitalOutput.L1: return digital[12]?.label ?? 'L1';
+    case IntermediateDigitalOutput.L2: return digital[5]?.label ?? 'L2';
+    case IntermediateDigitalOutput.L3: return digital[GP2040_L3_VIRTUAL_DEST]?.label ?? 'L3';
+    case IntermediateDigitalOutput.R1: return digital[4]?.label ?? 'R1';
+    case IntermediateDigitalOutput.R2: return digital[6]?.label ?? 'R2';
+    case IntermediateDigitalOutput.R3: return digital[GP2040_R3_VIRTUAL_DEST]?.label ?? 'R3';
+    case IntermediateDigitalOutput.START: return digital[15]?.label ?? 'Start';
+    case IntermediateDigitalOutput.SELECT: return digital[13]?.label ?? 'Select';
+    case IntermediateDigitalOutput.HOME: return digital[11]?.label ?? 'Home';
+    case IntermediateDigitalOutput.DPAD_UP: return 'DPAD Up';
+    case IntermediateDigitalOutput.DPAD_DOWN: return 'DPAD Down';
+    case IntermediateDigitalOutput.DPAD_LEFT: return 'DPAD Left';
+    case IntermediateDigitalOutput.DPAD_RIGHT: return 'DPAD Right';
+    default: return `Out ${output}`;
+  }
+}
+
+export function LiveInputPreviewCard({ transport, draft, baseBlob, configMode, gp2040LabelPreset, disabled, style }: Props) {
   const [raw, setRaw] = useState<OrcaInputState | null>(null);
   const [supported, setSupported] = useState(true);
   const [lastErr, setLastErr] = useState<string>('');
@@ -139,8 +167,8 @@ export function LiveInputPreviewCard({ transport, draft, baseBlob, disabled, sty
 
   const computed = useMemo(() => {
     if (!raw) return null;
-    return computeInputPreviewWithWasm(raw, draft, baseBlob);
-  }, [baseBlob, draft, raw]);
+    return computeInputPreviewWithWasm(raw, draft, baseBlob, configMode);
+  }, [baseBlob, configMode, draft, raw]);
 
   const notchStart = draft.stickCurveParams[draft.activeProfile]?.notch_start_input ?? draft.stickCurveParams[0]?.notch_start_input ?? 0;
   const notchEnd = draft.stickCurveParams[draft.activeProfile]?.notch_end_input ?? draft.stickCurveParams[0]?.notch_end_input ?? 0;
@@ -155,13 +183,22 @@ export function LiveInputPreviewCard({ transport, draft, baseBlob, disabled, sty
 
   const pressedOutputs = useMemo(() => {
     if (!computed) return [];
+    if (configMode === 'gp2040' && computed.wasmOutput) {
+      const labels: string[] = [];
+      for (let output = 0; output <= IntermediateDigitalOutput.DPAD_RIGHT; output++) {
+        if (((computed.wasmOutput.digitalMask >>> output) & 1) !== 0) {
+          labels.push(gp2040PreviewLabel(output as IntermediateDigitalOutput, gp2040LabelPreset));
+        }
+      }
+      return labels;
+    }
     const labels: string[] = [];
     for (const d of DIGITAL_INPUTS) {
       if (d.id === ORCA_DUMMY_FIELD) continue;
       if (((computed.mappedDigitalMask >>> d.id) & 1) !== 0) labels.push(digitalInputLabel(d.id));
     }
     return labels;
-  }, [computed]);
+  }, [computed, configMode, gp2040LabelPreset]);
 
   if (!supported) {
     return (
