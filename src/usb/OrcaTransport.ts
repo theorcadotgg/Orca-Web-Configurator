@@ -22,6 +22,11 @@ export type OrcaInputState = {
   analog: number[]; // [5], normalized 0..1
 };
 
+export type Gp2040InputModeInfo = {
+  inputMode: number;
+  usingDefaults: boolean;
+};
+
 export class OrcaDeviceError extends Error {
   constructor(
     public readonly cmd: number,
@@ -40,6 +45,8 @@ export interface OrcaTransport {
   unlockWrites(): Promise<void>;
 
   getInputState(): Promise<OrcaInputState>;
+  getGp2040InputMode(): Promise<Gp2040InputModeInfo>;
+  setGp2040InputMode(inputMode: number): Promise<{ inputMode: number }>;
   runCalibration(): Promise<{ generation: number }>;
 
   readBlobChunk(slot: number, offset: number, length: number): Promise<Uint8Array>;

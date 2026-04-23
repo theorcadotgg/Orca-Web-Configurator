@@ -1,6 +1,7 @@
 import type { ParsedSettings, SettingsDraft } from '../../schema/settingsBlob';
 import type { DeviceInfo, OrcaTransport, ValidateStagedResult } from '../../usb/OrcaTransport';
 import type { SlotId, SlotMode } from '../utils/slot';
+import { createEmptyGp2040InputModeState, type Gp2040InputModeState } from '../domain/gp2040InputModeState';
 
 export type DeviceValidationState = ValidateStagedResult & { decoded: string[] };
 
@@ -39,6 +40,7 @@ export type OrcaAppState = {
 
   configMode: SlotMode;
   slotStates: Record<SlotId, SlotState>;
+  gp2040InputMode: Gp2040InputModeState;
 
   deviceValidation: DeviceValidationState | null;
   rebootAfterSave: boolean;
@@ -66,6 +68,7 @@ export function createInitialOrcaAppState(): OrcaAppState {
 
     configMode: 'orca',
     slotStates: createEmptySlotStates(),
+    gp2040InputMode: createEmptyGp2040InputModeState(),
 
     deviceValidation: null,
     rebootAfterSave: false,

@@ -46,6 +46,8 @@ export class MockOrcaTransport implements OrcaTransport {
   private sessionId = 1;
   private sessionActive = false;
   private writesUnlocked = false;
+  private gp2040InputMode = 0;
+  private gp2040UsingDefaults = false;
 
   private assertSlot(slot: number): asserts slot is 0 | 1 {
     if (slot !== 0 && slot !== 1) throw new Error(`Invalid slot ${slot}`);
@@ -82,6 +84,22 @@ export class MockOrcaTransport implements OrcaTransport {
       digitalMask: 0,
       analog: [0.5, 0.5, 0.5, 0.5, 0],
     };
+  }
+
+  async getGp2040InputMode(): Promise<{ inputMode: number; usingDefaults: boolean }> {
+    return {
+      inputMode: this.gp2040InputMode,
+      usingDefaults: this.gp2040UsingDefaults,
+    };
+  }
+
+  async setGp2040InputMode(inputMode: number): Promise<{ inputMode: number }> {
+    if (!this.sessionActive) throw new Error('No active session');
+    if (!this.writesUnlocked) throw new Error('Writes not unlocked');
+    this.gp2040InputMode = inputMode >>> 0;
+    this.gp2040UsingDefaults = false;
+    this.writesUnlocked = false;
+    return { inputMode: this.gp2040InputMode };
   }
 
   async runCalibration(): Promise<{ generation: number }> {
@@ -216,6 +234,8 @@ export class MockOrcaTransport implements OrcaTransport {
     writeU32Le(next1, ORCA_CONFIG_SETTINGS_HEADER_GENERATION_OFFSET, secondaryGeneration);
     this.flashBlobs = [next0, next1];
     this.stagedBlobs = [null, null];
+    this.gp2040InputMode = 0;
+    this.gp2040UsingDefaults = true;
     this.writesUnlocked = false;
 
     return { flags: 0x07, primaryGeneration, secondaryGeneration };

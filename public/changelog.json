@@ -17,7 +17,8 @@
         {
           "title": "New",
           "items": [
-            "Feat: Add L3/R3 button mapping support for GP2040"
+            "Feat: Add L3/R3 button mapping support for GP2040",
+            "Feat: Add GP2040 input mode viewer and selector"
           ]
         }
       ]
@@ -35,7 +36,8 @@
         {
           "title": "Notes",
           "items": [
-            "Feat: Add L3/R3 support for GP2040 mode."
+            "Feat: Add L3/R3 support for GP2040 mode.",
+            "Feat: Add support for changing GP2040 input mode from web configurator."
           ]
         }
       ]

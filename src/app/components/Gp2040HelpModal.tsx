@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { ButtonChordGlyph } from './ButtonChordGlyph';
+import { getGp2040InputModeLabel } from '../../schema/gp2040InputModes';
 
 type Props = {
   isOpen: boolean;
@@ -16,11 +17,11 @@ const RUNTIME_PROFILE_SELECTORS = [
 ] as const;
 
 const BOOT_MODE_SELECTORS = [
-  { selector: 'B1', mode: 'Nintendo Switch' },
-  { selector: 'B2', mode: 'XInput' },
-  { selector: 'B3', mode: 'PS3' },
-  { selector: 'B4', mode: 'PS4' },
-  { selector: 'R2', mode: 'Keyboard' },
+  { selector: 'B1', mode: getGp2040InputModeLabel(1) },
+  { selector: 'B2', mode: getGp2040InputModeLabel(0) },
+  { selector: 'B3', mode: getGp2040InputModeLabel(2) },
+  { selector: 'B4', mode: getGp2040InputModeLabel(4) },
+  { selector: 'R2', mode: getGp2040InputModeLabel(3) },
 ] as const;
 
 export function Gp2040HelpModal({ isOpen, onClose }: Props) {
@@ -101,6 +102,9 @@ export function Gp2040HelpModal({ isOpen, onClose }: Props) {
             <p style={{ marginTop: 0, color: 'var(--color-text-secondary)' }}>
               Keep holding at plug-in while also holding one mode button:
             </p>
+            <p style={{ marginTop: 0, color: 'var(--color-text-secondary)' }}>
+              These startup shortcuts still work even if you change the saved default in the configurator.
+            </p>
             <div className="gp2040-chord-legend" style={{ marginBottom: 'var(--spacing-sm)' }}>
               <ButtonChordGlyph
                 size={74}
@@ -125,7 +129,7 @@ export function Gp2040HelpModal({ isOpen, onClose }: Props) {
               </tbody>
             </table>
             <div className="text-xs text-muted" style={{ marginTop: 'var(--spacing-sm)' }}>
-              These are current Orca GP2040 default boot mappings.
+              The configurator updates the same saved GP2040 input mode. Boot-chord changes and configurator changes stay in sync.
             </div>
           </section>
         </div>

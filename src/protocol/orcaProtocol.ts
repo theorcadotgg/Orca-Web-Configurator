@@ -187,6 +187,18 @@ export function encodeGetInputStateRequest(seq: number): ByteArray {
   return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.GET_INPUT_STATE]) as ByteArray);
 }
 
+export function encodeGetGp2040InputModeRequest(seq: number): ByteArray {
+  return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.GET_GP2040_INPUT_MODE]) as ByteArray);
+}
+
+export function encodeSetGp2040InputModeRequest(seq: number, inputMode: number): ByteArray {
+  const payload = new Uint8Array(8);
+  payload[0] = OrcaCmd.SET_GP2040_INPUT_MODE;
+  const dv = new DataView(payload.buffer);
+  dv.setUint32(4, inputMode >>> 0, true);
+  return encodeFrame(OrcaMsgType.REQUEST, seq, payload as ByteArray);
+}
+
 export function encodeRunCalibrationRequest(seq: number): ByteArray {
   return encodeFrame(OrcaMsgType.REQUEST, seq, new Uint8Array([OrcaCmd.RUN_CALIBRATION]) as ByteArray);
 }

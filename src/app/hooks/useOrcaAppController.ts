@@ -2,6 +2,7 @@ import { useCallback, useMemo, useReducer, useRef } from 'react';
 import {
   ORCA_CONFIG_SCHEMA_ID,
   ORCA_CONFIG_SETTINGS_VERSION_MAJOR,
+  OrcaErr,
 } from '@shared/orca_config_idl_generated';
 import { buildSettingsBlob, tryParseSettingsBlob, type SettingsDraft } from '../../schema/settingsBlob';
 import {
@@ -13,7 +14,9 @@ import {
 } from '../../schema/profileFile';
 import { parseDeviceFileV1, serializeDeviceFileV1 } from '../../schema/deviceFile';
 import { isGp2040LabelPreset, type Gp2040LabelPreset } from '../../schema/gp2040Labels';
+import { DEFAULT_GP2040_INPUT_MODE, isGp2040PersistableInputMode } from '../../schema/gp2040InputModes';
 import { decodeStagedInvalidMask, validateSettingsDraft } from '../../validators/settingsValidation';
+import { OrcaDeviceError } from '../../usb/OrcaTransport';
 import { OrcaWebSerialTransport } from '../../usb/OrcaWebSerialTransport';
 import { downloadBytes } from '../utils/download';
 import { sanitizeFilenamePart } from '../utils/filename';
@@ -36,6 +39,14 @@ import {
   setDigitalMappingInDraft,
 } from '../domain/draftMutations';
 import {
+  createEmptyGp2040InputModeState,
+  setAppliedGp2040InputMode,
+  setGp2040InputModeBusy,
+  setGp2040InputModeDraft as setGp2040InputModeDraftState,
+  setGp2040InputModeError,
+  setLoadedGp2040InputMode,
+} from '../domain/gp2040InputModeState';
+import {
   createEmptySlotStates,
   createInitialOrcaAppState,
   orcaAppReducer,
@@ -51,6 +62,7 @@ export type OrcaAppController = {
   setMainView: (next: MainView) => void;
   gp2040LabelPreset: Gp2040LabelPreset;
   setGp2040LabelPreset: (next: Gp2040LabelPreset) => void;
+  gp2040InputMode: OrcaAppState['gp2040InputMode'];
   // Derived
   activeSlot: SlotId;
   baseBlob: Uint8Array | null;
@@ -80,6 +92,8 @@ export type OrcaAppController = {
   setAnalogMapping: (dest: number, src: number, virtualDest?: number) => void;
   clearAllBindings: () => void;
   resetToDefaultBindings: () => void;
+  setGp2040InputModeDraft: (next: number) => void;
+  applyGp2040InputMode: () => Promise<void>;
   validateOnDevice: () => Promise<void>;
   saveToDevice: () => Promise<void>;
   runCalibrationOnDevice: () => Promise<void>;
@@ -126,6 +140,7 @@ export function useOrcaAppController(): OrcaAppController {
   const baseBlob = currentSlotState.baseBlob;
   const draft = currentSlotState.draft;
   const dirty = currentSlotState.dirty;
+  const gp2040InputMode = state.gp2040InputMode;
 
   const compatibility: Compatibility = useMemo(() => {
     if (!state.deviceInfo) return 'unknown';
@@ -189,6 +204,7 @@ export function useOrcaAppController(): OrcaAppController {
         transport: null,
         deviceInfo: null,
         slotStates: createEmptySlotStates(),
+        gp2040InputMode: createEmptyGp2040InputModeState(),
         deviceValidation: null,
         calibrationInProgress: false,
         progress: '',
@@ -209,9 +225,40 @@ export function useOrcaAppController(): OrcaAppController {
     dispatch({ type: 'patch', patch: { deviceValidation: null } });
   }, [updateSlotState]);
 
+  const loadGp2040InputModeFromDevice = useCallback(async (transport: NonNullable<OrcaAppState['transport']>) => {
+    dispatch({
+      type: 'patch',
+      patch: { gp2040InputMode: setGp2040InputModeBusy(stateRef.current.gp2040InputMode, true) },
+    });
+    try {
+      const next = await transport.getGp2040InputMode();
+      dispatch({
+        type: 'patch',
+        patch: { gp2040InputMode: setLoadedGp2040InputMode(stateRef.current.gp2040InputMode, next) },
+      });
+      return next;
+    } catch (e) {
+      const error = e instanceof OrcaDeviceError && e.err === OrcaErr.UNSUPPORTED_CMD
+        ? 'Connected firmware does not expose GP2040 input mode.'
+        : e instanceof Error ? e.message : String(e);
+      dispatch({
+        type: 'patch',
+        patch: { gp2040InputMode: setGp2040InputModeError(stateRef.current.gp2040InputMode, error) },
+      });
+      return null;
+    }
+  }, []);
+
   const connect = useCallback(async () => {
     dispatch({ type: 'patch', patch: { lastError: '', progress: '', deviceValidation: null } });
-    dispatch({ type: 'patch', patch: { busy: true, slotStates: createEmptySlotStates() } });
+    dispatch({
+      type: 'patch',
+      patch: {
+        busy: true,
+        slotStates: createEmptySlotStates(),
+        gp2040InputMode: createEmptyGp2040InputModeState(),
+      },
+    });
     try {
       const nextTransport = await OrcaWebSerialTransport.requestAndOpen();
 
@@ -261,13 +308,19 @@ export function useOrcaAppController(): OrcaAppController {
       if (!res.ok) throw new Error(res.error);
       const draftForSlot = slotToRead === 1 ? normalizeGp2040DraftTriggerPolicy(res.value.draft) : res.value.draft;
       updateSlotState(slotToRead, { baseBlob: blob, parsed: res.value, draft: draftForSlot, dirty: false });
+
+      if (gp2040Enabled) {
+        dispatch({ type: 'patch', patch: { progress: 'Reading GP2040 input mode...' } });
+        await loadGp2040InputModeFromDevice(nextTransport);
+      }
+
       dispatch({ type: 'patch', patch: { progress: '' } });
     } catch (e) {
       dispatch({ type: 'patch', patch: { lastError: e instanceof Error ? e.message : String(e), progress: '' } });
     } finally {
       dispatch({ type: 'patch', patch: { busy: false } });
     }
-  }, [resetConnection, updateSlotState]);
+  }, [loadGp2040InputModeFromDevice, resetConnection, updateSlotState]);
 
   const disconnect = useCallback(async () => {
     dispatch({ type: 'patch', patch: { lastError: '', progress: '', deviceValidation: null } });
@@ -319,10 +372,25 @@ export function useOrcaAppController(): OrcaAppController {
           dispatch({ type: 'patch', patch: { busy: false, progress: '' } });
         }
       }
+
+      if (
+        nextSlot === 1 &&
+        deviceInfo.slotCount >= 2 &&
+        stateRef.current.gp2040InputMode.current === null &&
+        !stateRef.current.gp2040InputMode.busy &&
+        !stateRef.current.gp2040InputMode.error
+      ) {
+        try {
+          dispatch({ type: 'patch', patch: { busy: true, progress: 'Reading GP2040 input mode...' } });
+          await loadGp2040InputModeFromDevice(transport);
+        } finally {
+          dispatch({ type: 'patch', patch: { busy: false, progress: '' } });
+        }
+      }
     }
 
     dispatch({ type: 'patch', patch: { configMode: nextMode } });
-  }, [updateSlotState]);
+  }, [loadGp2040InputModeFromDevice, updateSlotState]);
 
   const setActiveProfile = useCallback((next: number) => {
     const { configMode, slotStates } = stateRef.current;
@@ -392,6 +460,56 @@ export function useOrcaAppController(): OrcaAppController {
       }),
     );
   }, [onDraftChange]);
+
+  const setGp2040InputModeDraft = useCallback((next: number) => {
+    if (!isGp2040PersistableInputMode(next)) return;
+    dispatch({
+      type: 'patch',
+      patch: { gp2040InputMode: setGp2040InputModeDraftState(stateRef.current.gp2040InputMode, next) },
+    });
+  }, []);
+
+  const applyGp2040InputMode = useCallback(async () => {
+    const { transport, deviceInfo, gp2040InputMode } = stateRef.current;
+    if (!transport || !deviceInfo || deviceInfo.slotCount < 2 || gp2040InputMode.draft === null) return;
+
+    dispatch({
+      type: 'patch',
+      patch: {
+        busy: true,
+        progress: 'Saving GP2040 input mode...',
+        gp2040InputMode: setGp2040InputModeBusy(gp2040InputMode, true),
+      },
+    });
+
+    try {
+      await transport.beginSession();
+      await transport.unlockWrites();
+      const result = await transport.setGp2040InputMode(gp2040InputMode.draft);
+      dispatch({
+        type: 'patch',
+        patch: {
+          progress: '',
+          gp2040InputMode: setAppliedGp2040InputMode(stateRef.current.gp2040InputMode, result.inputMode),
+        },
+      });
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      if (errorMsg.includes('disconnected') || errorMsg.includes('closed') || errorMsg.includes('not open')) {
+        resetConnection({ lastError: 'Device disconnected. Please reconnect.' });
+      } else {
+        dispatch({
+          type: 'patch',
+          patch: {
+            progress: '',
+            gp2040InputMode: setGp2040InputModeError(stateRef.current.gp2040InputMode, errorMsg),
+          },
+        });
+      }
+    } finally {
+      dispatch({ type: 'patch', patch: { busy: false } });
+    }
+  }, [resetConnection]);
 
   const validateOnDevice = useCallback(async () => {
     const { transport, deviceInfo, configMode, slotStates } = stateRef.current;
@@ -580,6 +698,15 @@ export function useOrcaAppController(): OrcaAppController {
       await transport.beginSession();
       await transport.unlockWrites();
       await transport.factoryReset();
+      dispatch({
+        type: 'patch',
+        patch: {
+          gp2040InputMode: setLoadedGp2040InputMode(stateRef.current.gp2040InputMode, {
+            inputMode: DEFAULT_GP2040_INPUT_MODE,
+            usingDefaults: true,
+          }),
+        },
+      });
 
       const slotCount = Math.min(deviceInfo.slotCount, 2);
       for (let slot = 0; slot < slotCount; slot++) {
@@ -939,6 +1066,7 @@ export function useOrcaAppController(): OrcaAppController {
     setMainView,
     gp2040LabelPreset: gp2040LabelPresetState,
     setGp2040LabelPreset,
+    gp2040InputMode,
     activeSlot,
     baseBlob,
     draft,
@@ -966,6 +1094,8 @@ export function useOrcaAppController(): OrcaAppController {
     setAnalogMapping,
     clearAllBindings,
     resetToDefaultBindings,
+    setGp2040InputModeDraft,
+    applyGp2040InputMode,
     validateOnDevice,
     saveToDevice,
     runCalibrationOnDevice,

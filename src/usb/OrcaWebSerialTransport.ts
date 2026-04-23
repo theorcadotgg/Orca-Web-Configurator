@@ -6,6 +6,7 @@ import {
   encodeBeginSessionRequest,
   encodeCommitStagedRequest,
   encodeCommitStagedSlotRequest,
+  encodeGetGp2040InputModeRequest,
   encodeGetInputStateRequest,
   encodeGetInfoRequest,
   encodeEnterBootselRequest,
@@ -16,6 +17,7 @@ import {
   encodeResetDefaultsRequest,
   encodeResetDefaultsSlotRequest,
   encodeRunCalibrationRequest,
+  encodeSetGp2040InputModeRequest,
   encodeUnlockWritesRequest,
   encodeValidateStagedRequest,
   encodeValidateStagedSlotRequest,
@@ -28,7 +30,7 @@ import {
   parseErrorPayload,
   tryDecodeFrameFromBuffer,
 } from '../protocol/orcaProtocol';
-import type { BeginSessionInfo, DeviceInfo, OrcaInputState, OrcaTransport, ValidateStagedResult } from './OrcaTransport';
+import type { BeginSessionInfo, DeviceInfo, Gp2040InputModeInfo, OrcaInputState, OrcaTransport, ValidateStagedResult } from './OrcaTransport';
 import { OrcaDeviceError } from './OrcaTransport';
 
 function readU32Le(payload: Uint8Array<ArrayBufferLike>, offset: number): number {
@@ -249,6 +251,37 @@ export class OrcaWebSerialTransport implements OrcaTransport {
       analog.push(q / 65535);
     }
     return { digitalMask, analog };
+  }
+
+  async getGp2040InputMode(): Promise<Gp2040InputModeInfo> {
+    const seq = this.seq++;
+    const frame = await this.sendAndRead(encodeGetGp2040InputModeRequest(seq));
+
+    if (frame.msgType === OrcaMsgType.ERROR) {
+      const { cmd, err } = parseErrorPayload(frame.payload);
+      throw new OrcaDeviceError(cmd, err);
+    }
+
+    const payload = frame.payload;
+    if (payload.length < 8) throw new Error('Bad GET_GP2040_INPUT_MODE response length');
+    return {
+      usingDefaults: ((payload[1] ?? 0) & 0x01) !== 0,
+      inputMode: readU32Le(payload, 4),
+    };
+  }
+
+  async setGp2040InputMode(inputMode: number): Promise<{ inputMode: number }> {
+    const seq = this.seq++;
+    const frame = await this.sendAndRead(encodeSetGp2040InputModeRequest(seq, inputMode));
+
+    if (frame.msgType === OrcaMsgType.ERROR) {
+      const { cmd, err } = parseErrorPayload(frame.payload);
+      throw new OrcaDeviceError(cmd, err);
+    }
+
+    const payload = frame.payload;
+    if (payload.length < 8) throw new Error('Bad SET_GP2040_INPUT_MODE response length');
+    return { inputMode: readU32Le(payload, 4) };
   }
 
   async runCalibration(): Promise<{ generation: number }> {
