@@ -284,13 +284,15 @@ body {
 .profile-tabs-action {
   flex: 0 0 auto;
   white-space: nowrap;
-  background: var(--color-bg-surface);
-  color: var(--color-text-primary);
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: white;
+  box-shadow: 0 0 0 1px rgba(30, 143, 201, 0.2);
 }
 
 .profile-tabs-action:hover:not(:disabled) {
-  background: var(--color-bg-surface);
-  border-color: var(--color-border-hover);
+  background: var(--color-brand-light);
+  border-color: var(--color-brand-light);
 }
 
 .profile-tab-input {
