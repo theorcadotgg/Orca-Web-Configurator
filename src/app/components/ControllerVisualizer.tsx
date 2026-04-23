@@ -139,6 +139,32 @@ interface Props {
     baseBlob?: Uint8Array; // For range calibration
 }
 
+function AnalogLegendIndicator() {
+    return (
+        <svg
+            width="20"
+            height="14"
+            viewBox="0 0 20 14"
+            aria-hidden="true"
+            style={{ display: 'block', flexShrink: 0, overflow: 'visible' }}
+        >
+            <rect
+                x="1.25"
+                y="1.75"
+                width="17.5"
+                height="10.5"
+                rx="4.8"
+                ry="4.8"
+                fill="rgba(100, 160, 200, 0.15)"
+                stroke="#64A0C8"
+                strokeWidth="1.75"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+            />
+        </svg>
+    );
+}
+
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -1002,7 +1028,7 @@ export function ControllerVisualizer({
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Digital ({DIGITAL_BUTTONS.length})</span>
                     </div>
                     <div className="row" style={{ gap: 'var(--spacing-sm)' }}>
-                        <div style={{ width: 14, height: 14, borderRadius: '4px', border: '2px solid #64A0C8', background: 'rgba(100, 160, 200, 0.15)' }} />
+                        <AnalogLegendIndicator />
                         <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>Analog ({ANALOG_BUTTONS.length})</span>
                     </div>
                 </div>
