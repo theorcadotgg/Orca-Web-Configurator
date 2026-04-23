@@ -21,7 +21,6 @@ const BOOT_MODE_SELECTORS = [
   { selector: 'B2', mode: getGp2040InputModeLabel(0) },
   { selector: 'B3', mode: getGp2040InputModeLabel(2) },
   { selector: 'B4', mode: getGp2040InputModeLabel(4) },
-  { selector: 'R2', mode: getGp2040InputModeLabel(3) },
 ] as const;
 
 export function Gp2040HelpModal({ isOpen, onClose }: Props) {
@@ -130,6 +129,9 @@ export function Gp2040HelpModal({ isOpen, onClose }: Props) {
             </table>
             <div className="text-xs text-muted" style={{ marginTop: 'var(--spacing-sm)' }}>
               The configurator updates the same saved GP2040 input mode. Boot-chord changes and configurator changes stay in sync.
+            </div>
+            <div className="text-xs text-muted" style={{ marginTop: 'var(--spacing-xs)' }}>
+              Orca does not expose GP2040 Keyboard mode because keyboard key mappings are not configurable here.
             </div>
           </section>
         </div>

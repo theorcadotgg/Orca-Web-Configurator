@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { ORCA_CONFIG_SETTINGS_PROFILE_COUNT } from '@shared/orca_config_idl_generated';
 import { isGp2040LabelPreset } from '../../schema/gp2040Labels';
 import { useOrcaApp } from '../contexts/OrcaAppContext';
 import { ButtonChordGlyph } from '../components/ButtonChordGlyph';
 import { ControllerVisualizer } from '../components/ControllerVisualizer';
+import { Gp2040InputModeModal } from '../components/Gp2040InputModeModal';
 import { LiveInputPreviewCard } from '../components/LiveInputPreviewCard';
 
 export function MainPane() {
@@ -12,6 +14,7 @@ export function MainPane() {
     setMainView,
     gp2040LabelPreset,
     setGp2040LabelPreset,
+    gp2040InputMode,
     baseBlob,
     draft,
     activeProfile,
@@ -29,8 +32,16 @@ export function MainPane() {
     setAnalogMapping,
     clearAllBindings,
     resetToDefaultBindings,
+    setGp2040InputModeDraft,
+    applyGp2040InputMode,
     setEditingProfile,
   } = useOrcaApp();
+  const [isGp2040InputModeOpen, setIsGp2040InputModeOpen] = useState(false);
+
+  useEffect(() => {
+    if (state.configMode === 'gp2040' && state.transport) return;
+    setIsGp2040InputModeOpen(false);
+  }, [state.configMode, state.transport]);
 
   return (
     <main className="layout-main">
@@ -63,61 +74,74 @@ export function MainPane() {
         ) : draft ? (
           <div className="main-hero" style={{ overflow: 'hidden' }}>
             {/* Profile tabs - fixed height, won't shrink */}
-            <div className="profile-tabs" style={{ flexShrink: 0 }}>
-              {Array.from({ length: ORCA_CONFIG_SETTINGS_PROFILE_COUNT - 2 }, (_, i) => {
-                const isEditing = state.editingProfile === i;
-                const label = draft.profileLabels[i]?.trim() || `Profile ${i + 1}`;
-                const isDefault = i === 0;
+            <div className="profile-tabs-row" style={{ flexShrink: 0 }}>
+              <div className="profile-tabs">
+                {Array.from({ length: ORCA_CONFIG_SETTINGS_PROFILE_COUNT - 2 }, (_, i) => {
+                  const isEditing = state.editingProfile === i;
+                  const label = draft.profileLabels[i]?.trim() || `Profile ${i + 1}`;
+                  const isDefault = i === 0;
 
-                return (
-                  <button
-                    key={i}
-                    className={`profile-tab ${activeProfile === i ? 'active' : ''}`}
-                    onClick={() => !isEditing && setActiveProfile(i)}
-                    onDoubleClick={(e) => {
-                      e.preventDefault();
-                      if (!state.busy) {
-                        setEditingProfile(i);
-                        setTimeout(() => {
-                          const input = document.getElementById(`profile-input-${i}`) as HTMLInputElement;
-                          input?.select();
-                        }, 0);
-                      }
-                    }}
-                    disabled={state.busy}
-                  >
-                    {isEditing ? (
-                      <input
-                        id={`profile-input-${i}`}
-                        type="text"
-                        className="profile-tab-input"
-                        defaultValue={label}
-                        autoFocus
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
+                  return (
+                    <button
+                      key={i}
+                      className={`profile-tab ${activeProfile === i ? 'active' : ''}`}
+                      onClick={() => !isEditing && setActiveProfile(i)}
+                      onDoubleClick={(e) => {
+                        e.preventDefault();
+                        if (!state.busy) {
+                          setEditingProfile(i);
+                          setTimeout(() => {
+                            const input = document.getElementById(`profile-input-${i}`) as HTMLInputElement;
+                            input?.select();
+                          }, 0);
+                        }
+                      }}
+                      disabled={state.busy}
+                    >
+                      {isEditing ? (
+                        <input
+                          id={`profile-input-${i}`}
+                          type="text"
+                          className="profile-tab-input"
+                          defaultValue={label}
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              renameProfile(i, e.currentTarget.value);
+                              setEditingProfile(null);
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setEditingProfile(null);
+                            }
+                          }}
+                          onBlur={(e) => {
                             renameProfile(i, e.currentTarget.value);
                             setEditingProfile(null);
-                          } else if (e.key === 'Escape') {
-                            e.preventDefault();
-                            setEditingProfile(null);
-                          }
-                        }}
-                        onBlur={(e) => {
-                          renameProfile(i, e.currentTarget.value);
-                          setEditingProfile(null);
-                        }}
-                      />
-                    ) : (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {label}
-                        {isDefault && <span style={{ fontSize: '14px' }}>⭐</span>}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                          }}
+                        />
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {label}
+                          {isDefault && <span style={{ fontSize: '14px' }}>⭐</span>}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {state.configMode === 'gp2040' && (
+                <button
+                  className="profile-tabs-action"
+                  onClick={() => setIsGp2040InputModeOpen(true)}
+                  type="button"
+                  disabled={state.busy}
+                  title="Open GP2040 input mode settings"
+                >
+                  Input Mode
+                </button>
+              )}
             </div>
 
             {/* Controls row - fixed height, won't shrink, stays above visualizer */}
@@ -244,6 +268,15 @@ export function MainPane() {
           </div>
         ) : null}
       </div>
+
+      <Gp2040InputModeModal
+        isOpen={isGp2040InputModeOpen}
+        inputModeState={gp2040InputMode}
+        disabled={state.busy}
+        onDraftChange={setGp2040InputModeDraft}
+        onApply={applyGp2040InputMode}
+        onClose={() => setIsGp2040InputModeOpen(false)}
+      />
     </main>
   );
 }

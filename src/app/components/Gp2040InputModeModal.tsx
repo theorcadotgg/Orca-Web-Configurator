@@ -3,7 +3,8 @@ import type { Gp2040InputModeState } from '../domain/gp2040InputModeState';
 import {
   DEFAULT_GP2040_INPUT_MODE,
   getGp2040InputModeLabel,
-  GP2040_INPUT_MODE_OPTIONS,
+  GP2040_INPUT_MODE_GROUPS,
+  isGp2040SelectableInputMode,
 } from '../../schema/gp2040InputModes';
 
 type Props = {
@@ -38,6 +39,7 @@ export function Gp2040InputModeModal({
 
   const currentLabel = inputModeState.current === null ? 'Loading...' : getGp2040InputModeLabel(inputModeState.current);
   const draftValue = inputModeState.draft ?? DEFAULT_GP2040_INPUT_MODE;
+  const draftIsSelectable = inputModeState.draft !== null && isGp2040SelectableInputMode(inputModeState.draft);
   const canApply =
     !disabled &&
     !inputModeState.busy &&
@@ -79,18 +81,36 @@ export function Gp2040InputModeModal({
               <div className="message message-warning">{inputModeState.error}</div>
             )}
 
+            {!draftIsSelectable && inputModeState.draft !== null && (
+              <div className="message message-warning">
+                {getGp2040InputModeLabel(inputModeState.draft)} is not configurable in Orca because keyboard key mappings are not supported here. Select another mode to switch away from it.
+              </div>
+            )}
+
             <div className="row gp2040-input-mode-controls">
               <div className="col gp2040-input-mode-select">
                 <span className="text-sm text-secondary">Saved mode</span>
+                <span className="text-xs text-muted gp2040-input-mode-select-hint">
+                  Common modes are listed first. Specialized modes may require passthrough or authentication hardware.
+                </span>
                 <select
                   value={draftValue}
                   onChange={(event) => onDraftChange(Number(event.target.value))}
                   disabled={disabled || inputModeState.busy || inputModeState.draft === null}
                 >
-                  {GP2040_INPUT_MODE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                  {!draftIsSelectable && inputModeState.draft !== null && (
+                    <option value={inputModeState.draft}>
+                      {getGp2040InputModeLabel(inputModeState.draft)} (unsupported in Orca)
                     </option>
+                  )}
+                  {GP2040_INPUT_MODE_GROUPS.map((group) => (
+                    <optgroup key={group.id} label={group.label}>
+                      {group.options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </div>

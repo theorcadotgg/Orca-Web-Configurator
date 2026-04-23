@@ -171,14 +171,6 @@ body {
   flex-shrink: 0;
 }
 
-.header-gp2040-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
 .gp2040-header-trigger {
   white-space: nowrap;
 }
@@ -247,13 +239,22 @@ body {
 /* ----------------------------------------
    Profile Tabs
    ---------------------------------------- */
+.profile-tabs-row {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
 .profile-tabs {
   display: flex;
+  flex: 1;
+  min-width: 0;
   gap: 2px;
   padding: 3px;
   background: var(--color-bg-tertiary);
   border-radius: var(--radius-md);
-  margin-bottom: var(--spacing-md);
 }
 
 .profile-tab {
@@ -278,6 +279,18 @@ body {
 .profile-tab.active {
   background: var(--color-brand);
   color: white;
+}
+
+.profile-tabs-action {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+}
+
+.profile-tabs-action:hover:not(:disabled) {
+  background: var(--color-bg-surface);
+  border-color: var(--color-border-hover);
 }
 
 .profile-tab-input {
@@ -1429,6 +1442,10 @@ input[type="number"] {
 .gp2040-input-mode-select {
   flex: 1;
   min-width: 260px;
+}
+
+.gp2040-input-mode-select-hint {
+  margin-bottom: var(--spacing-xs);
 }
 
 /* ----------------------------------------
