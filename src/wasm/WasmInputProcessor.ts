@@ -162,6 +162,7 @@ export enum UnifiedDigitalIndex {
 
 /** Stick curve flags */
 export const STICK_CURVE_FLAG_CIRCLE_COORDS = 1 << 0;
+export const STICK_CURVE_FLAG_DISABLE_NOTCHES = 1 << 2;
 
 /** Trigger policy flags */
 export const TRIGGER_POLICY_FLAG_ANALOG_TO_LT = 1 << 0;

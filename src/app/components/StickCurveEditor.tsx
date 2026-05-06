@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { SettingsDraft, StickCurveParamsV1 } from '../../schema/settingsBlob';
-import { STICK_CURVE_FLAG_CIRCLE_COORDS, STICK_CURVE_FLAG_SAMUS_CSTICK_MODE } from '../../schema/settingsBlob';
+import { STICK_CURVE_FLAG_CIRCLE_COORDS, STICK_CURVE_FLAG_DISABLE_NOTCHES, STICK_CURVE_FLAG_SAMUS_CSTICK_MODE } from '../../schema/settingsBlob';
 import { cloneDraft } from '../domain/cloneDraft';
 
 type Props = {
@@ -44,6 +44,10 @@ function fromNormalized(value: number): number {
 }
 
 function detectPreset(params: StickCurveParamsV1, mode: 'orca' | 'gp2040'): PresetMode {
+    if ((params.flags ?? 0) & STICK_CURVE_FLAG_DISABLE_NOTCHES) {
+        return 'custom';
+    }
+
     // Check if all stick axes (0-3) match a preset
     // Axis 4 is trigger, we don't compare it
     const mag = fromNormalized(params.range[0] ?? 0);
@@ -98,6 +102,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
     const magnitudeMax = mode === 'gp2040' ? 128 : 120;
     const notchMin = mode === 'gp2040' ? 20 : 25;
     const notchMax = mode === 'gp2040' ? 128 : 50;
+    const notchesDisabled = !!((params.flags ?? 0) & STICK_CURVE_FLAG_DISABLE_NOTCHES);
 
     function updateParams(patch: Partial<StickCurveParamsV1>) {
         const updated = cloneDraft(draft);
@@ -105,6 +110,13 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
         if (!current) return;
         updated.stickCurveParams[activeProfile] = { ...current, ...patch };
         onChange(updated);
+    }
+
+    function setFlag(flag: number, enabled: boolean) {
+        const newFlags = enabled
+            ? ((params.flags ?? 0) | flag)
+            : ((params.flags ?? 0) & ~flag);
+        updateParams({ flags: newFlags });
     }
 
     function applyPreset(preset: 'melee' | 'rivals2') {
@@ -317,10 +329,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                             checked={!!((params.flags ?? 0) & STICK_CURVE_FLAG_SAMUS_CSTICK_MODE)}
                             disabled={disabled}
                             onChange={(e) => {
-                                const newFlags = e.target.checked
-                                    ? ((params.flags ?? 0) | STICK_CURVE_FLAG_SAMUS_CSTICK_MODE)
-                                    : ((params.flags ?? 0) & ~STICK_CURVE_FLAG_SAMUS_CSTICK_MODE);
-                                updateParams({ flags: newFlags });
+                                setFlag(STICK_CURVE_FLAG_SAMUS_CSTICK_MODE, e.target.checked);
                             }}
                             style={{ opacity: 0, width: 0, height: 0 }}
                         />
@@ -382,10 +391,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                         checked={!!((params.flags ?? 0) & STICK_CURVE_FLAG_CIRCLE_COORDS)}
                         disabled={disabled}
                         onChange={(e) => {
-                            const newFlags = e.target.checked
-                                ? ((params.flags ?? 0) | STICK_CURVE_FLAG_CIRCLE_COORDS)
-                                : ((params.flags ?? 0) & ~STICK_CURVE_FLAG_CIRCLE_COORDS);
-                            updateParams({ flags: newFlags });
+                            setFlag(STICK_CURVE_FLAG_CIRCLE_COORDS, e.target.checked);
                         }}
                         style={{ opacity: 0, width: 0, height: 0 }}
                     />
@@ -415,6 +421,67 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                 </label>
             </div>
 
+            {/* Disable Notches Toggle */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: 'var(--spacing-sm) var(--spacing-md)',
+                background: 'var(--color-bg-tertiary)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--color-border)',
+            }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-xs)' }}>
+                    <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                        Disable Notches
+                    </span>
+                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+                        Uses linear stick scaling instead of light-press notch shaping.
+                    </span>
+                </div>
+                <label style={{
+                    position: 'relative',
+                    display: 'inline-block',
+                    width: 44,
+                    height: 24,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    opacity: disabled ? 0.5 : 1,
+                }}>
+                    <input
+                        type="checkbox"
+                        checked={notchesDisabled}
+                        disabled={disabled}
+                        onChange={(e) => {
+                            setFlag(STICK_CURVE_FLAG_DISABLE_NOTCHES, e.target.checked);
+                        }}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                    />
+                    <span style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: notchesDisabled ? 'var(--color-success)' : 'var(--color-bg-secondary)',
+                        borderRadius: 12,
+                        transition: 'background-color 0.2s ease',
+                        border: '1px solid var(--color-border)',
+                    }}>
+                        <span style={{
+                            position: 'absolute',
+                            content: '""',
+                            height: 18,
+                            width: 18,
+                            left: notchesDisabled ? 22 : 2,
+                            bottom: 2,
+                            backgroundColor: 'white',
+                            borderRadius: '50%',
+                            transition: 'left 0.2s ease',
+                        }} />
+                    </span>
+                </label>
+            </div>
+
             {/* Custom Controls - Only visible when custom mode is selected */}
             {showCustomSliders && (
                 <div style={{
@@ -428,7 +495,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                     transition: 'all 0.2s ease',
                 }}>
                     {/* Magnitude Section */}
-                    <div>
+                    <div style={{ opacity: notchesDisabled ? 0.45 : 1 }}>
                         <div style={{
                             fontSize: 'var(--font-size-sm)',
                             fontWeight: 600,
@@ -489,7 +556,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                             value={xNotch}
                             min={notchMin}
                             max={notchMax}
-                            disabled={disabled}
+                            disabled={disabled || notchesDisabled}
                             onChange={(v) => setAxisValue('notch', [0, 1], v)}
                             accentColor="var(--color-accent-secondary)"
                         />
@@ -500,7 +567,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                             value={upNotch}
                             min={notchMin}
                             max={notchMax}
-                            disabled={disabled}
+                            disabled={disabled || notchesDisabled}
                             onChange={(v) => setAxisValue('notch', [2], v)}
                             accentColor="var(--color-accent-secondary)"
                         />
@@ -511,7 +578,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                             value={downNotch}
                             min={notchMin}
                             max={notchMax}
-                            disabled={disabled}
+                            disabled={disabled || notchesDisabled}
                             onChange={(v) => setAxisValue('notch', [3], v)}
                             accentColor="var(--color-accent-secondary)"
                         />

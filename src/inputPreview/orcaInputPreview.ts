@@ -1,7 +1,7 @@
 import { ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT, ORCA_CONFIG_ORCA_DIGITAL_INPUT_COUNT, OrcaSettingsTlv } from '@shared/orca_config_idl_generated';
 import { readF32Le, readU16Le, readU32Le } from '../schema/bytes';
 import type { Gp2040ExtraMappingsV1, SettingsDraft, StickCurveParamsV1, TriggerPolicyV1 } from '../schema/settingsBlob';
-import { STICK_CURVE_FLAG_CIRCLE_COORDS } from '../schema/settingsBlob';
+import { STICK_CURVE_FLAG_CIRCLE_COORDS, STICK_CURVE_FLAG_DISABLE_NOTCHES } from '../schema/settingsBlob';
 import { TRIGGER_POLICY_FLAG_ANALOG_TRIGGER_TO_LT, TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP } from '../schema/triggerPolicyFlags';
 import type { OrcaInputState } from '../usb/OrcaTransport';
 import {
@@ -9,9 +9,6 @@ import {
   initWasmProcessor,
   UNIFIED_ANALOG_INPUT_COUNT,
   UNIFIED_DIGITAL_INPUT_COUNT,
-  TRIGGER_POLICY_FLAG_ANALOG_TO_LT,
-  TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP as WASM_TRIGGER_POLICY_FLAG_LIGHTSHIELD_CLAMP,
-  STICK_CURVE_FLAG_CIRCLE_COORDS as WASM_STICK_CURVE_FLAG_CIRCLE_COORDS,
   UnifiedDigitalIndex,
   type WasmInputProcessor,
   type UnifiedOutputState,
@@ -183,6 +180,11 @@ const TRIGGER_DEADZONE_END_INPUT = 8.0 / 128.0;
 const TRIGGER_NOTCH_INPUT = 12.0 / 128.0;
 const TRIGGER_LIGHTSHIELD_END_INPUT = 40.0 / 128.0;
 const TRIGGER_INDEX = 4;
+const STICK_PRENOTCH_START_INPUT = 5.0 / 128.0;
+const STICK_NOTCH_START_INPUT = 12.0 / 128.0;
+const STICK_POSTNOTCH_START_INPUT = 36.0 / 128.0;
+const STICK_END_START_INPUT = 116.0 / 128.0;
+const STICK_NOTCH_RAMP_OFFSET = 2.0 / 128.0;
 
 /**
  * Apply trigger-specific calibration.
@@ -220,15 +222,12 @@ function applyStickCurve(analog: number[], params: StickCurveParamsV1 | undefine
   if (!params) return analog.slice(0, ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT);
 
   const out = analog.slice(0, ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT);
-  const notchStartInput = params.notch_start_input;
-  const notchEndInput = params.notch_end_input;
+  const disableNotches = (params.flags & STICK_CURVE_FLAG_DISABLE_NOTCHES) !== 0;
 
   // Matches Orca-NewOrca/src/Calibration/UnifiedCalibration/UnifiedCalibration.c
   for (let i = 0; i < ORCA_CONFIG_ORCA_ANALOG_INPUT_COUNT; i++) {
     let value = out[i] ?? 0;
     const range = params.range[i] ?? 0;
-    const dzLower = params.dz_lower[i] ?? 0;
-    const dzUpper = params.dz_upper[i] ?? 0;
     const notch = params.notch[i] ?? 0;
 
     // Use trigger-specific calibration for index 4 (trigger)
@@ -237,14 +236,19 @@ function applyStickCurve(analog: number[], params: StickCurveParamsV1 | undefine
       continue;
     }
 
+    if (disableNotches) {
+      out[i] = clamp01(value) * range;
+      continue;
+    }
+
     // Sticks use 6-point curve with prenotch/postnotch zones
     const points = [
-      { input: 0.0, output: 0.0 },                                // Start
-      { input: 0.0 + (dzLower * range), output: 0.0 },            // StartDeadzone
-      { input: notchStartInput, output: notch },                  // NotchStart
-      { input: notchEndInput, output: Math.min(range, notch + (4.0 / 128.0)) }, // NotchEnd
-      { input: 1.0 - (dzUpper * range), output: range },          // EndDeadzone
-      { input: 1.0, output: range },                              // End
+      { input: 0.0, output: 0.0 },
+      { input: STICK_PRENOTCH_START_INPUT, output: 0.0 },
+      { input: STICK_NOTCH_START_INPUT, output: notch },
+      { input: STICK_POSTNOTCH_START_INPUT, output: Math.min(range, notch + STICK_NOTCH_RAMP_OFFSET) },
+      { input: STICK_END_START_INPUT, output: range },
+      { input: 1.0, output: range },
     ];
 
     for (let j = 1; j < points.length; j++) {

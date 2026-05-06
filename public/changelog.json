@@ -1,9 +1,45 @@
 {
   "latest": {
-    "configurator": "configurator-2026-04-15",
-    "firmware": "firmware-2.6"
+    "configurator": "configurator-2026-05-06",
+    "firmware": "firmware-2.7"
   },
   "entries": [
+    {
+      "id": "configurator-2026-05-06",
+      "kind": "configurator",
+      "version": "2026.05.15",
+      "date": "2026-05-15",
+      "title": "Changelog",
+      "related": {
+        "firmwareId": "firmware-2.7"
+      },
+      "sections": [
+        {
+          "title": "New",
+          "items": [
+            "Feat: Add disabled notches mode for linear stick scaling."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "firmware-2.7",
+      "kind": "firmware",
+      "version": "2.7",
+      "title": "OrcaDol firmware 2.7",
+      "download": {
+        "filename": "OrcaDol2.7.uf2",
+        "label": "Download UF2"
+      },
+      "sections": [
+        {
+          "title": "Notes",
+          "items": [
+            "Feat: Add disabled notches mode for linear stick scaling."
+          ]
+        }
+      ]
+    },
     {
       "id": "configurator-2026-04-15",
       "kind": "configurator",

@@ -84,12 +84,13 @@ export type StickCurveParamsV1 = {
   dz_upper: number[];   // [5] - deadzone upper
   notch_start_input: number;
   notch_end_input: number;
-  flags: number;        // bit 0: circle coords enabled
+  flags: number;        // STICK_CURVE_FLAG_*
 };
 
 // StickCurveParamsV1 flags
 export const STICK_CURVE_FLAG_CIRCLE_COORDS = 1 << 0;
 export const STICK_CURVE_FLAG_SAMUS_CSTICK_MODE = 1 << 1;
+export const STICK_CURVE_FLAG_DISABLE_NOTCHES = 1 << 2;
 
 export type SettingsDraft = {
   activeProfile: number;

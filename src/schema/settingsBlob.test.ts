@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ORCA_CONFIG_SETTINGS_BLOB_SIZE, ORCA_CONFIG_SETTINGS_HEADER_ACTIVE_PROFILE_OFFSET, ORCA_CONFIG_SETTINGS_PROFILE_COUNT, OrcaSettingsTlv } from '@shared/orca_config_idl_generated';
 import type { DigitalSourceV1, DpadLayerV1, SettingsDraft, StickCurveParamsV1, TriggerPolicyV1 } from './settingsBlob';
-import { buildSettingsBlob, parseSettingsBlob } from './settingsBlob';
+import { STICK_CURVE_FLAG_DISABLE_NOTCHES, buildSettingsBlob, parseSettingsBlob } from './settingsBlob';
 import { ANALOG_INPUTS, DIGITAL_INPUTS, ORCA_DUMMY_FIELD } from './orcaMappings';
 
 function digital(index: number): DigitalSourceV1 {
@@ -80,5 +80,16 @@ describe('buildSettingsBlob', () => {
 
     expect(parsed.draft.gp2040ExtraMappings[0]).toEqual({ l3Src: 3, r3Src: 4 });
     expect(parsed.draft.gp2040ExtraMappings).toHaveLength(OrcaSettingsTlv.Gp2040ExtraMappings.count);
+  });
+
+  it('round-trips the disabled notches stick curve flag', () => {
+    const base = new Uint8Array(ORCA_CONFIG_SETTINGS_BLOB_SIZE);
+    const draft = makeDraft();
+    draft.stickCurveParams[0]!.flags = STICK_CURVE_FLAG_DISABLE_NOTCHES;
+
+    const staged = buildSettingsBlob(base, draft);
+    const parsed = parseSettingsBlob(staged);
+
+    expect(parsed.draft.stickCurveParams[0]!.flags & STICK_CURVE_FLAG_DISABLE_NOTCHES).toBe(STICK_CURVE_FLAG_DISABLE_NOTCHES);
   });
 });
