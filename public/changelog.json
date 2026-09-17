@@ -1,9 +1,28 @@
 {
   "latest": {
-    "configurator": "configurator-2026-05-06",
+    "configurator": "configurator-2026-09-17",
     "firmware": "firmware-2.7"
   },
   "entries": [
+    {
+      "id": "configurator-2026-09-17",
+      "kind": "configurator",
+      "version": "2026.09.17",
+      "date": "2026-09-17",
+      "title": "Changelog",
+      "related": {
+        "firmwareId": "firmware-2.7"
+      },
+      "sections": [
+        {
+          "title": "New",
+          "items": [
+            "Feat: Add disabled notches mode for linear stick scaling.",
+            "Fix: Selecting the Melee preset now re-enables Circle Coordinates in the stick settings."
+          ]
+        }
+      ]
+    },
     {
       "id": "configurator-2026-05-06",
       "kind": "configurator",

@@ -12,7 +12,7 @@ export function HeaderBar() {
   const [isGp2040HelpOpen, setIsGp2040HelpOpen] = useState(false);
 
   const hasSchemaMismatch = compatibility === 'minor_mismatch' || compatibility === 'major_mismatch';
-  const firmwareFilename = latestFirmwareDownload?.filename ?? 'Orca+GP2040.uf2';
+  const firmwareFilename = latestFirmwareDownload?.filename ?? 'OrcaDol2.7.uf2';
 
   return (
     <>
