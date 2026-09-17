@@ -33,9 +33,12 @@ const PRESETS = {
             circleCoords: false,
         },
     },
+    smash64: {
+        magnitude: 120, // 120/128 ≈ 0.9375
+    },
 } as const;
 
-type PresetMode = 'melee' | 'rivals2' | 'custom';
+type PresetMode = 'melee' | 'rivals2' | 'smash64' | 'custom';
 
 function toNormalized(value: number): number {
     return value / 128;
@@ -46,14 +49,24 @@ function fromNormalized(value: number): number {
 }
 
 function detectPreset(params: StickCurveParamsV1, mode: 'orca' | 'gp2040'): PresetMode {
-    if ((params.flags ?? 0) & STICK_CURVE_FLAG_DISABLE_NOTCHES) {
-        return 'custom';
-    }
-
     // Check if all stick axes (0-3) match a preset
     // Axis 4 is trigger, we don't compare it
     const mag = fromNormalized(params.range[0] ?? 0);
     const notch = fromNormalized(params.notch[0] ?? 0);
+
+    // Smash 64: notches disabled and 120 magnitude (notch values are unused then)
+    if ((params.flags ?? 0) & STICK_CURVE_FLAG_DISABLE_NOTCHES) {
+        if (Math.abs(mag - PRESETS.smash64.magnitude) <= 1) {
+            for (let i = 0; i < 4; i++) {
+                const axisMag = fromNormalized(params.range[i] ?? 0);
+                if (Math.abs(axisMag - PRESETS.smash64.magnitude) > 1) {
+                    return 'custom';
+                }
+            }
+            return 'smash64';
+        }
+        return 'custom';
+    }
 
     // Check melee
     if (Math.abs(mag - PRESETS.melee.magnitude) <= 1 && Math.abs(notch - PRESETS.melee.notch) <= 1) {
@@ -121,8 +134,20 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
         updateParams({ flags: newFlags });
     }
 
-    function applyPreset(preset: 'melee' | 'rivals2') {
+    function applyPreset(preset: 'melee' | 'rivals2' | 'smash64') {
         const updated = cloneDraft(draft);
+
+        // Smash 64: 120 full-press magnitude, linear scaling (notches off), circle mode off
+        if (preset === 'smash64') {
+            const params = updated.stickCurveParams[activeProfile]!;
+            const magNorm = toNormalized(PRESETS.smash64.magnitude);
+            params.range = [magNorm, magNorm, magNorm, magNorm, params.range[4] ?? 1.0];
+            params.flags = (params.flags | STICK_CURVE_FLAG_DISABLE_NOTCHES) & ~STICK_CURVE_FLAG_CIRCLE_COORDS;
+            onChange(updated);
+            setForceCustom(false);
+            return;
+        }
+
         // Use the mode-specific Rivals 2 preset; Melee is the same in both modes
         const presetValues = preset === 'melee' ? PRESETS.melee : PRESETS.rivals2[mode];
         const magNorm = toNormalized(presetValues.magnitude);
@@ -150,6 +175,9 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                 dzUpper, dzUpper, dzUpper, dzUpper, triggerDz,
             ];
         }
+        // Melee and Rivals 2 are notched presets, so re-enable notches
+        updated.stickCurveParams[activeProfile]!.flags &= ~STICK_CURVE_FLAG_DISABLE_NOTCHES;
+
         if (presetValues.circleCoords) {
             updated.stickCurveParams[activeProfile]!.flags |= STICK_CURVE_FLAG_CIRCLE_COORDS;
         } else {
@@ -260,6 +288,35 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                         alignItems: 'center',
                         gap: 'var(--spacing-xs)',
                         padding: 'var(--spacing-sm) var(--spacing-md)',
+                        background: effectivePreset === 'smash64' ? 'var(--color-accent-primary)' : 'var(--color-bg-tertiary)',
+                        borderRadius: 'var(--radius-md)',
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        border: effectivePreset === 'smash64' ? '1px solid var(--color-accent-primary)' : '1px solid var(--color-border)',
+                        opacity: disabled ? 0.5 : 1,
+                    }}>
+                        <input
+                            type="radio"
+                            name="stickPreset"
+                            checked={effectivePreset === 'smash64'}
+                            onChange={() => applyPreset('smash64')}
+                            disabled={disabled}
+                            style={{ display: 'none' }}
+                        />
+                        <span style={{
+                            fontSize: 'var(--font-size-sm)',
+                            fontWeight: 500,
+                            color: effectivePreset === 'smash64' ? 'white' : 'var(--color-text-primary)',
+                        }}>
+                            Smash 64
+                        </span>
+                    </label>
+
+                    <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--spacing-xs)',
+                        padding: 'var(--spacing-sm) var(--spacing-md)',
                         background: showCustomSliders ? 'var(--color-bg-secondary)' : 'var(--color-bg-tertiary)',
                         borderRadius: 'var(--radius-md)',
                         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -290,6 +347,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                 <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
                     {effectivePreset === 'melee' && 'Optimized for Super Smash Bros. Melee'}
                     {effectivePreset === 'rivals2' && 'Optimized for Rivals of Aether 2'}
+                    {effectivePreset === 'smash64' && 'Optimized for Super Smash Bros. (N64)'}
                     {showCustomSliders && 'Custom values - adjust sliders below'}
                 </span>
             </div>

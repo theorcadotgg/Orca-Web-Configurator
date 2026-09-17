@@ -18,6 +18,7 @@
           "title": "New",
           "items": [
             "Feat: Add disabled notches mode for linear stick scaling.",
+            "Feat: Add Smash 64 stick preset (120 full-press magnitude, notchless, circle mode off).",
             "Fix: Selecting the Melee preset now re-enables Circle Coordinates in the stick settings."
           ]
         }
