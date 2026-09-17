@@ -17,6 +17,7 @@ const PRESETS = {
     melee: {
         magnitude: 100,       // 100/128 ≈ 0.78125
         notch: 35,            // 35/128 ≈ 0.2578
+        circleCoords: true,
         dzLower: 12 / 128,    // Lower deadzone (normalized)
         dzUpper: 20 / 108,    // Upper deadzone: inputs 108-128 clamp to 100 (normalized)
     },
@@ -24,6 +25,7 @@ const PRESETS = {
         orca: {
             magnitude: 120, // 120/128 ≈ 0.9375
             notch: 50,      // 50/128 ≈ 0.3906
+            circleCoords: false,
         },
         gp2040: {
             magnitude: 128,
@@ -121,13 +123,8 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
 
     function applyPreset(preset: 'melee' | 'rivals2') {
         const updated = cloneDraft(draft);
-        let presetValues;
-        if (preset === 'melee') {
-            presetValues = PRESETS.melee;
-        } else {
-            // Use mode-specific Rivals 2 preset
-            presetValues = PRESETS.rivals2[mode];
-        }
+        // Use the mode-specific Rivals 2 preset; Melee is the same in both modes
+        const presetValues = preset === 'melee' ? PRESETS.melee : PRESETS.rivals2[mode];
         const magNorm = toNormalized(presetValues.magnitude);
         const notchNorm = toNormalized(presetValues.notch);
 
@@ -153,7 +150,7 @@ export function StickCurveEditor({ draft, disabled, onChange, mode = 'orca' }: P
                 dzUpper, dzUpper, dzUpper, dzUpper, triggerDz,
             ];
         }
-        if (preset === 'rivals2' && 'circleCoords' in PRESETS.rivals2[mode] && PRESETS.rivals2[mode].circleCoords) {
+        if (presetValues.circleCoords) {
             updated.stickCurveParams[activeProfile]!.flags |= STICK_CURVE_FLAG_CIRCLE_COORDS;
         } else {
             updated.stickCurveParams[activeProfile]!.flags &= ~STICK_CURVE_FLAG_CIRCLE_COORDS;
