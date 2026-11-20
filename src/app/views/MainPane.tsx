@@ -60,7 +60,7 @@ export function MainPane() {
             }}
           >
             <h2 style={{ margin: 0, fontWeight: 500, color: 'var(--color-text-secondary)' }}>
-              Connect your Orca while holding
+              Plug in your Orca directly to your computer while holding
             </h2>
             <ButtonChordGlyph
               filled={['top', 'left']}

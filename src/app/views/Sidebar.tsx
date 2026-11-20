@@ -53,7 +53,7 @@ export function Sidebar() {
         {draft ? (
           <StickCurveEditor draft={draft} disabled={state.busy} onChange={onDraftChange} mode={state.configMode} />
         ) : (
-          <div className="text-sm text-muted">Connect to configure</div>
+          <div className="text-sm text-muted">Plug in to configure</div>
         )}
       </CollapsiblePanel>
 
@@ -68,7 +68,7 @@ export function Sidebar() {
                 <TriggerEditor draft={draft} disabled={state.busy} onChange={onDraftChange} mode={state.configMode} />
               </>
         ) : (
-          <div className="text-sm text-muted">Connect to configure</div>
+          <div className="text-sm text-muted">Plug in to configure</div>
         )}
       </CollapsiblePanel>
 

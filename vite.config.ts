@@ -51,6 +51,9 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: 'index.html',
+        // Firmware download links are navigation requests; without this the SW answers them with
+        // index.html and users end up dragging an HTML file named *.uf2 onto RPI-RP2.
+        navigateFallbackDenylist: [/\.uf2$/i],
         // Workbox uses Rollup+Terser when `mode: 'production'`, which can be flaky on very new Node versions.
         // This keeps the SW unminified but reliable for GH Pages.
         mode: 'development',
